@@ -1,74 +1,80 @@
-## Refinar tela `/app/leads` — pipeline inteligente com valor financeiro
+## Refinar `/app/pipeline` — Kanban como ferramenta ativa de fechamento
 
-Editar **apenas** `src/routes/app.leads.tsx`. Estrutura (lista à esquerda + painel direito) preservada. Sem mudanças em `mock.ts`, sidebar ou rotas.
+Editar **apenas** `src/routes/app.pipeline.tsx`. Estrutura de 5 colunas e layout preservados. Sem mudanças em `mock.ts` ou outras rotas.
 
-### 1. Helpers locais (topo do arquivo)
+### 1. Tipo `Card` e dados estendidos
 
-- `getPrioridade(status)`: `Proposta`/`Visita`/`Fechado` → `quente` 🔥, `Qualificado` → `morno` ⚡, `Novo` → `frio` ❄️, `Perdido` → neutro.
-- `getComissao(orcamento)`: `orcamento * 0.03` (3% padrão UBroker, alinhado a `kpis.comissaoMedia`).
-- `originHighlight(origem)`: `true` para `Indicação` e `Marketplace` (leads mais qualificados).
+Acrescentar campos opcionais ao tipo:
+- `proximaAcao?: string` — preencher em todos os cards via mock inline (agendar visita / enviar proposta / follow-up / etc.)
+- (mantém `dias` como "dias parado / desde criação"; usado para urgência)
 
-### 2. Padronizar cores de status
+Helpers locais no topo do arquivo:
+- `getUrgencia(dias)` → `"ok" | "atencao" | "urgente"` (≤1 / 2-3 / >3)
+- `getComissao(valor)` → `valor * 0.03`
+- `isDestaque(card, stageId)` → `true` se estágio ∈ {Visita, Proposta} **e** valor ≥ 1.500.000
 
-Atualizar `statusColor`:
+### 2. Indicador de urgência no card
 
-- Novo → cinza (atual ok)
-- Qualificado → azul
-- Visita → laranja (`bg-orange-50 text-orange-800`)
-- Proposta → roxo (atual ok)
-- Fechado → emerald (mantém)
-- Perdido → vermelho (`bg-red-50 text-red-700`)
+Substituir o atual `{c.dias}d` por badge com cor:
+- ok → cinza neutro: "Última ação hoje" (dias=0) ou "Há Xd"
+- atencao (amarelo): "Sem interação há Xd"
+- urgente (vermelho): "Sem interação há Xd · agir"
 
-### 3. Microcopy no topo da lista
+Para cards de **Fechado**, trocar mensagem por "Fechado em Xd" (verde).
 
-Acima da barra de busca (dentro do header existente, sem novo bloco): linha pequena com ícone 🔥:
+### 3. Próxima ação
 
-> "**Oportunidades em andamento:** 12 leads ativos"
+Linha discreta dentro do card (abaixo do valor):
+> "Próximo passo: **agendar visita**"
 
-### 4. Tabela enriquecida
+Default por estágio quando o card não traz `proximaAcao`:
+- Novo → "qualificar lead"
+- Qualificado → "agendar visita"
+- Visita → "enviar proposta"
+- Proposta → "follow-up de decisão"
+- Fechado → "iniciar pós-venda"
 
-Cada `<tr>` ganha uma **borda esquerda colorida** baseada em prioridade (vermelha quente / âmbar morno / azul-claro frio).
+### 4. Comissão estimada em todos os cards
 
-Coluna **Lead**: adicionar abaixo do nome um chip pequeno de prioridade (🔥 Quente / ⚡ Morno / ❄️ Frio) ao lado do nome.
+Adicionar linha pequena: `Comissão est. R$ 42.000` (verde discreto, `text-emerald-700`). Nos cards de Fechado, substitui a tag manual `"Comissão R$ 84.6k"` por essa linha calculada — remover essas tags duplicadas dos dados.
 
-Coluna **Origem**: se `Indicação` ou `Marketplace`, envolver em pill âmbar discreto com micro-tag "qualificada".
+### 5. Destaque de cards-chave
 
-Coluna **Orçamento**: trocar valor único por bloco de duas linhas:
+Quando `isDestaque(...)` for verdadeiro: aplicar `ring-1 ring-brand/40 shadow-md` + pequena tag canto superior "🎯 Foco" (cor brand). Sutil, sem quebrar o grid.
+
+### 6. Coluna Proposta
+
+Logo abaixo do header da coluna (mesma linha do contador): pill "Aguardando decisão" em violeta suave (`bg-violet-50 text-violet-700`). Mostrado só nessa coluna.
+
+### 7. Coluna Fechado
+
+Header da coluna ganha pill verde "Concluídos no mês". Cards de Fechado trocam o badge de urgência por `"Fechado em Xd"` e mantêm tag opcional (ex.: "À vista").
+
+### 8. Indicador no topo
+
+No header existente, segunda linha do subtítulo:
+> "20 oportunidades · VGV R$ 27.310.000"  
+> "**3 oportunidades próximas de fechamento**" (em brand, com ícone Target)
+
+`proximasFechamento` = contagem de cards com estágio `Proposta` **ou** (Visita com valor ≥ 1.500.000).
+
+### Estrutura final do card (ordem)
 
 ```
-R$ 1.000.000
-Comissão est. R$ 30.000   (verde discreto)
+[🎯 Foco]                          [badge urgência]
+Cliente
+Imóvel · região
+R$ 1.590.000
+Comissão est. R$ 47.700
+Próximo passo: enviar proposta
+[tag opcional ex.: "Sábado 10h"]
 ```
 
-### 5. Painel direito (detalhe) — novos blocos
+### Não alterar
 
-Mantém ordem geral. Após o cabeçalho com nome/status, adicionar/reorganizar:
-
-**a) Resumo rápido** (novo bloco, antes de Origem):
-
-- Tipo de imóvel desejado (extraído por regex simples de `interesse`: procura "casa|cobertura|apartamento|sala|terreno|studio|loft" — fallback "Imóvel residencial")
-- Região de interesse (regex por bairros: "Icaraí|Santa Rosa|Niterói|São Francisco|Charitas..." — fallback "Niterói / RJ")
-- Orçamento (formatado)
-
-**b) Potencial de negócio** (novo bloco, após Interesse):
-
-- Valor estimado: `formatBRL(orcamento)`
-- Comissão estimada: `formatBRL(orcamento * 0.03)` (destaque verde/brand)
-
-**c) Destaque "Última ação"** acima do histórico:
-
-> "Última ação: **Hoje, 09:14**" (lê `historico[0].data`) — em pill brand suave.
-
-### 6. Botões de ação
-
-- "Registrar contato" → **"Registrar interação"**
-- "Ver no pipeline" → **"Mover para pipeline"**
-
-### 7. Não alterar
-
-- `mock.ts`, layout grid, sidebar/topbar, demais rotas.
-- Schema de `Lead`. Tudo derivado em runtime no componente.
+- `mock.ts`, sidebar, layout grid das colunas, demais rotas.
+- Quantidade/ordem de colunas e cards.
 
 ### Resultado
 
-Lista escaneável por prioridade + valor financeiro visível em cada linha; painel direito com leitura rápida do que o lead quer e quanto vale.
+Cada card comunica em 2 segundos: quanto vale, quanto rende, há quanto tempo está parado e qual é o próximo passo. Visita e Proposta de alto valor ganham destaque visual; Fechado reforça performance.
