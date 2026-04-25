@@ -73,7 +73,7 @@ function AppLayout() {
                   return (
                     <li key={it.to}>
                       <Link
-                        to={it.to}
+                        to={it.to as string}
                         className={cn(
                           "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
                           active
