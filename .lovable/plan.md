@@ -1,54 +1,74 @@
-## Refinar Dashboard `/app` — hierarquia, contexto e foco em resultado
+## Refinar tela `/app/leads` — pipeline inteligente com valor financeiro
 
-Editar **apenas** `src/routes/app.index.tsx`. Estrutura geral, layout em grid, sidebar e topbar permanecem intactos.
+Editar **apenas** `src/routes/app.leads.tsx`. Estrutura (lista à esquerda + painel direito) preservada. Sem mudanças em `mock.ts`, sidebar ou rotas.
 
-### 1. CTA global abaixo do título
-Adicionar logo abaixo de "Olá, Ramon 👋", em destaque sutil (pill com ícone âmbar/warm + texto):
-> "Hoje você tem **3 oportunidades quentes** para avançar."
+### 1. Helpers locais (topo do arquivo)
 
-### 2. Hierarquia dos KPIs
-Os 5 cards continuam na mesma grid. Promover visualmente os dois cards de dinheiro:
-- **Faturamento (R$ 96.000)** — passa a usar o variant `accent` (fundo navy escuro, texto claro, ícone âmbar), igual ao VGV.
-- **VGV (R$ 3,2mi)** — mantém `accent`.
-- Os outros 3 (Comissão média, Vendidos, Ticket médio) ficam neutros (card branco, tipografia mais discreta).
+- `getPrioridade(status)`: `Proposta`/`Visita`/`Fechado` → `quente` 🔥, `Qualificado` → `morno` ⚡, `Novo` → `frio` ❄️, `Perdido` → neutro.
+- `getComissao(orcamento)`: `orcamento * 0.03` (3% padrão UBroker, alinhado a `kpis.comissaoMedia`).
+- `originHighlight(origem)`: `true` para `Indicação` e `Marketplace` (leads mais qualificados).
 
-Resultado: olho vai imediatamente para os dois blocos escuros = dinheiro.
+### 2. Padronizar cores de status
 
-### 3. Card "Vendidos no mês" → indicador de meta
-- Valor principal: `2 / 3` (com `meta do mês` em micro caption).
-- Substituir o subtítulo `"2 / 3 meta"` por:
-  - barra de progresso fininha (66%) em cor brand
-  - micro texto: *"Falta 1 venda para atingir sua meta"*
+Atualizar `statusColor`:
 
-### 4. Bloco de Monetização (direita, navy)
-Estrutura mantida. Adições:
-- Logo abaixo do valor `R$ 480`, antes do progresso, nova linha em texto warm/âmbar:
-  > "Você já cobriu **80%** do seu plano com indicações."
-- Botão "Convidar mais corretores" passa de link discreto para **botão sólido warm/âmbar** (preenchido, com seta), ocupando largura cheia, mais chamativo.
+- Novo → cinza (atual ok)
+- Qualificado → azul
+- Visita → laranja (`bg-orange-50 text-orange-800`)
+- Proposta → roxo (atual ok)
+- Fechado → emerald (mantém)
+- Perdido → vermelho (`bg-red-50 text-red-700`)
 
-### 5. Bloco "Operação" — micro contexto
-Cada uma das 3 mini-tiles ganha uma terceira linha (caption em muted, abaixo do label):
-- Leads novos → *"Últimos 7 dias"*
-- Em atendimento → *"Ativos agora"*
-- Propostas → *"Em andamento"*
+### 3. Microcopy no topo da lista
 
-### 6. "Últimos leads" — contexto de venda
-Cada item da lista (5 leads) ganha uma segunda linha curta (truncada) com a essência do interesse, derivada do campo `interesse` em `mock.ts` (ou um novo campo `resumo` curto adicionado a cada lead):
+Acima da barra de busca (dentro do header existente, sem novo bloco): linha pequena com ícone 🔥:
+
+> "**Oportunidades em andamento:** 12 leads ativos"
+
+### 4. Tabela enriquecida
+
+Cada `<tr>` ganha uma **borda esquerda colorida** baseada em prioridade (vermelha quente / âmbar morno / azul-claro frio).
+
+Coluna **Lead**: adicionar abaixo do nome um chip pequeno de prioridade (🔥 Quente / ⚡ Morno / ❄️ Frio) ao lado do nome.
+
+Coluna **Origem**: se `Indicação` ou `Marketplace`, envolver em pill âmbar discreto com micro-tag "qualificada".
+
+Coluna **Orçamento**: trocar valor único por bloco de duas linhas:
+
 ```
-João Mendes                             [Qualificado]
-Busca casa com área externa até R$ 1mi
-Instagram · há 2h
+R$ 1.000.000
+Comissão est. R$ 30.000   (verde discreto)
 ```
-Para evitar mexer em `mock.ts`, gerar o resumo localmente truncando `interesse` em ~70 caracteres com reticências. Sem alteração de schema.
 
-### 7. Bloco "Agenda" — destaque de hoje
-Cada item de atividade (já tem `data`: "Hoje, Amanhã, Sex…"):
-- Se `data` começa com "Hoje" → tile recebe **borda esquerda azul (border-l-2 border-brand)** + pequena tag pill `Hoje` em azul ao lado do nome do cliente.
-- Demais ficam neutros.
+### 5. Painel direito (detalhe) — novos blocos
 
-### 8. Não alterar
-- Grid, colunas, ordem de blocos, sidebar, topbar, gráfico de evolução, dados em `mock.ts`.
-- Nenhum arquivo além de `src/routes/app.index.tsx`.
+Mantém ordem geral. Após o cabeçalho com nome/status, adicionar/reorganizar:
+
+**a) Resumo rápido** (novo bloco, antes de Origem):
+
+- Tipo de imóvel desejado (extraído por regex simples de `interesse`: procura "casa|cobertura|apartamento|sala|terreno|studio|loft" — fallback "Imóvel residencial")
+- Região de interesse (regex por bairros: "Icaraí|Santa Rosa|Niterói|São Francisco|Charitas..." — fallback "Niterói / RJ")
+- Orçamento (formatado)
+
+**b) Potencial de negócio** (novo bloco, após Interesse):
+
+- Valor estimado: `formatBRL(orcamento)`
+- Comissão estimada: `formatBRL(orcamento * 0.03)` (destaque verde/brand)
+
+**c) Destaque "Última ação"** acima do histórico:
+
+> "Última ação: **Hoje, 09:14**" (lê `historico[0].data`) — em pill brand suave.
+
+### 6. Botões de ação
+
+- "Registrar contato" → **"Registrar interação"**
+- "Ver no pipeline" → **"Mover para pipeline"**
+
+### 7. Não alterar
+
+- `mock.ts`, layout grid, sidebar/topbar, demais rotas.
+- Schema de `Lead`. Tudo derivado em runtime no componente.
 
 ### Resultado
-Dashboard com olhar guiado para dinheiro → meta → próxima ação, mantendo o layout aprovado.
+
+Lista escaneável por prioridade + valor financeiro visível em cada linha; painel direito com leitura rápida do que o lead quer e quanto vale.
