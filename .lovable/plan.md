@@ -1,80 +1,98 @@
-## Refinar `/app/pipeline` — Kanban como ferramenta ativa de fechamento
+# Refinar `/app/imoveis` — central de inventário, performance e rastreabilidade
 
-Editar **apenas** `src/routes/app.pipeline.tsx`. Estrutura de 5 colunas e layout preservados. Sem mudanças em `mock.ts` ou outras rotas.
+Editar **apenas** `src/routes/app.imoveis.tsx`. Sem alterar `mock.ts`, sidebar ou layout do grid. Tudo simulado, sem backend.
 
-### 1. Tipo `Card` e dados estendidos
+## 1. Estado e helpers locais
 
-Acrescentar campos opcionais ao tipo:
-- `proximaAcao?: string` — preencher em todos os cards via mock inline (agendar visita / enviar proposta / follow-up / etc.)
-- (mantém `dias` como "dias parado / desde criação"; usado para urgência)
+No topo do componente:
 
-Helpers locais no topo do arquivo:
-- `getUrgencia(dias)` → `"ok" | "atencao" | "urgente"` (≤1 / 2-3 / >3)
-- `getComissao(valor)` → `valor * 0.03`
-- `isDestaque(card, stageId)` → `true` se estágio ∈ {Visita, Proposta} **e** valor ≥ 1.500.000
+- `statuses = ["Ativo", "Em negociação", "Vendido", "Inativo", "Excluído"] as const`
+- `useState<Record<string, Status>>` inicial: maioria "Ativo", IM-002 "Em negociação", IM-005 "Inativo"
+- Helpers determinísticos (a partir do `id` do imóvel para não mudar a cada render):
+  - `getInteressados(id)` → 6–24
+  - `getVisitas(id)` → 1–8
+  - `getPropostas(id)` → 0–3
+  - `getComissao(valor)` → `valor * 0.03`
+  - `isAltaDemanda(p)` → valor ≥ 1.5M **ou** interessados ≥ 18 **ou** visitas ≥ 6
 
-### 2. Indicador de urgência no card
+## 2. Card enriquecido
 
-Substituir o atual `{c.dias}d` por badge com cor:
-- ok → cinza neutro: "Última ação hoje" (dias=0) ou "Há Xd"
-- atencao (amarelo): "Sem interação há Xd"
-- urgente (vermelho): "Sem interação há Xd · agir"
+Mantém imagem + grid atual. Adiciona dentro do bloco de informações:
 
-Para cards de **Fechado**, trocar mensagem por "Fechado em Xd" (verde).
+- **Badge de status** no canto superior direito da imagem (cor por status: Ativo verde, Em negociação âmbar, Vendido azul, Inativo cinza, Excluído vermelho/risca).
+- **Selo "Alta demanda"** (acima do badge marketplace) quando `isAltaDemanda` for true — fundo brand suave + borda azul sutil no card (`ring-1 ring-brand/30`).
+- Após o título/endereço:
+  - Linha de performance: `👥 12 interessados · 🚪 5 visitas · 📝 2 propostas` (texto pequeno, muted).
+  - Linha financeira em verde discreto: `Comissão estimada R$ 25.500`.
+- Footer do card com **ações rápidas** (ícones + label discreto): Ver detalhes · Editar · Compartilhar · Adicionar mídia · Alterar status. Substitui qualquer "Solicitar parceria" (não existe atualmente, mas a regra fica explícita).
 
-### 3. Próxima ação
+## 3. Menu "Alterar status"
 
-Linha discreta dentro do card (abaixo do valor):
-> "Próximo passo: **agendar visita**"
+Botão no card abre Popover (`@/components/ui/popover`) com 5 opções. Ao clicar:
 
-Default por estágio quando o card não traz `proximaAcao`:
-- Novo → "qualificar lead"
-- Qualificado → "agendar visita"
-- Visita → "enviar proposta"
-- Proposta → "follow-up de decisão"
-- Fechado → "iniciar pós-venda"
+- **Ativo / Em negociação / Inativo** → atualiza estado local + toast (sonner) "Status atualizado".
+- **Vendido** → abre `Dialog` "Registrar venda do imóvel".
+- **Excluído** → abre `Dialog` "Registrar exclusão do imóvel" (com aviso de rastreabilidade).
 
-### 4. Comissão estimada em todos os cards
+## 4. Modal "Registrar venda do imóvel"
 
-Adicionar linha pequena: `Comissão est. R$ 42.000` (verde discreto, `text-emerald-700`). Nos cards de Fechado, substitui a tag manual `"Comissão R$ 84.6k"` por essa linha calculada — remover essas tags duplicadas dos dados.
+Título + subtítulo: "Para manter a rastreabilidade da operação, registre as informações principais desta venda."
 
-### 5. Destaque de cards-chave
+Campos (todos visuais, `useState` simples):
+- Data da venda (input date)
+- Valor final da venda (input number, prefilled com valor do imóvel)
+- Origem do comprador (select: Marketplace / Instagram / WhatsApp / Indicação / Outro)
+- Houve parceria com outro corretor? (radio Sim/Não)
+- Foi negociado dentro da Ubroker? (radio Sim/Não)
+- Observações (textarea)
 
-Quando `isDestaque(...)` for verdadeiro: aplicar `ring-1 ring-brand/40 shadow-md` + pequena tag canto superior "🎯 Foco" (cor brand). Sutil, sem quebrar o grid.
+Botões: Cancelar · **Confirmar venda** (aplica status "Vendido" e toast "Venda registrada · IM-001").
 
-### 6. Coluna Proposta
+## 5. Modal "Registrar exclusão do imóvel"
 
-Logo abaixo do header da coluna (mesma linha do contador): pill "Aguardando decisão" em violeta suave (`bg-violet-50 text-violet-700`). Mostrado só nessa coluna.
+Aviso visível no topo (banner âmbar/vermelho com ícone AlertTriangle): "Esta ação ficará registrada no histórico do inventário."
 
-### 7. Coluna Fechado
+Campos:
+- Motivo (select: Imóvel vendido / Proprietário retirou / Imóvel indisponível / Cadastro duplicado / Erro de cadastro / Outro)
+- Houve negociação iniciada pela Ubroker? (radio Sim/Não)
+- Observações (textarea, marcada como obrigatória — `required` + asterisco)
 
-Header da coluna ganha pill verde "Concluídos no mês". Cards de Fechado trocam o badge de urgência por `"Fechado em Xd"` e mantêm tag opcional (ex.: "À vista").
+Botões: Cancelar · **Confirmar exclusão** (variant destructive, aplica status "Excluído" e toast).
 
-### 8. Indicador no topo
+## 6. Modal "Adicionar mídia"
 
-No header existente, segunda linha do subtítulo:
-> "20 oportunidades · VGV R$ 27.310.000"  
-> "**3 oportunidades próximas de fechamento**" (em brand, com ícone Target)
+Disparado pela ação "Adicionar mídia" do card. Conteúdo simulado:
+- Dropzone (div tracejada) com ícone Upload e texto "Arraste fotos ou clique para selecionar" (sem `<input type=file>` real funcional — apenas visual).
+- Botão "Adicionar vídeo".
+- Preview de galeria com 3 thumbnails fictícios (usando a foto do próprio imóvel + 2 placeholders).
+- Texto auxiliar muted: "Fotos e vídeos aumentam a performance do imóvel no marketplace."
+- Botão Fechar.
 
-`proximasFechamento` = contagem de cards com estágio `Proposta` **ou** (Visita com valor ≥ 1.500.000).
+## 7. Modal de cadastro existente
 
-### Estrutura final do card (ordem)
+Editar o modal já existente:
 
-```
-[🎯 Foco]                          [badge urgência]
-Cliente
-Imóvel · região
-R$ 1.590.000
-Comissão est. R$ 47.700
-Próximo passo: enviar proposta
-[tag opcional ex.: "Sábado 10h"]
-```
+- Banner azul claro no topo (substituindo/abaixo do subtítulo): "Este imóvel será exibido no marketplace B2C e poderá receber leads de compradores interessados."
+- Adicionar um campo opcional **"Tipo de cliente ideal"** (select com options: família / investidor / jovem casal / primeira moradia / alto padrão), antes da Descrição.
 
-### Não alterar
+## 8. Detalhes técnicos
 
-- `mock.ts`, sidebar, layout grid das colunas, demais rotas.
-- Quantidade/ordem de colunas e cards.
+- Usar `Dialog` de `@/components/ui/dialog`, `Popover` de `@/components/ui/popover`, `Select`, `RadioGroup`, `Textarea`, `Input`, `Button` já existentes.
+- Toasts via `sonner` (já presente em `@/components/ui/sonner`).
+- Cores de status:
+  - Ativo: `bg-emerald-100 text-emerald-700`
+  - Em negociação: `bg-amber-100 text-amber-700`
+  - Vendido: `bg-sky-100 text-sky-700`
+  - Inativo: `bg-slate-200 text-slate-600`
+  - Excluído: `bg-rose-100 text-rose-700`
+- Cards com status "Excluído" → `opacity-60` + label tachado.
+- Toda lógica vive localmente em `InventoryPage`. Nenhum dado novo em `mock.ts`.
 
-### Resultado
+## Não alterar
 
-Cada card comunica em 2 segundos: quanto vale, quanto rende, há quanto tempo está parado e qual é o próximo passo. Visita e Proposta de alto valor ganham destaque visual; Fechado reforça performance.
+- `src/data/mock.ts`, sidebar, grid responsivo do inventário, demais rotas.
+- Imagens, ordem ou quantidade de imóveis.
+
+## Resultado
+
+Cada card comunica: status comercial, demanda real, comissão potencial e ações operacionais. Vender e excluir passam por fluxos com rastreabilidade. Cadastro reforça exposição no marketplace B2C.
