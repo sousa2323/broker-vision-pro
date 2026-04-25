@@ -9,38 +9,216 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppPipelineRouteImport } from './routes/app.pipeline'
+import { Route as AppPerfilRouteImport } from './routes/app.perfil'
+import { Route as AppLeadsRouteImport } from './routes/app.leads'
+import { Route as AppIndicacoesRouteImport } from './routes/app.indicacoes'
+import { Route as AppInboxRouteImport } from './routes/app.inbox'
+import { Route as AppImoveisRouteImport } from './routes/app.imoveis'
+import { Route as AppIaRouteImport } from './routes/app.ia'
+import { Route as AppGanhosRouteImport } from './routes/app.ganhos'
+import { Route as AppConfiguracoesRouteImport } from './routes/app.configuracoes'
+import { Route as AppAtividadesRouteImport } from './routes/app.atividades'
+import { Route as AppParceriasIndexRouteImport } from './routes/app.parcerias.index'
+import { Route as AppParceriasIdRouteImport } from './routes/app.parcerias.$id'
 
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPipelineRoute = AppPipelineRouteImport.update({
+  id: '/pipeline',
+  path: '/pipeline',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPerfilRoute = AppPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeadsRoute = AppLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppIndicacoesRoute = AppIndicacoesRouteImport.update({
+  id: '/indicacoes',
+  path: '/indicacoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInboxRoute = AppInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImoveisRoute = AppImoveisRouteImport.update({
+  id: '/imoveis',
+  path: '/imoveis',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppIaRoute = AppIaRouteImport.update({
+  id: '/ia',
+  path: '/ia',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGanhosRoute = AppGanhosRouteImport.update({
+  id: '/ganhos',
+  path: '/ganhos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppConfiguracoesRoute = AppConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAtividadesRoute = AppAtividadesRouteImport.update({
+  id: '/atividades',
+  path: '/atividades',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppParceriasIndexRoute = AppParceriasIndexRouteImport.update({
+  id: '/parcerias/',
+  path: '/parcerias/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppParceriasIdRoute = AppParceriasIdRouteImport.update({
+  id: '/parcerias/$id',
+  path: '/parcerias/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/atividades': typeof AppAtividadesRoute
+  '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/ganhos': typeof AppGanhosRoute
+  '/app/ia': typeof AppIaRoute
+  '/app/imoveis': typeof AppImoveisRoute
+  '/app/inbox': typeof AppInboxRoute
+  '/app/indicacoes': typeof AppIndicacoesRoute
+  '/app/leads': typeof AppLeadsRoute
+  '/app/perfil': typeof AppPerfilRoute
+  '/app/pipeline': typeof AppPipelineRoute
+  '/app/': typeof AppIndexRoute
+  '/app/parcerias/$id': typeof AppParceriasIdRoute
+  '/app/parcerias/': typeof AppParceriasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/atividades': typeof AppAtividadesRoute
+  '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/ganhos': typeof AppGanhosRoute
+  '/app/ia': typeof AppIaRoute
+  '/app/imoveis': typeof AppImoveisRoute
+  '/app/inbox': typeof AppInboxRoute
+  '/app/indicacoes': typeof AppIndicacoesRoute
+  '/app/leads': typeof AppLeadsRoute
+  '/app/perfil': typeof AppPerfilRoute
+  '/app/pipeline': typeof AppPipelineRoute
+  '/app': typeof AppIndexRoute
+  '/app/parcerias/$id': typeof AppParceriasIdRoute
+  '/app/parcerias': typeof AppParceriasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/atividades': typeof AppAtividadesRoute
+  '/app/configuracoes': typeof AppConfiguracoesRoute
+  '/app/ganhos': typeof AppGanhosRoute
+  '/app/ia': typeof AppIaRoute
+  '/app/imoveis': typeof AppImoveisRoute
+  '/app/inbox': typeof AppInboxRoute
+  '/app/indicacoes': typeof AppIndicacoesRoute
+  '/app/leads': typeof AppLeadsRoute
+  '/app/perfil': typeof AppPerfilRoute
+  '/app/pipeline': typeof AppPipelineRoute
+  '/app/': typeof AppIndexRoute
+  '/app/parcerias/$id': typeof AppParceriasIdRoute
+  '/app/parcerias/': typeof AppParceriasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/app/atividades'
+    | '/app/configuracoes'
+    | '/app/ganhos'
+    | '/app/ia'
+    | '/app/imoveis'
+    | '/app/inbox'
+    | '/app/indicacoes'
+    | '/app/leads'
+    | '/app/perfil'
+    | '/app/pipeline'
+    | '/app/'
+    | '/app/parcerias/$id'
+    | '/app/parcerias/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/app/atividades'
+    | '/app/configuracoes'
+    | '/app/ganhos'
+    | '/app/ia'
+    | '/app/imoveis'
+    | '/app/inbox'
+    | '/app/indicacoes'
+    | '/app/leads'
+    | '/app/perfil'
+    | '/app/pipeline'
+    | '/app'
+    | '/app/parcerias/$id'
+    | '/app/parcerias'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/app/atividades'
+    | '/app/configuracoes'
+    | '/app/ganhos'
+    | '/app/ia'
+    | '/app/imoveis'
+    | '/app/inbox'
+    | '/app/indicacoes'
+    | '/app/leads'
+    | '/app/perfil'
+    | '/app/pipeline'
+    | '/app/'
+    | '/app/parcerias/$id'
+    | '/app/parcerias/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +226,137 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/pipeline': {
+      id: '/app/pipeline'
+      path: '/pipeline'
+      fullPath: '/app/pipeline'
+      preLoaderRoute: typeof AppPipelineRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/perfil': {
+      id: '/app/perfil'
+      path: '/perfil'
+      fullPath: '/app/perfil'
+      preLoaderRoute: typeof AppPerfilRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/leads': {
+      id: '/app/leads'
+      path: '/leads'
+      fullPath: '/app/leads'
+      preLoaderRoute: typeof AppLeadsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/indicacoes': {
+      id: '/app/indicacoes'
+      path: '/indicacoes'
+      fullPath: '/app/indicacoes'
+      preLoaderRoute: typeof AppIndicacoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/inbox': {
+      id: '/app/inbox'
+      path: '/inbox'
+      fullPath: '/app/inbox'
+      preLoaderRoute: typeof AppInboxRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/imoveis': {
+      id: '/app/imoveis'
+      path: '/imoveis'
+      fullPath: '/app/imoveis'
+      preLoaderRoute: typeof AppImoveisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/ia': {
+      id: '/app/ia'
+      path: '/ia'
+      fullPath: '/app/ia'
+      preLoaderRoute: typeof AppIaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/ganhos': {
+      id: '/app/ganhos'
+      path: '/ganhos'
+      fullPath: '/app/ganhos'
+      preLoaderRoute: typeof AppGanhosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/configuracoes': {
+      id: '/app/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/app/configuracoes'
+      preLoaderRoute: typeof AppConfiguracoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/atividades': {
+      id: '/app/atividades'
+      path: '/atividades'
+      fullPath: '/app/atividades'
+      preLoaderRoute: typeof AppAtividadesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/parcerias/': {
+      id: '/app/parcerias/'
+      path: '/parcerias'
+      fullPath: '/app/parcerias/'
+      preLoaderRoute: typeof AppParceriasIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/parcerias/$id': {
+      id: '/app/parcerias/$id'
+      path: '/parcerias/$id'
+      fullPath: '/app/parcerias/$id'
+      preLoaderRoute: typeof AppParceriasIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppAtividadesRoute: typeof AppAtividadesRoute
+  AppConfiguracoesRoute: typeof AppConfiguracoesRoute
+  AppGanhosRoute: typeof AppGanhosRoute
+  AppIaRoute: typeof AppIaRoute
+  AppImoveisRoute: typeof AppImoveisRoute
+  AppInboxRoute: typeof AppInboxRoute
+  AppIndicacoesRoute: typeof AppIndicacoesRoute
+  AppLeadsRoute: typeof AppLeadsRoute
+  AppPerfilRoute: typeof AppPerfilRoute
+  AppPipelineRoute: typeof AppPipelineRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppParceriasIdRoute: typeof AppParceriasIdRoute
+  AppParceriasIndexRoute: typeof AppParceriasIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAtividadesRoute: AppAtividadesRoute,
+  AppConfiguracoesRoute: AppConfiguracoesRoute,
+  AppGanhosRoute: AppGanhosRoute,
+  AppIaRoute: AppIaRoute,
+  AppImoveisRoute: AppImoveisRoute,
+  AppInboxRoute: AppInboxRoute,
+  AppIndicacoesRoute: AppIndicacoesRoute,
+  AppLeadsRoute: AppLeadsRoute,
+  AppPerfilRoute: AppPerfilRoute,
+  AppPipelineRoute: AppPipelineRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppParceriasIdRoute: AppParceriasIdRoute,
+  AppParceriasIndexRoute: AppParceriasIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

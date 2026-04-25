@@ -1,0 +1,193 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Area, AreaChart,
+} from "recharts";
+import {
+  TrendingUp, ArrowUpRight, Wallet, Users, Building2, Target, Clock, ChevronRight,
+} from "lucide-react";
+import { kpis, salesEvolution, atividades, formatBRL, formatBRLcompact, leads } from "@/data/mock";
+
+export const Route = createFileRoute("/app/")({
+  component: Dashboard,
+});
+
+function Dashboard() {
+  const progressPct = (kpis.ganhosIndicacao / kpis.metaIsencao) * 100;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="font-display text-3xl">Olá, Ramon 👋</h1>
+          <p className="text-sm text-muted-foreground">Aqui está como sua operação está performando este mês.</p>
+        </div>
+        <div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex">
+          <Clock className="h-3.5 w-3.5" /> Atualizado agora · Outubro 2025
+        </div>
+      </div>
+
+      {/* KPI grid */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <Kpi label="VGV do mês" value={formatBRLcompact(kpis.vgv)} delta="+18%" icon={TrendingUp} accent />
+        <Kpi label="Faturamento" value={formatBRL(kpis.faturamento)} delta="+12%" icon={Wallet} />
+        <Kpi label="Comissão média" value={`${(kpis.comissaoMedia * 100).toFixed(1)}%`} delta="estável" icon={Target} />
+        <Kpi label="Vendidos no mês" value={`${kpis.vendidosMes}`} delta="2 / 3 meta" icon={Building2} />
+        <Kpi label="Ticket médio" value={formatBRLcompact(kpis.ticketMedio)} delta="+5%" icon={ArrowUpRight} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Chart */}
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-6">
+          <div className="mb-2 flex items-end justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Evolução de vendas</div>
+              <div className="font-display text-xl">VGV últimos 6 meses</div>
+            </div>
+            <div className="text-xs text-muted-foreground">em milhões de R$</div>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer>
+              <AreaChart data={salesEvolution} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="vgvGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.55 0.22 262)" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="oklch(0.55 0.22 262)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.91 0.01 255)" vertical={false} />
+                <XAxis dataKey="mes" stroke="oklch(0.5 0.02 255)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="oklch(0.5 0.02 255)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    background: "white",
+                    border: "1px solid oklch(0.91 0.01 255)",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                />
+                <Area type="monotone" dataKey="vgv" stroke="oklch(0.55 0.22 262)" strokeWidth={2.5} fill="url(#vgvGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Monetization */}
+        <div className="rounded-2xl bg-navy p-6 text-navy-foreground">
+          <div className="text-xs uppercase tracking-widest text-white/50">Monetização SaaS</div>
+          <div className="mt-3 num font-display text-4xl">{formatBRL(kpis.ganhosIndicacao)}</div>
+          <div className="mt-1 text-sm text-white/70">Ganhos com indicação este mês</div>
+
+          <div className="mt-6">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="text-white/70">Progresso para isenção</span>
+              <span className="num text-white/90">{Math.round(progressPct)}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+              <div className="h-full bg-warm transition-all" style={{ width: `${progressPct}%` }} />
+            </div>
+            <div className="mt-3 text-xs text-white/60">
+              Faltam <span className="num text-white">{formatBRL(kpis.metaIsencao - kpis.ganhosIndicacao)}</span> para isentar sua mensalidade
+            </div>
+          </div>
+
+          <Link to="/app/indicacoes" className="mt-6 inline-flex items-center gap-1 text-sm text-warm hover:brightness-110">
+            Convidar mais corretores <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Operação + Atividades */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Operação</div>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {[
+              { n: kpis.leadsNovos, l: "Leads novos" },
+              { n: kpis.emAtendimento, l: "Em atendimento" },
+              { n: kpis.propostas, l: "Propostas" },
+            ].map((o) => (
+              <div key={o.l} className="rounded-xl bg-surface p-4 text-center">
+                <div className="num font-display text-3xl">{o.n}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-widest text-muted-foreground">{o.l}</div>
+              </div>
+            ))}
+          </div>
+          <Link to="/app/pipeline" className="mt-5 inline-flex items-center gap-1 text-sm text-brand">
+            Abrir pipeline <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6 lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Últimos leads</div>
+              <div className="font-display text-lg">Atividade recente</div>
+            </div>
+            <Link to="/app/leads" className="text-xs text-brand">Ver todos</Link>
+          </div>
+          <ul className="divide-y divide-border">
+            {leads.slice(0, 5).map((l) => (
+              <li key={l.id} className="flex items-center justify-between gap-4 py-3 text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-8 w-8 place-items-center rounded-full bg-surface text-xs font-medium">
+                    {l.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                  </div>
+                  <div>
+                    <div className="font-medium">{l.nome}</div>
+                    <div className="text-xs text-muted-foreground">{l.origem} · {l.ultimaInteracao}</div>
+                  </div>
+                </div>
+                <span className="rounded-full border border-border px-2.5 py-0.5 text-xs">{l.status}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Atividades mini */}
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">Agenda</div>
+            <div className="font-display text-lg">Próximas atividades</div>
+          </div>
+          <Link to="/app/atividades" className="text-xs text-brand">Ver agenda completa</Link>
+        </div>
+        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {atividades.slice(0, 4).map((a) => (
+            <li key={a.id} className="flex items-start gap-3 rounded-xl bg-surface p-4">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
+                <Users className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-medium">{a.cliente}</div>
+                  <div className="text-xs text-muted-foreground">{a.data} · {a.hora}</div>
+                </div>
+                <div className="text-xs text-muted-foreground">{a.tipo} {a.imovel ? `· ${a.imovel}` : ""}</div>
+                <div className="mt-1 text-sm">{a.nota}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function Kpi({
+  label, value, delta, icon: Icon, accent,
+}: {
+  label: string; value: string; delta: string; icon: React.ComponentType<{ className?: string }>; accent?: boolean;
+}) {
+  return (
+    <div className={`rounded-2xl border p-5 ${accent ? "border-navy bg-navy text-navy-foreground" : "border-border bg-card"}`}>
+      <div className="flex items-start justify-between">
+        <div className={`text-xs uppercase tracking-widest ${accent ? "text-white/60" : "text-muted-foreground"}`}>{label}</div>
+        <Icon className={`h-4 w-4 ${accent ? "text-warm" : "text-muted-foreground"}`} />
+      </div>
+      <div className="mt-3 num font-display text-2xl">{value}</div>
+      <div className={`mt-1 text-xs ${accent ? "text-white/60" : "text-muted-foreground"}`}>{delta}</div>
+    </div>
+  );
+}
