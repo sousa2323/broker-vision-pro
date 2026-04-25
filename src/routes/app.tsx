@@ -11,7 +11,10 @@ export const Route = createFileRoute("/app")({
   component: AppLayout,
 });
 
-const groups = [
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; exact?: boolean };
+type NavGroup = { title: string; items: NavItem[] };
+
+const groups: NavGroup[] = [
   {
     title: "Core",
     items: [
@@ -44,7 +47,7 @@ const groups = [
       { to: "/app/configuracoes", label: "Configurações", icon: Settings },
     ],
   },
-] as const;
+];
 
 function AppLayout() {
   const loc = useLocation();
