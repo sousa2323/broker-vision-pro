@@ -867,30 +867,40 @@ function PropertyBlock() {
 }
 
 function ContractBlock() {
+  const termos: { label: string; value: string }[] = [
+    { label: "Divisão", value: "50% / 50%" },
+    { label: "Exclusividade", value: "90 dias" },
+    { label: "Fee Ubroker", value: "12%" },
+  ];
   return (
     <div className="flex flex-col rounded-2xl border border-border bg-card p-6">
       <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
-        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Contrato
+        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> Termos ativos da parceria
       </div>
-      <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-emerald-800">
-          <CheckCircle2 className="h-4 w-4" /> Contrato de parceria assinado
-        </div>
-        <div className="mt-1 text-xs text-emerald-700">
-          Assinado em 12/04/2026 por ambas as partes.
-        </div>
+
+      <div className="mt-4 space-y-2">
+        {termos.map((t) => (
+          <div
+            key={t.label}
+            className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2.5"
+          >
+            <span className="text-xs text-muted-foreground">{t.label}</span>
+            <span className="text-sm font-semibold text-foreground">{t.value}</span>
+          </div>
+        ))}
       </div>
-      <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-        <div>· Divisão de comissão 50% / 50%</div>
-        <div>· Cláusula de exclusividade por 90 dias</div>
-        <div>· Foro: Niterói / RJ</div>
+
+      <div className="mt-4 flex items-center gap-2 text-[11px] text-emerald-700">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        Contrato assinado em 12/04/2026 por ambas as partes
       </div>
+
       <Button
         className="mt-auto w-full"
         variant="outline"
-        onClick={() => toast.success("Download do contrato iniciado")}
+        onClick={() => toast.message("Abrindo contrato completo da parceria…")}
       >
-        <Download className="h-4 w-4" /> Baixar contrato
+        <FileText className="h-4 w-4" /> Ver contrato completo
       </Button>
     </div>
   );
