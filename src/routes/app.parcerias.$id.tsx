@@ -82,6 +82,9 @@ function BrokerDetail() {
             <Button variant="outline" className="w-full" onClick={() => setConnectOpen(true)}>
               <MessageSquare className="h-4 w-4" /> Conectar
             </Button>
+            <Button asChild variant="ghost" className="w-full text-orange-600 hover:text-orange-700">
+              <Link to="/app/parcerias/ativa">Ver parceria ativa</Link>
+            </Button>
           </div>
         </div>
 

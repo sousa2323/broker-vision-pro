@@ -23,6 +23,7 @@ import { Route as AppGanhosRouteImport } from './routes/app.ganhos'
 import { Route as AppConfiguracoesRouteImport } from './routes/app.configuracoes'
 import { Route as AppAtividadesRouteImport } from './routes/app.atividades'
 import { Route as AppParceriasIndexRouteImport } from './routes/app.parcerias.index'
+import { Route as AppParceriasAtivaRouteImport } from './routes/app.parcerias.ativa'
 import { Route as AppParceriasIdRouteImport } from './routes/app.parcerias.$id'
 
 const AppRoute = AppRouteImport.update({
@@ -95,6 +96,11 @@ const AppParceriasIndexRoute = AppParceriasIndexRouteImport.update({
   path: '/parcerias/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppParceriasAtivaRoute = AppParceriasAtivaRouteImport.update({
+  id: '/parcerias/ativa',
+  path: '/parcerias/ativa',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppParceriasIdRoute = AppParceriasIdRouteImport.update({
   id: '/parcerias/$id',
   path: '/parcerias/$id',
@@ -116,6 +122,7 @@ export interface FileRoutesByFullPath {
   '/app/pipeline': typeof AppPipelineRoute
   '/app/': typeof AppIndexRoute
   '/app/parcerias/$id': typeof AppParceriasIdRoute
+  '/app/parcerias/ativa': typeof AppParceriasAtivaRoute
   '/app/parcerias/': typeof AppParceriasIndexRoute
 }
 export interface FileRoutesByTo {
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/app/pipeline': typeof AppPipelineRoute
   '/app': typeof AppIndexRoute
   '/app/parcerias/$id': typeof AppParceriasIdRoute
+  '/app/parcerias/ativa': typeof AppParceriasAtivaRoute
   '/app/parcerias': typeof AppParceriasIndexRoute
 }
 export interface FileRoutesById {
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/app/pipeline': typeof AppPipelineRoute
   '/app/': typeof AppIndexRoute
   '/app/parcerias/$id': typeof AppParceriasIdRoute
+  '/app/parcerias/ativa': typeof AppParceriasAtivaRoute
   '/app/parcerias/': typeof AppParceriasIndexRoute
 }
 export interface FileRouteTypes {
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/app/pipeline'
     | '/app/'
     | '/app/parcerias/$id'
+    | '/app/parcerias/ativa'
     | '/app/parcerias/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/app/pipeline'
     | '/app'
     | '/app/parcerias/$id'
+    | '/app/parcerias/ativa'
     | '/app/parcerias'
   id:
     | '__root__'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/app/pipeline'
     | '/app/'
     | '/app/parcerias/$id'
+    | '/app/parcerias/ativa'
     | '/app/parcerias/'
   fileRoutesById: FileRoutesById
 }
@@ -310,6 +322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppParceriasIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/parcerias/ativa': {
+      id: '/app/parcerias/ativa'
+      path: '/parcerias/ativa'
+      fullPath: '/app/parcerias/ativa'
+      preLoaderRoute: typeof AppParceriasAtivaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/parcerias/$id': {
       id: '/app/parcerias/$id'
       path: '/parcerias/$id'
@@ -333,6 +352,7 @@ interface AppRouteChildren {
   AppPipelineRoute: typeof AppPipelineRoute
   AppIndexRoute: typeof AppIndexRoute
   AppParceriasIdRoute: typeof AppParceriasIdRoute
+  AppParceriasAtivaRoute: typeof AppParceriasAtivaRoute
   AppParceriasIndexRoute: typeof AppParceriasIndexRoute
 }
 
@@ -349,6 +369,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPipelineRoute: AppPipelineRoute,
   AppIndexRoute: AppIndexRoute,
   AppParceriasIdRoute: AppParceriasIdRoute,
+  AppParceriasAtivaRoute: AppParceriasAtivaRoute,
   AppParceriasIndexRoute: AppParceriasIndexRoute,
 }
 

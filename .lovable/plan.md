@@ -1,106 +1,88 @@
-# Evoluir `/app/parcerias` — Motor de descoberta, conexão e parceria
+# Nova tela — Parceria Ativa (gestão de parceria entre corretores)
 
-Editar **apenas** `src/routes/app.parcerias.index.tsx` e `src/routes/app.parcerias.$id.tsx`. Sem alterações em `mock.ts`, sidebar ou outras rotas. Tudo simulado, com estado local.
+Criar uma nova rota estática que simula o ambiente de execução de uma parceria entre dois corretores em torno de um imóvel. Sidebar, dados (`mock.ts`) e demais telas permanecem intactos. Toda informação é fictícia, com estado local.
 
-## 1. Cabeçalho (`app.parcerias.index.tsx`)
+## Arquivo
 
-- Título: **"Parcerias"**
-- Subtítulo: "Conecte-se com corretores, explore oportunidades e feche negócios em conjunto."
-- Remover linha atual de contagem (será movida para dentro das abas).
+- Criar: `src/routes/app.parcerias.ativa.tsx` → rota `/app/parcerias/ativa`
+- Acesso: adicionar um botão/link "Ver parceria ativa" no perfil do corretor (`src/routes/app.parcerias.$id.tsx`) e um pequeno call-to-action no topo da aba "Minha rede" em `src/routes/app.parcerias.index.tsx` apontando para essa rota. Sidebar não muda.
 
-## 2. Abas (Tabs)
+## Layout (desktop, 12-col grid; mobile colapsa em coluna única)
 
-Usar `@/components/ui/tabs` logo abaixo do header, com duas abas:
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ HEADER: imóvel · status badge · avatares A/B · "Ver contrato"│
+│ microcopy: "Parceria formalizada para atuação conjunta..."    │
+├──────────────────────────────────┬───────────────────────────┤
+│ FINANCEIRO (card destaque)       │ AÇÕES PRINCIPAIS          │
+│ Valor · Comissão · Divisão · Fee │ Atualizar etapa           │
+│ "Seu ganho estimado: R$ 15.576"  │ Registrar atividade       │
+│                                  │ Marcar como vendido       │
+├──────────────────────────────────┴───────────────────────────┤
+│ PIPELINE COMPARTILHADO (stepper horizontal)                  │
+│ Lead → Qualificado → Visita → [Proposta*] → Fechado           │
+│ "Última atualização: Proposta enviada por Corretor B"         │
+├──────────────────────────────┬───────────────────────────────┤
+│ ATIVIDADES (timeline)         │ COMUNICAÇÃO (mensagens)       │
+│ Hoje 10:00 · Visita (A)       │ bolhas A/B + input            │
+│ Ontem 18:00 · Proposta (B)    │ "Escrever mensagem..."        │
+│ 2d · Lead qualificado (IA)    │                               │
+├──────────────────────────────┼───────────────────────────────┤
+│ DADOS DO IMÓVEL               │ CONTRATO                       │
+│ foto · loc · descr · specs    │ "Contrato assinado em ..."     │
+│ "Ver imóvel completo"         │ "Baixar contrato"              │
+└──────────────────────────────┴───────────────────────────────┘
+```
 
-- **Explorar corretores** (default)
-- **Minha rede**
+## Conteúdo (dados fictícios fixos)
 
-Estado local: `useState<'explorar' | 'rede'>('explorar')` via `Tabs value/onValueChange`.
+- **Imóvel**: "Casa em condomínio em Itaipu", Niterói/RJ. Foto via Unsplash. 4 quartos, 3 vagas, 280 m², piscina.
+- **Status inicial**: `Proposta enviada` (badge laranja). Opções: Ativa, Em negociação, Proposta enviada, Fechada.
+- **Corretor A**: Ramon Capone (usa `broker` do mock). **Corretor B**: Marina Tavares — UpHouse Imóveis.
+- **Financeiro**: Valor R$ 1.180.000 · Comissão 3% = R$ 35.400 · 50/50 = R$ 17.700 cada · Fee Ubroker 12% sobre comissão do corretor → ganho líquido **R$ 15.576**. Card com fundo `bg-navy text-navy-foreground` e destaque em laranja para o ganho final.
+- **Pipeline**: stepper com 5 etapas; etapa atual destacada em laranja, anteriores em emerald, futuras em slate.
+- **Atividades**: lista cronológica com ícone por tipo (Visita, Proposta, IA).
+- **Mensagens**: array local com 3-4 bolhas iniciais; input controlado (`useState`) anexa nova mensagem ao array (somente em memória).
+- **Contrato**: "Assinado em 12/04/2026 por ambas as partes" + botão "Baixar contrato" (toast "Download iniciado").
 
-## 3. Aba "Explorar corretores"
+## Interações (estado local + sonner toasts)
 
-Acima do grid:
+- **Atualizar etapa**: `Popover` com lista das 5 etapas → atualiza estado e empurra entrada na timeline + toast.
+- **Registrar atividade**: `Dialog` com tipo (Select: Ligação/Visita/Proposta/Mensagem) + descrição (Textarea) → adiciona ao topo da timeline.
+- **Marcar como vendido**: abre `FinalizarVendaModal` (descrito abaixo).
+- **Ver contrato / Baixar contrato / Ver imóvel completo**: toast informativo (sem navegação real para rota nova).
+- **Mensagens**: enviar adiciona bolha do "Você (Corretor A)"; sem resposta automática.
 
-- **Barra de busca** (`Input` com ícone Search) — filtra por `nome`, `regiao`, `especialidade` (case-insensitive contains).
-- **Linha de filtros** (4 `Select`):
-  - Região: derivada de `brokers.map(b => b.regiao)` única + opção "Todas".
-  - Tipo de imóvel: estático ("Apartamento", "Cobertura", "Casa", "Comercial", "Terreno", "Todos").
-  - Faixa de valor: estático ("Até R$ 800k", "R$ 800k–1,5M", "R$ 1,5M–3M", "Acima de R$ 3M", "Todas").
-  - Perfil de cliente: estático ("Família", "Investidor", "Alto padrão", "Primeira moradia", "Todos").
-  - Filtros de tipo/faixa/perfil são apenas visuais (não aplicam lógica real além de UI feedback) — região e busca filtram de fato.
-- Microcopy: "X corretores encontrados".
+## Modal — Finalizar Venda
 
-**Cards (Explorar)** — manter estrutura visual atual, ajustar conteúdo:
+`Dialog` com:
+- Valor final da venda (`Input` numérico, default R$ 1.180.000)
+- Quem fechou (`RadioGroup`): Corretor A / Corretor B / Ambos
+- Checkbox: "Os termos da parceria foram respeitados?" (obrigatório)
+- Botões: Cancelar · **Confirmar venda** (desabilitado até checkbox marcado) → toast "Venda registrada · parceria finalizada", muda status para "Fechada", adiciona entrada final na timeline.
 
-- Foto + nome + agência (já existe).
-- Região (MapPin), especialidade destacada (badge brand suave).
-- Linha extra: "Carteira combinada: N imóveis" (usa `b.imoveis`).
-- Badge de compatibilidade (já existe, manter).
-- Footer com **dois botões**:
-  - `Ver perfil` → `Link` para `/app/parcerias/$id` (variant outline).
-  - `Conectar` → abre `ConnectModal` (variant default/navy).
+## Identidade visual
 
-## 4. Aba "Minha rede"
+- Reutilizar tokens existentes: `bg-card`, `border-border`, `text-ink`, `bg-navy`, `text-brand`/laranja para destaques (mesmos usados em `app.parcerias.$id.tsx`).
+- Tipografia: `font-display` para títulos, classe `num` para valores monetários.
+- Cards arredondados `rounded-2xl`, padding generoso, divisores sutis. Sem novas cores fora da paleta.
 
-Subset fixo dos brokers como "minha rede" (ex.: B-01, B-02, B-04, B-05, B-07 — definido por array local `myNetworkIds`). Mostrar:
+## Componentes shadcn já existentes a reutilizar
 
-- Header pequeno: "Você tem N parceiros ativos · Carteira combinada de M imóveis" (somatório de `imoveis`).
-- Mesmo grid de cards, com:
-  - Tudo de "Explorar" +
-  - **Status de relacionamento** (badge no topo do card): determinístico por id → `ativo` (emerald), `recente` (sky), `inativo` (slate). Mapa local `relStatus: Record<string, 'ativo'|'recente'|'inativo'>`.
-  - Botões: `Ver perfil` + `Mensagem` (abre o mesmo `ConnectModal` com objetivo pré-selecionado).
+`Button`, `Badge`, `Card*`, `Dialog`, `Popover`, `Select`, `RadioGroup`, `Textarea`, `Input`, `Label`, `Avatar`, `Progress` (para a barra do stepper) — nenhum novo arquivo de UI.
 
-## 5. Modal "Conectar com corretor" (`ConnectModal`)
+## Detalhes técnicos
 
-`Dialog` disparado pelo botão Conectar. Estado local de campos.
-
-- Título: "Conectar com corretor"
-- Subtítulo: nome do corretor selecionado.
-- Campos:
-  - Mensagem inicial (`Textarea`, placeholder "Olá, vi seu perfil e gostaria de explorar oportunidades...").
-  - Objetivo da conexão (`RadioGroup`): Parcerias / Troca de oportunidades / Networking profissional.
-- Botões: Cancelar · **Enviar conexão** → toast sonner "Solicitação enviada para {nome}".
-
-## 6. Tela de perfil (`app.parcerias.$id.tsx`)
-
-Manter layout atual. Ajustes:
-
-- Adicionar acima do botão "Solicitar parceria" um botão secundário **"Conectar"** que abre o mesmo `ConnectModal` (componente local recriado neste arquivo — sem extrair compartilhado para evitar criar novo arquivo).
-- Botão "Solicitar parceria" geral do perfil → abre `PartnershipModal` (sem imóvel específico — campo de imóvel pré-preenchido como "Parceria geral").
-- Cards de imóveis no inventário: o botão atual "Solicitar parceria neste imóvel" passa a abrir `PartnershipModal` com o imóvel pré-selecionado (estado local com `selectedProperty`).
-- Trocar termos sociais: nada a alterar (já usa "parceria", "inventário"). Garantir que copy nova use **parceria / oportunidade / conexão / colaboração**.
-
-## 7. Modal "Solicitar parceria" (`PartnershipModal`)
-
-`Dialog` em `app.parcerias.$id.tsx`.
-
-- Título: "Solicitar parceria"
-- Subtítulo: "Imóvel: {nome do imóvel}" (ou "Parceria geral com {corretor}").
-- Campos:
-  - Mensagem (`Textarea`, obrigatório).
-  - Tipo de parceria (`Select`): "Compartilhar comissão", "Captação conjunta", "Indicação de cliente", "Co-visita".
-  - Observação (`Textarea`, opcional).
-- Botões: Cancelar · **Enviar solicitação** → toast "Solicitação de parceria enviada".
-
-## 8. Detalhes técnicos
-
-- Componentes shadcn já existentes: `Tabs`, `Input`, `Select`, `Dialog`, `RadioGroup`, `Textarea`, `Button`, `Badge`, `Popover` (não necessário aqui).
-- Toasts via `sonner` (já no projeto).
-- Cores de status de relacionamento:
-  - Ativo: `bg-emerald-100 text-emerald-700`
-  - Recente: `bg-sky-100 text-sky-700`
-  - Inativo: `bg-slate-200 text-slate-600`
-- Toda lógica vive nos dois arquivos de rota. Sem novos arquivos, sem alterações em `mock.ts`.
-- Manter `compatibilidade` e estrutura de cards existentes.
+- Rota TanStack: `createFileRoute("/app/parcerias/ativa")`.
+- Toda lógica num único arquivo `app.parcerias.ativa.tsx` com sub-componentes locais (`HeaderBlock`, `FinanceCard`, `PipelineStepper`, `ActivityTimeline`, `ChatBlock`, `PropertyBlock`, `ContractBlock`, `FinalizarVendaModal`).
+- Sem alteração em `mock.ts`, sidebar, `__root.tsx` ou roteador.
+- Estados: `status`, `etapaAtual`, `atividades[]`, `mensagens[]`, flags de modais.
+- Toasts via `sonner`.
 
 ## Não alterar
 
-- `src/data/mock.ts`, sidebar, demais rotas, layout do grid responsivo, fotos.
+- `src/routes/app.tsx` (sidebar), `src/data/mock.ts`, demais rotas (apenas adicionar 1 link em `app.parcerias.$id.tsx` e 1 CTA em `app.parcerias.index.tsx`).
 
 ## Resultado
 
-A tela passa de lista estática para uma plataforma com:
-- Descoberta filtrada de corretores (busca + filtros).
-- Diferenciação clara entre rede atual e exploração.
-- Fluxos de conexão e solicitação de parceria com rastreabilidade simulada (toasts + modais estruturados).
-- Linguagem alinhada ao contexto comercial (parceria, oportunidade, colaboração).
+Uma tela única, estática e visualmente densa que comunica segurança jurídica, transparência financeira e execução conjunta — posicionada como o "ambiente seguro" da venda em parceria, distinta de um CRM genérico.
