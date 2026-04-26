@@ -180,6 +180,20 @@ function PartnersPage() {
             <span className="text-muted-foreground"> · Carteira combinada de </span>
             <span className="num font-medium">{carteiraTotal} imóveis</span>
           </div>
+          <Link
+            to="/app/parcerias/ativa"
+            className="flex items-center justify-between rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm transition hover:bg-orange-100"
+          >
+            <div>
+              <div className="font-medium text-orange-900">
+                Você tem 1 parceria ativa em andamento
+              </div>
+              <div className="text-xs text-orange-800/80">
+                Casa em condomínio em Itaipu · Proposta enviada
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-orange-700" />
+          </Link>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {myNetwork.map((b) => (
               <BrokerCard
