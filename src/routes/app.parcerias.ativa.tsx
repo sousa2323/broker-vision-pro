@@ -986,71 +986,151 @@ function FinalizarVendaModal({
   const [valor, setValor] = useState<string>(String(imovel.valor));
   const [quem, setQuem] = useState("Ambos");
   const [confirmado, setConfirmado] = useState(false);
+  const [step, setStep] = useState<"form" | "resumo">("form");
 
-  function submit() {
-    const n = Number(valor.replace(/[^\d]/g, "")) || imovel.valor;
-    onConfirm(n, quem);
-    onOpenChange(false);
+  const valorNum = Number(valor.replace(/[^\d]/g, "")) || 0;
+  const comissao = valorNum * COMISSAO_PCT;
+  const parteCorretor = comissao / 2;
+  const fee = parteCorretor * FEE_UBROKER_PCT;
+  const ganhoLiquido = parteCorretor - fee;
+  const feeTotal = fee * 2;
+
+  function reset() {
+    setStep("form");
     setConfirmado(false);
   }
 
+  function handleConfirmar() {
+    onConfirm(valorNum || imovel.valor, quem);
+    setStep("resumo");
+  }
+
+  function handleClose(o: boolean) {
+    onOpenChange(o);
+    if (!o) {
+      // pequeno delay visual para evitar flash
+      setTimeout(reset, 150);
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Finalizar venda</DialogTitle>
-          <DialogDescription>
-            Esta ação encerra a parceria e registra a venda no histórico de ambos os corretores.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Valor final da venda</Label>
-            <Input
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              placeholder="R$ 0"
-              inputMode="numeric"
-            />
-            <div className="text-xs text-muted-foreground">
-              Valor de referência: {formatBRL(imovel.valor)}
+        {step === "form" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Finalizar venda</DialogTitle>
+              <DialogDescription>
+                Esta ação encerra a parceria e registra a venda no histórico de ambos os corretores.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Valor final da venda</Label>
+                <Input
+                  value={valor}
+                  onChange={(e) => setValor(e.target.value)}
+                  placeholder="R$ 0"
+                  inputMode="numeric"
+                />
+                <div className="text-xs text-muted-foreground">
+                  Valor de referência: {formatBRL(imovel.valor)}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Simulação da divisão
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                  <SimRow label="Comissão (3%)" value={formatBRL(comissao)} />
+                  <SimRow label="Fee Ubroker total" value={formatBRL(feeTotal)} />
+                  <SimRow label="Corretor A · 50%" value={formatBRL(parteCorretor)} />
+                  <SimRow label="Corretor B · 50%" value={formatBRL(parteCorretor)} />
+                </div>
+                <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
+                  <span className="text-xs text-muted-foreground">Seu ganho líquido</span>
+                  <span className="num text-sm font-semibold text-orange-600">
+                    {formatBRL(ganhoLiquido)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Quem fechou a venda</Label>
+                <RadioGroup value={quem} onValueChange={setQuem}>
+                  {["Corretor A", "Corretor B", "Ambos"].map((opt) => (
+                    <label
+                      key={opt}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-2.5 text-sm"
+                    >
+                      <RadioGroupItem value={opt} /> {opt}
+                    </label>
+                  ))}
+                </RadioGroup>
+              </div>
+              <label className="flex items-start gap-2 rounded-md border border-border bg-muted/50 p-3 text-sm">
+                <Checkbox
+                  checked={confirmado}
+                  onCheckedChange={(v) => setConfirmado(Boolean(v))}
+                  className="mt-0.5"
+                />
+                <span>
+                  Ambas as partes confirmam que a venda seguiu os termos da parceria.
+                </span>
+              </label>
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Quem fechou a venda</Label>
-            <RadioGroup value={quem} onValueChange={setQuem}>
-              {["Corretor A", "Corretor B", "Ambos"].map((opt) => (
-                <label
-                  key={opt}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-2.5 text-sm"
-                >
-                  <RadioGroupItem value={opt} /> {opt}
-                </label>
-              ))}
-            </RadioGroup>
-          </div>
-          <label className="flex items-start gap-2 rounded-md border border-border bg-muted/50 p-3 text-sm">
-            <Checkbox
-              checked={confirmado}
-              onCheckedChange={(v) => setConfirmado(Boolean(v))}
-              className="mt-0.5"
-            />
-            <span>Confirmo que os termos da parceria foram respeitados.</span>
-          </label>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button
-            disabled={!confirmado}
-            className="bg-orange-500 text-white hover:bg-orange-500/90"
-            onClick={submit}
-          >
-            Confirmar venda
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => handleClose(false)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={!confirmado}
+                className="bg-orange-500 text-white hover:bg-orange-500/90"
+                onClick={handleConfirmar}
+              >
+                Confirmar venda
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <DialogTitle className="text-center">Venda concluída com sucesso</DialogTitle>
+              <DialogDescription className="text-center">
+                Parceria finalizada e registrada no histórico de ambos os corretores.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-4 text-sm">
+              <SimRow label="Valor final" value={formatBRL(valorNum || imovel.valor)} />
+              <SimRow label="Ganho Corretor A" value={formatBRL(ganhoLiquido)} />
+              <SimRow label="Ganho Corretor B" value={formatBRL(ganhoLiquido)} />
+              <SimRow label="Fee da plataforma" value={formatBRL(feeTotal)} />
+              <SimRow label="Fechado por" value={quem} />
+            </div>
+            <DialogFooter>
+              <Button
+                className="w-full bg-orange-500 text-white hover:bg-orange-500/90"
+                onClick={() => handleClose(false)}
+              >
+                Fechar
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SimRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="num text-sm font-medium text-foreground">{value}</span>
+    </div>
   );
 }
