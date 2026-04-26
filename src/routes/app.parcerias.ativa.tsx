@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
+  AlertTriangle,
   ArrowLeft,
   Bath,
   Bed,
   Car,
   CheckCircle2,
   Circle,
-  Download,
+  Clock,
   FileText,
   Handshake,
   ListPlus,
@@ -19,6 +20,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trophy,
+  Zap,
 } from "lucide-react";
 import { broker, formatBRL } from "@/data/mock";
 import { Button } from "@/components/ui/button";
