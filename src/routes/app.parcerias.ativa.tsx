@@ -565,11 +565,17 @@ function AcoesCard({
   );
 }
 
-function PipelineStepper({ etapaAtual }: { etapaAtual: Etapa }) {
+function PipelineStepper({
+  etapaAtual,
+  onChangeEtapa,
+}: {
+  etapaAtual: Etapa;
+  onChangeEtapa: (e: Etapa) => void;
+}) {
   const idx = etapas.indexOf(etapaAtual);
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <div className="text-xs uppercase tracking-widest text-muted-foreground">
             Pipeline compartilhado
@@ -578,8 +584,34 @@ function PipelineStepper({ etapaAtual }: { etapaAtual: Etapa }) {
             Etapa atual: <span className="font-medium text-orange-600">{etapaAtual}</span>
           </div>
         </div>
-        <div className="text-xs text-muted-foreground">
-          Última atualização: Proposta enviada por Corretor B
+        <div className="flex items-center gap-3">
+          <div className="hidden text-xs text-muted-foreground sm:block">
+            Última atualização: Proposta enviada por Corretor B
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline">
+                <Sparkles className="h-4 w-4" /> Atualizar etapa
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-1">
+              {etapas.map((e) => (
+                <button
+                  key={e}
+                  onClick={() => onChangeEtapa(e)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-accent",
+                    e === etapaAtual && "bg-accent",
+                  )}
+                >
+                  {e}
+                  {e === etapaAtual && (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  )}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
@@ -621,6 +653,10 @@ function PipelineStepper({ etapaAtual }: { etapaAtual: Etapa }) {
           );
         })}
       </div>
+
+      <p className="mt-4 text-[11px] text-muted-foreground">
+        A etapa define o andamento da parceria e é visível para ambos.
+      </p>
     </div>
   );
 }
