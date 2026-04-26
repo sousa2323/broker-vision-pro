@@ -144,6 +144,13 @@ function ParceriaAtivaPage() {
   const [atividades, setAtividades] = useState<Atividade[]>(atividadesIniciais);
   const [mensagens, setMensagens] = useState<Mensagem[]>(mensagensIniciais);
 
+  const [proximaAcao, setProximaAcao] = useState<{
+    titulo: string;
+    responsavel: "A" | "B";
+    prazo: string;
+  }>({ titulo: "Agendar visita com o cliente", responsavel: "B", prazo: "Hoje" });
+  const [diasSemAtualizacao, setDiasSemAtualizacao] = useState(3);
+
   const [registrarOpen, setRegistrarOpen] = useState(false);
   const [vendidoOpen, setVendidoOpen] = useState(false);
 
@@ -152,12 +159,27 @@ function ParceriaAtivaPage() {
       { id: crypto.randomUUID(), quando: "Agora", ...a },
       ...prev,
     ]);
+    setDiasSemAtualizacao(0);
   }
 
   function handleEtapa(novo: Etapa) {
     setEtapaAtual(novo);
     pushAtividade({ titulo: `Etapa atualizada para "${novo}"`, autor: "Corretor A", tipo: "mensagem" });
     toast.success(`Etapa atualizada para ${novo}`);
+  }
+
+  function handleConcluirProxima() {
+    pushAtividade({
+      titulo: `Concluído: ${proximaAcao.titulo}`,
+      autor: proximaAcao.responsavel === "A" ? "Corretor A" : "Corretor B",
+      tipo: "mensagem",
+    });
+    setProximaAcao({
+      titulo: "Aguardar retorno do cliente",
+      responsavel: "A",
+      prazo: "Em 2 dias",
+    });
+    toast.success("Próxima ação concluída");
   }
 
   return (
@@ -169,18 +191,18 @@ function ParceriaAtivaPage() {
         <ArrowLeft className="h-4 w-4" /> Voltar para parcerias
       </Link>
 
-      {/* HEADER */}
-      <HeaderBlock
-        status={status}
-        onStatusChange={setStatus}
+      <HeaderBlock status={status} onStatusChange={setStatus} />
+
+      <NextActionBanner
+        proximaAcao={proximaAcao}
+        diasSemAtualizacao={diasSemAtualizacao}
+        onConcluir={handleConcluirProxima}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* FINANCEIRO */}
         <div className="lg:col-span-2">
           <FinanceCard />
         </div>
-        {/* AÇÕES */}
         <AcoesCard
           etapaAtual={etapaAtual}
           onChangeEtapa={handleEtapa}
@@ -189,11 +211,13 @@ function ParceriaAtivaPage() {
         />
       </div>
 
-      {/* PIPELINE */}
-      <PipelineStepper etapaAtual={etapaAtual} />
+      <PipelineStepper etapaAtual={etapaAtual} onChangeEtapa={handleEtapa} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ActivityTimeline atividades={atividades} />
+        <ActivityTimeline
+          atividades={atividades}
+          onRegistrar={() => setRegistrarOpen(true)}
+        />
         <ChatBlock
           mensagens={mensagens}
           onSend={(t) =>
@@ -212,7 +236,6 @@ function ParceriaAtivaPage() {
         <ContractBlock />
       </div>
 
-      {/* MODAIS */}
       <RegistrarAtividadeModal
         open={registrarOpen}
         onOpenChange={setRegistrarOpen}
@@ -221,11 +244,11 @@ function ParceriaAtivaPage() {
             titulo: descricao || tipo,
             autor: "Corretor A",
             tipo:
-              tipo === "Visita"
+              tipo === "Visita realizada"
                 ? "visita"
-                : tipo === "Proposta"
+                : tipo === "Proposta enviada"
                   ? "proposta"
-                  : tipo === "Ligação"
+                  : tipo === "Follow-up realizado"
                     ? "ligacao"
                     : "mensagem",
           });
@@ -246,6 +269,84 @@ function ParceriaAtivaPage() {
           toast.success("Venda registrada · parceria finalizada");
         }}
       />
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Próxima ação + urgência
+// ───────────────────────────────────────────────────────────────────────────
+
+function NextActionBanner({
+  proximaAcao,
+  diasSemAtualizacao,
+  onConcluir,
+}: {
+  proximaAcao: { titulo: string; responsavel: "A" | "B"; prazo: string };
+  diasSemAtualizacao: number;
+  onConcluir: () => void;
+}) {
+  const isMine = proximaAcao.responsavel === "A";
+  const responsavelNome = isMine ? `${corretorA.nome} (você)` : corretorB.nome;
+
+  let urgencyClass = "bg-muted text-muted-foreground border-border";
+  let urgencyLabel = `Atualizado há ${diasSemAtualizacao} dia${diasSemAtualizacao === 1 ? "" : "s"}`;
+  if (diasSemAtualizacao === 0) {
+    urgencyLabel = "Atualizado agora";
+  } else if (diasSemAtualizacao >= 2 && diasSemAtualizacao <= 3) {
+    urgencyClass = "bg-amber-100 text-amber-800 border-amber-200";
+    urgencyLabel = `Sem atualização há ${diasSemAtualizacao} dias`;
+  } else if (diasSemAtualizacao > 3) {
+    urgencyClass = "bg-red-100 text-red-700 border-red-200";
+    urgencyLabel = `Sem atualização há ${diasSemAtualizacao} dias`;
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-4 rounded-2xl border p-5 lg:flex-row lg:items-center lg:justify-between",
+        isMine ? "border-sky-200 bg-sky-50" : "border-border bg-card",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+            isMine ? "bg-sky-500 text-white" : "bg-orange-100 text-orange-600",
+          )}
+        >
+          <Zap className="h-5 w-5" />
+        </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
+            Próxima ação
+          </div>
+          <div className="mt-0.5 font-display text-lg leading-tight">{proximaAcao.titulo}</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Responsável: <span className="font-medium text-foreground">{responsavelNome}</span> ·
+            Prazo sugerido: <span className="font-medium text-foreground">{proximaAcao.prazo}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 lg:flex-col lg:items-end">
+        <div
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
+            urgencyClass,
+          )}
+        >
+          {diasSemAtualizacao > 3 ? (
+            <AlertTriangle className="h-3 w-3" />
+          ) : (
+            <Clock className="h-3 w-3" />
+          )}
+          {urgencyLabel}
+        </div>
+        <Button size="sm" variant={isMine ? "default" : "outline"} onClick={onConcluir}>
+          <CheckCircle2 className="h-4 w-4" /> Marcar como concluída
+        </Button>
+      </div>
     </div>
   );
 }
