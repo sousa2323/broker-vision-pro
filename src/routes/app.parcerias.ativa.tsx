@@ -475,8 +475,14 @@ function FinanceCard() {
       </div>
 
       <div className="flex flex-col gap-3 border-t border-white/10 bg-white/5 p-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-xs text-white/70">
-          Fee Ubroker · 12% sobre sua comissão · <span className="num">{formatBRL(fee)}</span>
+        <div className="space-y-1 text-xs text-white/70">
+          <div>
+            Fee Ubroker · 12% sobre sua comissão ·{" "}
+            <span className="num">{formatBRL(fee)}</span>
+          </div>
+          <div className="text-[10px] text-white/50">
+            Simulação baseada no valor atual do imóvel.
+          </div>
         </div>
         <div className="rounded-xl bg-orange-500/15 px-4 py-2 text-right">
           <div className="text-[10px] uppercase tracking-widest text-orange-200">
