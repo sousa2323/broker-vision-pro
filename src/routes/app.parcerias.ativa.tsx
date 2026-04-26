@@ -919,7 +919,7 @@ function RegistrarAtividadeModal({
   onOpenChange: (o: boolean) => void;
   onSubmit: (tipo: string, descricao: string) => void;
 }) {
-  const [tipo, setTipo] = useState("Visita");
+  const [tipo, setTipo] = useState("Visita realizada");
   const [descricao, setDescricao] = useState("");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -938,10 +938,10 @@ function RegistrarAtividadeModal({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Ligação">Ligação</SelectItem>
-                <SelectItem value="Visita">Visita</SelectItem>
-                <SelectItem value="Proposta">Proposta</SelectItem>
-                <SelectItem value="Mensagem">Mensagem</SelectItem>
+                <SelectItem value="Visita realizada">Visita realizada</SelectItem>
+                <SelectItem value="Proposta enviada">Proposta enviada</SelectItem>
+                <SelectItem value="Follow-up realizado">Follow-up realizado</SelectItem>
+                <SelectItem value="Outro">Outro</SelectItem>
               </SelectContent>
             </Select>
           </div>
