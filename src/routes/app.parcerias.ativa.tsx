@@ -661,7 +661,13 @@ function PipelineStepper({
   );
 }
 
-function ActivityTimeline({ atividades }: { atividades: Atividade[] }) {
+function ActivityTimeline({
+  atividades,
+  onRegistrar,
+}: {
+  atividades: Atividade[];
+  onRegistrar: () => void;
+}) {
   const icon = {
     visita: MapPin,
     proposta: FileText,
@@ -671,13 +677,38 @@ function ActivityTimeline({ atividades }: { atividades: Atividade[] }) {
     venda: Trophy,
   } as const;
 
+  function autorBadge(autor: string) {
+    if (autor.includes("IA")) {
+      return "bg-violet-100 text-violet-700 border-violet-200";
+    }
+    if (autor === "Sistema") {
+      return "bg-muted text-muted-foreground border-border";
+    }
+    if (autor === corretorB.nome || autor === "Corretor B") {
+      return "bg-orange-100 text-orange-700 border-orange-200";
+    }
+    return "bg-sky-100 text-sky-700 border-sky-200";
+  }
+
+  function autorLabel(autor: string) {
+    if (autor.includes("IA")) return "IA";
+    if (autor === "Sistema") return "Sistema";
+    if (autor === corretorB.nome || autor === "Corretor B") return "Corretor B";
+    return "Corretor A";
+  }
+
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="text-xs uppercase tracking-widest text-muted-foreground">
           Atividades · rastro de execução
         </div>
-        <Badge variant="outline">{atividades.length}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{atividades.length}</Badge>
+          <Button size="sm" variant="outline" onClick={onRegistrar}>
+            <ListPlus className="h-4 w-4" /> Registrar
+          </Button>
+        </div>
       </div>
       <ul className="mt-4 space-y-3">
         {atividades.map((a) => {
@@ -688,8 +719,18 @@ function ActivityTimeline({ atividades }: { atividades: Atividade[] }) {
                 <Icon className="h-4 w-4" />
               </div>
               <div className="flex-1">
-                <div className="text-sm font-medium">{a.titulo}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-sm font-medium">{a.titulo}</div>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                      autorBadge(a.autor),
+                    )}
+                  >
+                    {autorLabel(a.autor)}
+                  </span>
+                </div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
                   {a.quando} · {a.autor}
                 </div>
               </div>
@@ -709,6 +750,7 @@ function ChatBlock({
   onSend: (texto: string) => void;
 }) {
   const [valor, setValor] = useState("");
+  const sugestoes = ["Enviar proposta", "Confirmar visita", "Aguardando retorno"];
   function send() {
     const t = valor.trim();
     if (!t) return;
@@ -720,7 +762,10 @@ function ChatBlock({
       <div className="text-xs uppercase tracking-widest text-muted-foreground">
         Comunicação entre corretores
       </div>
-      <div className="mt-4 flex-1 space-y-2 overflow-y-auto pr-1" style={{ maxHeight: 280 }}>
+      <div className="mt-1 text-[11px] text-muted-foreground">
+        Conversa vinculada a esta parceria.
+      </div>
+      <div className="mt-4 flex-1 space-y-2 overflow-y-auto pr-1" style={{ maxHeight: 240 }}>
         {mensagens.map((m) => {
           const mine = m.autor === "A";
           return (
@@ -747,7 +792,19 @@ function ChatBlock({
           );
         })}
       </div>
-      <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
+      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-3">
+        {sugestoes.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setValor(s)}
+            className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-orange-300 hover:text-orange-600"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-2">
         <Input
           value={valor}
           onChange={(e) => setValor(e.target.value)}
