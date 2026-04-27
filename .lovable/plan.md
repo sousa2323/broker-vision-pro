@@ -1,79 +1,113 @@
-## Evolução da tela Perfil — Base estruturada do corretor
+## Evolução da tela Configurações — Central de controle do corretor
 
-Único arquivo alterado: `src/routes/app.perfil.tsx`. Sem mudanças em `mock.ts`, sidebar, rotas ou outras telas. A estrutura base (coluna esquerda identidade + coluna direita informações) é mantida — apenas enriquecida.
+Único arquivo alterado: `src/routes/app.configuracoes.tsx`. Estrutura de cards mantida e enriquecida — nenhuma seção atual removida. Sem alterações em mocks, rotas ou outras telas.
 
-## Layout final
+## Layout final (top → bottom)
 
 ```text
-┌─ Coluna esquerda (1/3) ─────────┐  ┌─ Coluna direita (2/3) ──────────────────┐
-│ Foto                            │  │ Nota: "Essas informações ajudam a IA    │
-│ Nome (Ramon Cardozo Capone)     │  │ e outros corretores a entender seu      │
-│ "Essas informações são          │  │ perfil de atuação."                     │
-│  utilizadas para personalizar   │  ├──────────────────────────────────────────┤
-│  sua experiência na Ubroker."   │  │ INFORMAÇÕES (existente, mantido)        │
-│ Chip Plano Free                 │  │ E-mail · Telefone · CRECI · Região      │
-│ [Fazer upgrade para Pro]        │  │   principal (era "Região de atuação")   │
-└─────────────────────────────────┘  ├──────────────────────────────────────────┤
-                                     │ REGIÕES SECUNDÁRIAS (NOVO)              │
-                                     │ chips: Niterói, São Gonçalo, Maricá +   │
-                                     ├──────────────────────────────────────────┤
-                                     │ PERFIL DE ATUAÇÃO (NOVO)                │
-                                     │ - Especialidades (tags multi)           │
-                                     │ - Faixa de ticket médio (select)        │
-                                     │ - Tipo de imóvel (chips multi)          │
-                                     │ - Perfil de cliente (chips multi)       │
-                                     ├──────────────────────────────────────────┤
-                                     │ BIO PÚBLICA (existente, placeholder     │
-                                     │ ajustado)                               │
-                                     ├──────────────────────────────────────────┤
-                                     │ [Cancelar]  [Salvar alterações]         │
-                                     └──────────────────────────────────────────┘
+┌─ Configurações ─────────────────────────────────────────────┐
+│ Subtítulo: "Controle como o sistema trabalha por você."    │
+└─────────────────────────────────────────────────────────────┘
+┌─ Notificações  (Bell) ──────────────────────────────────────┐
+│ "Escolha quando e como deseja ser avisado..."              │
+│  ── LEADS ──                                                │
+│   • Novo lead por e-mail                                    │
+│   • Novo lead via push                                      │
+│  ── PARCERIAS ──                                            │
+│   • Convites de parceria                                    │
+│   • Atualizações de proposta                                │
+│   • Parceria fechada (novo)                                 │
+│  ── PERFORMANCE ──                                          │
+│   • Resumo diário (18h)                                     │
+│   • Insights semanais da IA (novo)                          │
+└─────────────────────────────────────────────────────────────┘
+┌─ Automação de processos  (Zap)  NOVO ───────────────────────┐
+│ "Deixe o sistema trabalhar por você."                       │
+│ • Criar atividade automática ao receber lead                │
+│ • Criar follow-up após 24h sem resposta                     │
+│ • Sugerir imóveis automaticamente via IA                    │
+│ • Lembrar de atualizar etapa do pipeline                    │
+└─────────────────────────────────────────────────────────────┘
+┌─ Privacidade e visibilidade  (Eye)  NOVO ───────────────────┐
+│ "Controle como você participa do ecossistema."             │
+│ • Tornar meu perfil visível para outros corretores          │
+│ • Permitir receber solicitações de parceria                 │
+│ • Exibir meus imóveis para a rede                           │
+└─────────────────────────────────────────────────────────────┘
+┌─ Preferências  (Globe) ─────────────────────────────────────┐
+│ Idioma · Fuso horário · Moeda  → dropdowns visuais (Select) │
+└─────────────────────────────────────────────────────────────┘
+┌─ Aparência  (Moon) ─────────────────────────────────────────┐
+│ • Modo escuro                                               │
+│ • Densidade da interface (Compacto / Confortável) — chips   │
+└─────────────────────────────────────────────────────────────┘
+┌─ Plano e cobrança  (CreditCard)  NOVO ──────────────────────┐
+│ Plano atual: Free       Valor: R$ 0/mês                     │
+│ Recursos: chips (IA Assistente, Inbox, Indicações)          │
+│ Próxima cobrança: —                                         │
+│ [ Gerenciar plano ]   (warm CTA)                            │
+└─────────────────────────────────────────────────────────────┘
+┌─ Integrações  (Smartphone) ─────────────────────────────────┐
+│ WhatsApp · Conectado          [ Gerenciar ]                 │
+│ Instagram · @ramoncapone...   [ Gerenciar ]                 │
+│ Site / Landing page · —       [ Conectar ]                  │
+│ Marketplace B2C · Sincronizado [ Gerenciar ]                │
+└─────────────────────────────────────────────────────────────┘
+┌─ Segurança  (Lock)  (mantido) ──────────────────────────────┐
+│ Autenticação 2FA · Última sessão                            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Mudanças por bloco
 
-### Coluna esquerda
-- Adicionar microtexto cinza abaixo do nome: "Essas informações são utilizadas para personalizar sua experiência na Ubroker."
-- Manter foto, nome, chip de plano e botão de upgrade exatamente como estão.
+### Header
+- Manter título "Configurações". Adicionar subtítulo `text-sm text-muted-foreground`: "Controle como o sistema trabalha por você."
 
-### Coluna direita — topo
-- Adicionar bloco de orientação acima do card "Informações": pequeno texto em `text-muted-foreground` com ícone `Sparkles` ou `Info`: "Essas informações ajudam a IA e outros corretores a entender melhor seu perfil de atuação."
+### Notificações (existente — reorganizar)
+- Adicionar microtexto no topo do card: "Escolha quando e como deseja ser avisado sobre oportunidades e atividades importantes."
+- Quebrar em 3 subgrupos com label `text-[11px] uppercase tracking-widest text-muted-foreground` (LEADS, PARCERIAS, PERFORMANCE).
+- Manter toggles atuais e adicionar: "Parceria fechada", "Insights semanais da IA".
+- Adicionar chaves correspondentes ao `useState` `s`.
 
-### Card "Informações" (existente)
-- Manter campos: E-mail, Telefone, CRECI.
-- Renomear "Região de atuação" → "Região principal" (mesmo `Field`, valor "Niterói / RJ").
+### Automação de processos (NOVO)
+- Card novo com ícone `Zap` (lucide).
+- Microtexto: "Deixe o sistema trabalhar por você."
+- 4 toggles: criarAtividade, followup24h, sugerirImoveis, lembrarPipeline.
 
-### Card "Regiões secundárias" (NOVO)
-- Card branco separado com título "Regiões secundárias" e microcopy "Outras regiões onde você atende".
-- Lista de chips removíveis (visuais): Niterói, São Gonçalo, Maricá, Itaipu.
-- Botão tracejado "+ Adicionar região" (puramente visual, sem lógica real).
+### Privacidade e visibilidade (NOVO)
+- Card novo com ícone `Eye`.
+- Microtexto: "Controle sua participação no ecossistema."
+- 3 toggles: perfilVisivel (on), aceitaParcerias (on), exibeImoveisRede (on).
 
-### Card "Perfil de atuação" (NOVO)
-Card branco com 4 subgrupos empilhados, cada um com label + controle visual:
+### Preferências (existente — leve ajuste)
+- Substituir as 3 linhas `Pref` por um novo helper `PrefSelect` que renderiza um `Select` shadcn com 2-3 opções visuais por campo (Idioma: PT-BR/EN-US/ES; Fuso: GMT-3, GMT-2, GMT+0; Moeda: BRL, USD, EUR). Estado local via `useState`.
 
-1. **Especialidades** — chips selecionáveis (estado local toggle): Coberturas (selecionado), Casas em condomínio (selecionado), Alto padrão (selecionado), Apartamentos compactos, Lançamentos, Pé na areia.
-2. **Faixa de ticket médio** — `Select` shadcn com opções: Até R$ 500k · R$ 500k – R$ 1M · R$ 1M – R$ 3M (selecionado) · R$ 3M – R$ 10M · Acima de R$ 10M.
-3. **Tipo de imóvel** — chips multi: Residencial (on), Comercial, Lançamentos (on), Temporada.
-4. **Perfil de cliente** — chips multi: Família (on), Investidor (on), Primeira compra, Mudança interestadual (on).
+### Aparência (existente)
+- Manter toggle "Modo escuro".
+- Adicionar linha "Densidade da interface" com 2 chips (Compacto / Confortável). Estado local string `densidade`.
 
-Chips ativos usam `bg-navy text-navy-foreground`, inativos `bg-surface text-muted-foreground border border-border`. Estado via `useState` local — apenas visual.
+### Plano e cobrança (NOVO)
+- Card novo com ícone `CreditCard`.
+- Linhas tipo `Pref`: Plano atual (Free), Valor mensal (R$ 0/mês), Próxima cobrança (—).
+- Linha "Recursos ativos" com chips: "IA Assistente", "Inbox", "Indicações".
+- Botão `bg-warm text-warm-foreground` "Gerenciar plano" alinhado à direita.
 
-### Card "Bio pública" (existente)
-- Manter campo `<textarea>`.
-- Trocar placeholder/defaultValue para sugerir: "Descreva seu posicionamento, experiência e diferenciais no mercado." (manter o defaultValue atual como exemplo preenchido OU usar como placeholder se vazio — manter texto atual e ajustar `placeholder` no textarea).
+### Integrações (existente — enriquecer)
+- Substituir as 3 linhas `Pref` por um helper `Integracao({nome, status, conectado})` com badge verde "Conectado" / cinza "—" e botão `Gerenciar`/`Conectar` à direita.
+- Itens: WhatsApp Business (conectado), Instagram (conectado), Site / Landing page (não conectado, novo), Marketplace B2C (sincronizado, manter).
 
-### Botões
-- Manter "Cancelar" e "Salvar alterações" como estão.
+### Segurança (manter)
+- Sem mudanças.
 
 ## Detalhes técnicos
-- Imports adicionais em `app.perfil.tsx`: `useState` de react; `Sparkles` (ou `Info`) e `X`, `Plus` de `lucide-react`; `Select, SelectTrigger, SelectValue, SelectContent, SelectItem` de `@/components/ui/select`.
-- Componente helper local `Chip({label, active, onClick})` para os chips toggláveis, reutilizado em Especialidades, Tipo de imóvel e Perfil de cliente.
-- Estado local: `useState` para arrays de selecionados e para o ticket. Sem persistência, sem chamadas externas.
-- Reaproveitar componente `Field` existente para os 4 campos de informações.
-- Manter classes e identidade visual (`bg-card`, `border-border`, `bg-navy`, `bg-surface`, `text-muted-foreground`).
+- Imports adicionais: `Zap`, `Eye`, `CreditCard` de `lucide-react`; `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectItem` de `@/components/ui/select`.
+- Expandir o objeto `s` do `useState` para incluir todas as novas flags.
+- Criar helpers locais: `SubGroup({label, children})`, `PrefSelect({label, value, options, onChange})`, `Integracao({nome, sub, conectado})`, `Chip({label, active, onClick})` (para densidade e recursos).
+- `max-w-3xl` mantido. Espaçamento `space-y-6` mantido.
+- Reaproveitar `Section`, `Toggle`, `Pref` existentes onde aplicável.
+- Sem novas rotas, sem mudanças de mock, sem novas dependências.
 
 ## Não alterar
 - `src/data/mock.ts`, sidebar, rotas, outras telas.
-- Estrutura de duas colunas (1/3 + 2/3) e identidade visual.
-- Foto, nome, chip de plano, botão de upgrade, botões finais.
-- Campos existentes (E-mail, Telefone, CRECI) — apenas "Região de atuação" é renomeado para "Região principal".
+- Identidade visual (`bg-card`, `bg-navy`, `bg-warm`, `text-muted-foreground`).
+- Estrutura visual em cards e componentes `Section`/`Toggle`/`Pref`.
