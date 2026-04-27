@@ -1,114 +1,94 @@
-## Evolução do Inbox — Central de Conversão e Fechamento
+## Evolução da tela Ganhos — Painel de crescimento
 
-Único arquivo alterado: `src/routes/app.inbox.tsx`. Sem mudanças em `src/data/mock.ts`, sidebar, rotas ou outras telas. Toda a inteligência adicional (status IA, score, sugestões, ações comerciais) é derivada por mapas locais de enriquecimento indexados pelo `id` da conversa, mantendo o layout 3-colunas atual intacto (sidebar 300px · chat · painel 320px).
+Único arquivo alterado: `src/routes/app.ganhos.tsx`. Sem mudanças em `src/data/mock.ts`, sidebar, rotas ou outras telas. Toda nova informação é derivada localmente a partir de `earnings`, `referrals` e `kpis`. Layout base (card de receita total, gráfico de composição, tabela de histórico) é mantido e enriquecido — não substituído.
 
-## Mapa de enriquecimento local
+## Layout final (top → bottom)
 
-```ts
-const meta: Record<string, {
-  iaAtiva: boolean;
-  etapa: "Novo" | "Qualificado" | "Visita" | "Proposta" | "Fechado";
-  prioridade: "quente" | "espera" | "risco" | null;
-  esperaTexto?: string;       // ex "sem resposta há 2h"
-  score: number;              // 0-100
-  classificacao: "Frio" | "Morno" | "Quente";
-  sugestaoIA?: { texto: string; acoes: ("visita" | "opcoes" | "info")[] };
-  proximaAcao: string;        // ex "Enviar 3 opções até 14h"
-}>
+```text
+┌──────────────────────────────────────────────────┬────────────────┐
+│ Receita total (NAVY) — enriquecido               │ Composição     │
+│  R$ 96.480 · ↑ +12% vs mês anterior              │ (donut + %)    │
+│  "Maior parte vem de comissões de imóveis"       │ Comissão 99,5% │
+│  ┌─ Comissão de imóveis ──┬─ SaaS · Indicações ┐ │ SaaS 0,5%      │
+│  │ R$ 96.000              │ R$ 480             │ │                │
+│  │ Próprio R$ 72k         │ 4 indicados ativos │ │                │
+│  │ Parceria R$ 24k        │ R$ 480/mês recorr. │ │                │
+│  └────────────────────────┴────────────────────┘ │                │
+└──────────────────────────────────────────────────┴────────────────┘
+┌─────────────────────────── Bloco de incentivo (warm/orange) ─────┐
+│ 💡 Você já gerou R$ 480 com indicações                          │
+│    Faltam R$ 120 para cobrir sua mensalidade · 0,5% da receita  │
+│                                       [ Convidar corretores → ] │
+└──────────────────────────────────────────────────────────────────┘
+┌──── Projeção de ganhos ──────────────────────────────────────────┐
+│ Este mês (estimado) R$ 102k · Ano R$ 1,2M                        │
+│ "Você está aumentando sua receita com parcerias" (microcopy)    │
+└──────────────────────────────────────────────────────────────────┘
+┌──── Histórico de transações (existente, enriquecido) ────────────┐
+│ chips coloridos azul/laranja + descrição mais rica + tooltip    │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-Cobre os 5 ids existentes (C-1..C-5) com cenários realistas:
-- C-1 Camila — humano, Visita, quente, score 88, sugestão "confirmar visita sábado 10h"
-- C-2 João — IA atendendo, Qualificado, espera (2h), score 72
-- C-3 Vanessa — IA atendendo, Novo, morna, score 54
-- C-4 Felipe — IA atendendo, Qualificado, score 81, sugestão "enviar 3 opções"
-- C-5 Roberto — humano, Proposta, risco (sem retorno 24h), score 76
+## Mudanças por bloco
 
-## 1. Header da conversa (topo do chat)
+### 1. Card de receita total (NAVY) — enriquecer
+- Logo abaixo do valor `R$ 96.480`, adicionar linha com badge verde `↑ +12% vs mês anterior` (TrendingUp icon, `bg-emerald-500/15 text-emerald-300`).
+- Subtexto contextual em `text-white/70`: "Maior parte da sua receita vem de comissões de imóveis."
+- Dentro dos dois sub-blocos (Comissão / SaaS), adicionar duas linhas pequenas:
+  - Comissão: "Próprio R$ 72.000 · Parceria R$ 24.000" (split fictício 75/25 derivado de `earnings.comissao`).
+  - SaaS: "{referrals.ativos.length} indicados ativos · R$ {sum mrr}/mês recorrente".
 
-Mantém avatar + nome + canal/online à esquerda. Adiciona logo abaixo do nome uma linha de chips compactos:
-- Badge de status: "● IA atendendo" (verde pulsante) ou "● Em conversa" (navy).
-- Badge de etapa do pipeline com cores de `pipelineStages` (ex: amarelo "Visita").
+### 2. Card Composição (lateral) — adicionar percentuais
+- Calcular `pct = value / total * 100` e exibir ao lado de cada item da legenda (`Comissão 99,5%`, `SaaS 0,5%`).
+- Manter donut atual.
 
-À direita, substituir "Ver lead" por grupo discreto:
-- `Assumir conversa` (botão outline pequeno, ícone `UserCheck`) — visível só quando IA ativa; ao clicar, alterna `iaAtiva→false` no estado local de overrides, dispara toast "IA pausada para esta conversa" e injeta uma mensagem do sistema no histórico.
-- `Ver lead` (link text-brand) — mantido.
+### 3. Bloco de incentivo (NOVO) — abaixo do grid superior
+- Card `rounded-2xl border-l-4 border-l-warm bg-orange-50/60 p-5` com layout `flex justify-between`.
+- Esquerda: ícone `Sparkles` + título "Você já gerou R$ 480 com indicações" + subtítulo "Faltam R$ 120 para cobrir sua mensalidade · representa 0,5% da sua receita".
+- Direita: botão `bg-warm text-warm-foreground` "Convidar corretores" linkado via `<Link to="/app/indicacoes">`.
 
-## 2. Indicadores na lista de conversas (sidebar)
+### 4. Bloco de projeção (NOVO)
+- Card `rounded-2xl border bg-card p-6` com 2 colunas:
+  - "Este mês (estimado)" — calcular como `total / diaAtual * 30` (≈ R$ 102k considerando dia ~28).
+  - "Projeção anual" — `estimadoMes * 12`.
+- Microcopy abaixo, em `text-sm text-emerald-700`: "Você está aumentando sua receita com parcerias · Indicações reduzem seu custo fixo."
+- Ícone `TrendingUp` discreto.
 
-Sem mexer no layout do botão. Adições dentro do bloco de texto (abaixo de `ultimaMsg`):
-- Linha pequena `flex gap-1.5` com:
-  - Badge de prioridade: 🔥 "Quente" (warm), ⏳ "{esperaTexto}" (amber), ⚠️ "Risco" (red-500/10 text-red-700) — apenas quando aplicável.
-  - Mini chip "IA" (border + text-emerald-600) ou "Humano" (text-muted-foreground), bem pequeno (text-[10px]).
+### 5. Histórico de transações — enriquecer
+- Trocar chips simples por chips com cor mais clara: Comissão = `bg-blue-100 text-blue-800`, SaaS = `bg-orange-100 text-orange-800` (já parecidos, mas reforçar consistência com paleta da marca).
+- Substituir `descricao` simples por descrição + linha pequena `text-xs text-muted-foreground` com contexto:
+  - T-01/T-02 → "Venda realizada · {parceria | direta}".
+  - T-03..T-06 → "Recorrência de indicação ativa".
+- Envolver a célula descrição em `<Tooltip>` (componente já existente) com texto longo explicativo.
 
-O badge de não-lidas existente permanece.
+## Dados derivados (locais)
 
-## 3. Sugestão da IA (acima do input)
-
-Renderizado condicionalmente (`meta[id].sugestaoIA`) entre a área de mensagens e o input. Card slim:
-- `bg-orange-50 border-l-4 border-l-orange-400 rounded-md px-3 py-2`
-- Ícone `Sparkles` + texto "Sugestão: {texto}"
-- Linha de botões compactos (size sm, variant outline) conforme `acoes`:
-  - "visita" → `Confirmar visita`
-  - "opcoes" → `Enviar opções`
-  - "info" → `Pedir mais informações`
-- Botão `X` no canto para dispensar (estado local `dismissedSuggestions: Set<string>`).
-
-Cada clique dispara toast "Atividade criada no pipeline" / "Proposta enviada" etc., simulando integração com CRM (item 8).
-
-## 4. Ações rápidas no chat (acima do input)
-
-Linha horizontal scrollável com 5 ícone-botões compactos (`h-8`, variant ghost com border):
-- `Home` Enviar imóvel
-- `Calendar` Agendar visita
-- `FileText` Enviar proposta
-- `CheckSquare` Criar tarefa
-- `ArrowRightCircle` Mover no pipeline
-
-Cada um abre um `Dialog` simples com 2-3 campos (sem persistência real):
-- Enviar imóvel → seletor de até 3 imóveis (lista mock fixa de 4 títulos).
-- Agendar visita → input data + hora.
-- Enviar proposta → input valor + condições.
-- Criar tarefa → input título + data.
-- Mover no pipeline → select com `pipelineStages`.
-
-Submit fecha o modal e dispara toast "Ação registrada · atividade criada / pipeline atualizado".
-
-## 5. Chips rápidos no input
-
-Logo acima do round input (mas abaixo das ações rápidas), linha de chips clicáveis pequenos:
-- "Confirmar visita" · "Enviar proposta" · "Aguardar retorno"
-
-Ao clicar, preenchem o input com texto pronto (estado controlado `draft`).
-
-## 6. Painel direito — enriquecimento
-
-Mantém estrutura (lead identificado / dados / interesse / botão). Adiciona, antes do bloco "Interesse":
-
-**Score do lead** — card com:
-- número grande `font-display text-3xl` (`meta.score`)
-- barra de progresso (shadcn `Progress`)
-- chip de classificação: Frio (slate), Morno (amber), Quente (warm/orange)
-
-**Próxima ação sugerida** — card destacado:
-- `bg-orange-50 border-l-4 border-l-orange-400 rounded-md p-3`
-- Label "Próxima ação" + texto `meta.proximaAcao`
-- Botão pequeno "Marcar como feita" (toast).
-
-## 7. Comportamento de IA pausada
-
-Estado local `iaOverrides: Record<string, boolean>` permite "Assumir conversa" alternar IA→Humano apenas no front. Quando `iaAtiva` derivado é true, mensagens da IA no histórico ganham prefixo visual: pequeno chip "IA" sobre a bolha (já existem mensagens com prefixo `[IA]` em C-4 — manter texto, mas adicionar marcador visual sobre todas as bolhas `from: "you"` enquanto IA estiver ativa).
+```ts
+const comissaoPropria = Math.round(earnings.comissao * 0.75);    // 72.000
+const comissaoParceria = earnings.comissao - comissaoPropria;     // 24.000
+const indicadosAtivos = referrals.ativos.length;                  // 4
+const mrrIndicacoes = referrals.ativos.reduce((s,r)=>s+r.mrr,0);  // 480
+const pctComissao = earnings.comissao / earnings.total * 100;     // 99.5
+const pctSaas = earnings.saas / earnings.total * 100;             // 0.5
+const variacaoMes = 12;                                           // fictício
+const faltaMensalidade = Math.max(0, 600 - earnings.saas);        // 120
+const estMes = Math.round(earnings.total / 28 * 30);              // ~103.371
+const estAno = estMes * 12;
+const txContexto: Record<string,string> = {
+  "T-01": "Venda realizada · direta",
+  "T-02": "Venda realizada · via parceria",
+  "T-03": "Recorrência de indicação ativa · plano Pro",
+  // ...
+};
+```
 
 ## Detalhes técnicos
-
-- Imports adicionais lucide: `UserCheck`, `Sparkles`, `Calendar`, `FileText`, `CheckSquare`, `ArrowRightCircle`, `Home`, `Flame`, `Clock`, `AlertTriangle`, `X`, `Bot`.
-- Componentes shadcn novos no arquivo: `Dialog`, `Progress`, `Button`, `Input`, `Textarea`, `Select`, `toast` (sonner).
-- Estados novos: `draft: string`, `iaOverrides`, `dismissedSuggestions`, `openModal: null | "imovel" | "visita" | "proposta" | "tarefa" | "pipeline"`, `etapaOverrides: Record<string, Etapa>` para refletir mudanças do modal "Mover no pipeline" no header.
-- Sem alterar `inboxConversations` em `mock.ts`. Reaproveitar `pipelineStages` para cores e select.
-- Manter `grid-cols-[300px_1fr_320px]`, paleta atual (`bg-navy`, `bg-card`, `bg-surface`, `text-warm`).
+- Imports adicionais: `Link` de `@tanstack/react-router`; ícones `TrendingUp`, `Sparkles`, `Users` de `lucide-react`; `Tooltip, TooltipTrigger, TooltipContent, TooltipProvider` de `@/components/ui/tooltip`; `Button` para CTA; reutilizar `referrals` e `kpis.metaIsencao` de `@/data/mock`.
+- Manter classes/cores existentes (`bg-navy`, `text-warm`, `bg-card`, `border-border`).
+- Usar `formatBRL` e `formatBRLcompact` para projeção.
+- Sem novas rotas, sem mudança de mock, sem alteração no layout 2/3 + 1/3 do topo.
 
 ## Não alterar
-
-- Layout 3-colunas, tipografia, espaçamentos, radius.
-- `src/data/mock.ts`, sidebar, outras rotas, `routeTree.gen.ts`.
-- Estrutura do chat (lista de bolhas + input redondo).
+- Estrutura do card de receita total e do card de composição (apenas inserções internas).
+- Tabela de histórico (apenas estilo dos chips e linha de contexto).
+- `src/data/mock.ts`, `routeTree.gen.ts`, sidebar, outras rotas.

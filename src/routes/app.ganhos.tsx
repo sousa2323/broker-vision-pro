@@ -1,95 +1,255 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { earnings, formatBRL } from "@/data/mock";
+import { TrendingUp, Sparkles, Users, ArrowRight } from "lucide-react";
+import { earnings, referrals, kpis, formatBRL, formatBRLcompact } from "@/data/mock";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/app/ganhos")({
   component: EarningsPage,
 });
 
 function EarningsPage() {
+  // Derivações locais
+  const comissaoPropria = Math.round(earnings.comissao * 0.75);
+  const comissaoParceria = earnings.comissao - comissaoPropria;
+  const indicadosAtivos = referrals.ativos.length;
+  const mrrIndicacoes = referrals.ativos.reduce((s, r) => s + r.mrr, 0);
+  const pctComissao = (earnings.comissao / earnings.total) * 100;
+  const pctSaas = (earnings.saas / earnings.total) * 100;
+  const variacaoMes = 12;
+  const faltaMensalidade = Math.max(0, kpis.metaIsencao - earnings.saas);
+  const diaAtual = 28;
+  const estMes = Math.round((earnings.total / diaAtual) * 30);
+  const estAno = estMes * 12;
+
   const data = [
-    { name: "Comissão de imóveis", value: earnings.comissao, color: "oklch(0.21 0.05 255)" },
-    { name: "SaaS · Indicações", value: earnings.saas, color: "oklch(0.66 0.21 41)" },
+    { name: "Comissão de imóveis", value: earnings.comissao, color: "oklch(0.21 0.05 255)", pct: pctComissao },
+    { name: "SaaS · Indicações", value: earnings.saas, color: "oklch(0.66 0.21 41)", pct: pctSaas },
   ];
 
+  const txContexto: Record<string, string> = {
+    "T-01": "Venda realizada · operação direta com o cliente",
+    "T-02": "Venda realizada · via parceria entre corretores",
+    "T-03": "Recorrência mensal · indicação ativa no plano Pro",
+    "T-04": "Recorrência mensal · indicação ativa no plano Pro",
+    "T-05": "Recorrência mensal · indicação ativa no plano Pro",
+    "T-06": "Recorrência mensal · indicação ativa no plano Pro",
+  };
+
+  const txContextoCurto: Record<string, string> = {
+    "T-01": "Venda direta",
+    "T-02": "Venda em parceria",
+    "T-03": "Recorrência de indicação ativa",
+    "T-04": "Recorrência de indicação ativa",
+    "T-05": "Recorrência de indicação ativa",
+    "T-06": "Recorrência de indicação ativa",
+  };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl">Ganhos</h1>
-        <p className="text-sm text-muted-foreground">Outubro 2025</p>
-      </div>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-display text-2xl">Ganhos</h1>
+          <p className="text-sm text-muted-foreground">Outubro 2025</p>
+        </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="rounded-2xl bg-navy p-8 text-navy-foreground lg:col-span-2">
-          <div className="text-xs uppercase tracking-widest text-white/60">Receita total</div>
-          <div className="mt-3 num font-display text-6xl">{formatBRL(earnings.total)}</div>
-          <div className="mt-6 grid grid-cols-2 gap-6 border-t border-white/10 pt-6 text-sm">
-            <div>
-              <div className="text-xs uppercase tracking-widest text-white/50">Comissão de imóveis</div>
-              <div className="mt-1 num font-display text-2xl">{formatBRL(earnings.comissao)}</div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Receita total — enriquecida */}
+          <div className="rounded-2xl bg-navy p-8 text-navy-foreground lg:col-span-2">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-widest text-white/60">Receita total</div>
+                <div className="mt-3 num font-display text-6xl">{formatBRL(earnings.total)}</div>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300">
+                <TrendingUp className="h-3.5 w-3.5" />
+                +{variacaoMes}% vs mês anterior
+              </span>
             </div>
-            <div>
-              <div className="text-xs uppercase tracking-widest text-white/50">SaaS · Indicações</div>
-              <div className="mt-1 num font-display text-2xl">{formatBRL(earnings.saas)}</div>
+            <p className="mt-2 text-sm text-white/70">
+              Maior parte da sua receita vem de comissões de imóveis.
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-6 border-t border-white/10 pt-6 text-sm">
+              <div>
+                <div className="text-xs uppercase tracking-widest text-white/50">Comissão de imóveis</div>
+                <div className="mt-1 num font-display text-2xl">{formatBRL(earnings.comissao)}</div>
+                <div className="mt-2 space-y-0.5 text-xs text-white/60">
+                  <div className="flex justify-between">
+                    <span>Vendas próprias</span>
+                    <span className="num text-white/80">{formatBRL(comissaoPropria)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Vendas em parceria</span>
+                    <span className="num text-white/80">{formatBRL(comissaoParceria)}</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-widest text-white/50">SaaS · Indicações</div>
+                <div className="mt-1 num font-display text-2xl">{formatBRL(earnings.saas)}</div>
+                <div className="mt-2 space-y-0.5 text-xs text-white/60">
+                  <div className="flex justify-between">
+                    <span>Indicados ativos</span>
+                    <span className="text-white/80">{indicadosAtivos}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Recorrência mensal</span>
+                    <span className="num text-white/80">{formatBRL(mrrIndicacoes)}/mês</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Composição com % */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">Composição</div>
+            <div className="h-48">
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={data} dataKey="value" innerRadius={50} outerRadius={75} paddingAngle={2}>
+                    {data.map((d, i) => (<Cell key={i} fill={d.color} />))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <ul className="space-y-2 text-sm">
+              {data.map((d) => (
+                <li key={d.name} className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
+                    {d.name}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="num text-xs text-muted-foreground">
+                      {d.pct.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                    </span>
+                    <span className="num">{formatBRL(d.value)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
+
+        {/* Bloco de incentivo */}
+        <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-border border-l-4 border-l-warm bg-orange-50/60 p-5 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-warm/15 p-2 text-warm">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="font-display text-lg text-foreground">
+                Você já gerou <span className="num text-warm">{formatBRL(earnings.saas)}</span> com indicações
+              </div>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Faltam <span className="num font-medium text-foreground">{formatBRL(faltaMensalidade)}</span> para cobrir sua mensalidade · representam{" "}
+                {pctSaas.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% da sua receita.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/app/indicacoes"
+            className="inline-flex items-center gap-2 rounded-md bg-warm px-4 py-2 text-sm font-medium text-warm-foreground shadow-sm transition-colors hover:bg-warm/90"
+          >
+            <Users className="h-4 w-4" />
+            Convidar corretores
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        {/* Projeção de ganhos */}
         <div className="rounded-2xl border border-border bg-card p-6">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">Composição</div>
-          <div className="h-48">
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={data} dataKey="value" innerRadius={50} outerRadius={75} paddingAngle={2}>
-                  {data.map((d, i) => (<Cell key={i} fill={d.color} />))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Projeção de ganhos</div>
+              <div className="font-display text-lg">Com base no ritmo atual</div>
+            </div>
+            <TrendingUp className="h-5 w-5 text-emerald-600" />
           </div>
-          <ul className="space-y-2 text-sm">
-            {data.map((d) => (
-              <li key={d.name} className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: d.color }} />
-                  {d.name}
-                </span>
-                <span className="num">{formatBRL(d.value)}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Este mês (estimado)</div>
+              <div className="mt-1 num font-display text-3xl">{formatBRL(estMes)}</div>
+              <div className="mt-1 text-xs text-emerald-700">↑ projetado a partir do desempenho parcial</div>
+            </div>
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Projeção anual</div>
+              <div className="mt-1 num font-display text-3xl">{formatBRLcompact(estAno)}</div>
+              <div className="mt-1 text-xs text-emerald-700">mantendo o ritmo atual</div>
+            </div>
+          </div>
+          <p className="mt-4 text-sm text-emerald-700">
+            Você está aumentando sua receita com parcerias · Indicações estão reduzindo seu custo fixo.
+          </p>
         </div>
-      </div>
 
-      <div className="rounded-2xl border border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border p-5">
-          <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">Histórico</div>
-            <div className="font-display text-lg">Transações recentes</div>
+        {/* Histórico — enriquecido */}
+        <div className="rounded-2xl border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border p-5">
+            <div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Histórico</div>
+              <div className="font-display text-lg">Transações recentes</div>
+            </div>
+            <button className="text-xs text-brand">Exportar</button>
           </div>
-          <button className="text-xs text-brand">Exportar</button>
-        </div>
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase tracking-widest text-muted-foreground">
-            <tr className="border-b border-border">
-              <th className="px-5 py-3">Data</th>
-              <th className="px-5 py-3">Tipo</th>
-              <th className="px-5 py-3">Descrição</th>
-              <th className="px-5 py-3 text-right">Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {earnings.transactions.map((t) => (
-              <tr key={t.id} className="border-b border-border last:border-0">
-                <td className="px-5 py-3 text-muted-foreground">{t.data}</td>
-                <td className="px-5 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${t.tipo === "Comissão" ? "bg-blue-50 text-blue-700" : "bg-amber-50 text-amber-700"}`}>{t.tipo}</span>
-                </td>
-                <td className="px-5 py-3">{t.descricao}</td>
-                <td className="num px-5 py-3 text-right font-medium">{formatBRL(t.valor)}</td>
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase tracking-widest text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="px-5 py-3">Data</th>
+                <th className="px-5 py-3">Tipo</th>
+                <th className="px-5 py-3">Descrição</th>
+                <th className="px-5 py-3 text-right">Valor</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {earnings.transactions.map((t) => (
+                <tr key={t.id} className="border-b border-border last:border-0">
+                  <td className="px-5 py-3 text-muted-foreground">{t.data}</td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+                        t.tipo === "Comissão"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-orange-100 text-orange-800"
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          t.tipo === "Comissão" ? "bg-blue-600" : "bg-orange-500"
+                        }`}
+                      />
+                      {t.tipo}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="cursor-help">
+                          <div>{t.descricao}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {txContextoCurto[t.id]}
+                          </div>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        {txContexto[t.id] ?? t.descricao}
+                      </TooltipContent>
+                    </Tooltip>
+                  </td>
+                  <td className="num px-5 py-3 text-right font-medium">{formatBRL(t.valor)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
