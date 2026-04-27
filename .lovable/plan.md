@@ -1,124 +1,114 @@
-## Reestruturação da tela IA Assistente — Central de Controle e Performance
+## Evolução do Inbox — Central de Conversão e Fechamento
 
-Único arquivo alterado: `src/routes/app.ia.tsx`. Sem mudanças em `mock.ts`, sidebar, rotas ou outras telas. Todos os dados extras (performance, configurações, conexão, comportamento) são constantes locais com dados fictícios. O chat existente continua presente, mas como bloco secundário "Exemplo de atendimento".
+Único arquivo alterado: `src/routes/app.inbox.tsx`. Sem mudanças em `src/data/mock.ts`, sidebar, rotas ou outras telas. Toda a inteligência adicional (status IA, score, sugestões, ações comerciais) é derivada por mapas locais de enriquecimento indexados pelo `id` da conversa, mantendo o layout 3-colunas atual intacto (sidebar 300px · chat · painel 320px).
 
-## Nova estrutura da página (top → bottom)
+## Mapa de enriquecimento local
 
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│ Header: "IA Assistente"  · subtítulo                                  │
-│ Ações: [Pausar IA] [Editar comportamento] [Assumir conversa]          │
-├──────────────────────────────────────────────────────────────────────┤
-│ 1. STATUS DA IA (3 cards)                                             │
-│  [● IA ativa]  [WhatsApp conectado]  [Tempo médio resposta 12s]       │
-├──────────────────────────────────────────────────────────────────────┤
-│ 2. PERFORMANCE — "Últimos 30 dias" (4 cards)                          │
-│  [Leads atendidos 32] [Qualificados 18] [Visitas 9] [Resp. 96%]       │
-├──────────────────────────────────────────────────────────────────────┤
-│ 3. Grid 2 colunas:                                                    │
-│  ┌─ Configuração da IA ─┐  ┌─ Conexão WhatsApp ─┐                     │
-│  │ Tom de voz (chips)   │  │  [QR Code mock]    │                     │
-│  │ Objetivo (chips)     │  │  Conectado ✓       │                     │
-│  │ Autonomia (chips)    │  │  [Reconectar]      │                     │
-│  └──────────────────────┘  └────────────────────┘                     │
-├──────────────────────────────────────────────────────────────────────┤
-│ 4. Comportamento (full width)                                         │
-│  Quando transferir p/ humano: [✓ após qualificação] [✓ pediu humano]  │
-│                               [○ intenção de compra]                  │
-│  Quando parar: [✓ sem resposta 24h] [✓ fora do horário]               │
-├──────────────────────────────────────────────────────────────────────┤
-│ 5. Exemplo de atendimento (grid 2 col)                                │
-│  ┌─ Mini chat preview (read-only) ─┐ ┌─ Inteligência extraída ─┐      │
-│  │ Seletor de conversa (3 chips)   │ │ Score de qualificação 88│      │
-│  │ Últimas 4 mensagens (truncado)  │ │ Intenção: compra ativa  │      │
-│  │ [Ver conversa completa]         │ │ Próx. ação: Agendar     │      │
-│  │                                 │ │ visita sábado           │      │
-│  │  (sem input ativo)              │ │ ─────────────           │      │
-│  │                                 │ │ Dados extraídos (lista) │      │
-│  └─────────────────────────────────┘ └─────────────────────────┘      │
-└──────────────────────────────────────────────────────────────────────┘
+```ts
+const meta: Record<string, {
+  iaAtiva: boolean;
+  etapa: "Novo" | "Qualificado" | "Visita" | "Proposta" | "Fechado";
+  prioridade: "quente" | "espera" | "risco" | null;
+  esperaTexto?: string;       // ex "sem resposta há 2h"
+  score: number;              // 0-100
+  classificacao: "Frio" | "Morno" | "Quente";
+  sugestaoIA?: { texto: string; acoes: ("visita" | "opcoes" | "info")[] };
+  proximaAcao: string;        // ex "Enviar 3 opções até 14h"
+}>
 ```
 
-## 1. Header + ações principais
+Cobre os 5 ids existentes (C-1..C-5) com cenários realistas:
+- C-1 Camila — humano, Visita, quente, score 88, sugestão "confirmar visita sábado 10h"
+- C-2 João — IA atendendo, Qualificado, espera (2h), score 72
+- C-3 Vanessa — IA atendendo, Novo, morna, score 54
+- C-4 Felipe — IA atendendo, Qualificado, score 81, sugestão "enviar 3 opções"
+- C-5 Roberto — humano, Proposta, risco (sem retorno 24h), score 76
 
-Bloco no topo com título "IA Assistente", subtítulo "Central de controle do seu atendente virtual". À direita, três botões:
-- `Pausar IA` (outline, ícone `Pause`) — alterna estado local `iaAtiva`, dispara toast.
-- `Editar comportamento` (outline, ícone `Settings2`) — rola até bloco Comportamento (anchor scroll).
-- `Assumir conversa` (default navy, ícone `UserCheck`) — toast.
+## 1. Header da conversa (topo do chat)
 
-## 2. Status da IA (3 cards horizontais)
+Mantém avatar + nome + canal/online à esquerda. Adiciona logo abaixo do nome uma linha de chips compactos:
+- Badge de status: "● IA atendendo" (verde pulsante) ou "● Em conversa" (navy).
+- Badge de etapa do pipeline com cores de `pipelineStages` (ex: amarelo "Visita").
 
-`grid grid-cols-1 md:grid-cols-3 gap-3`. Cada card `border border-border bg-card rounded-2xl p-4`:
-- **IA ativa/pausada** — bullet verde pulsante quando ativa (`bg-emerald-500`), cinza quando pausada. Título dinâmico via `iaAtiva`.
-- **WhatsApp conectado** — ícone `MessageCircle` verde, texto "Conectado · +55 21 9 9999-0000".
-- **Tempo médio de resposta** — número grande "12s", legenda "Últimas 24h".
+À direita, substituir "Ver lead" por grupo discreto:
+- `Assumir conversa` (botão outline pequeno, ícone `UserCheck`) — visível só quando IA ativa; ao clicar, alterna `iaAtiva→false` no estado local de overrides, dispara toast "IA pausada para esta conversa" e injeta uma mensagem do sistema no histórico.
+- `Ver lead` (link text-brand) — mantido.
 
-## 3. Performance (4 cards — ROI da IA)
+## 2. Indicadores na lista de conversas (sidebar)
 
-Header da seção: "Performance · Últimos 30 dias". Grid `md:grid-cols-4`. Cada card mostra label pequeno, número grande (`font-display text-3xl`) e variação (`+18% vs mês anterior` em verde):
-- Leads atendidos — 32
-- Leads qualificados — 18
-- Visitas geradas — 9
-- Taxa de resposta — 96%
+Sem mexer no layout do botão. Adições dentro do bloco de texto (abaixo de `ultimaMsg`):
+- Linha pequena `flex gap-1.5` com:
+  - Badge de prioridade: 🔥 "Quente" (warm), ⏳ "{esperaTexto}" (amber), ⚠️ "Risco" (red-500/10 text-red-700) — apenas quando aplicável.
+  - Mini chip "IA" (border + text-emerald-600) ou "Humano" (text-muted-foreground), bem pequeno (text-[10px]).
 
-## 4. Configuração da IA (card editável)
+O badge de não-lidas existente permanece.
 
-Estado local com 3 grupos. Cada grupo é uma linha "Label" + chips clicáveis (botões com `bg-navy text-navy-foreground` quando selecionado, `border border-border bg-background` quando não):
-- **Tom de voz**: Consultivo · Premium · Direto
-- **Objetivo**: Qualificar leads · Agendar visitas · Enviar imóveis
-- **Nível de autonomia**: Total · Assistido · Apenas triagem
+## 3. Sugestão da IA (acima do input)
 
-Mudança de chip dispara toast "Configuração atualizada".
+Renderizado condicionalmente (`meta[id].sugestaoIA`) entre a área de mensagens e o input. Card slim:
+- `bg-orange-50 border-l-4 border-l-orange-400 rounded-md px-3 py-2`
+- Ícone `Sparkles` + texto "Sugestão: {texto}"
+- Linha de botões compactos (size sm, variant outline) conforme `acoes`:
+  - "visita" → `Confirmar visita`
+  - "opcoes" → `Enviar opções`
+  - "info" → `Pedir mais informações`
+- Botão `X` no canto para dispensar (estado local `dismissedSuggestions: Set<string>`).
 
-## 5. Conexão WhatsApp (card lateral)
+Cada clique dispara toast "Atividade criada no pipeline" / "Proposta enviada" etc., simulando integração com CRM (item 8).
 
-- Quadrado 160x160 com SVG/CSS simulando QR Code (grid 8x8 de pixels pretos/brancos pseudo-aleatórios via array fixo).
-- Status "Conectado ✓" em verde + número fictício.
-- Botão `outline` "Reconectar" (toast).
-- Microcopy: "Sessão ativa há 14 dias".
+## 4. Ações rápidas no chat (acima do input)
 
-## 6. Comportamento (card full-width)
+Linha horizontal scrollável com 5 ícone-botões compactos (`h-8`, variant ghost com border):
+- `Home` Enviar imóvel
+- `Calendar` Agendar visita
+- `FileText` Enviar proposta
+- `CheckSquare` Criar tarefa
+- `ArrowRightCircle` Mover no pipeline
 
-Duas subseções com checkboxes (shadcn `Checkbox`):
+Cada um abre um `Dialog` simples com 2-3 campos (sem persistência real):
+- Enviar imóvel → seletor de até 3 imóveis (lista mock fixa de 4 títulos).
+- Agendar visita → input data + hora.
+- Enviar proposta → input valor + condições.
+- Criar tarefa → input título + data.
+- Mover no pipeline → select com `pipelineStages`.
 
-**Quando transferir para humano:**
-- Após qualificação completa (checked)
-- Quando o cliente pedir explicitamente (checked)
-- Quando detectar intenção de compra (unchecked)
+Submit fecha o modal e dispara toast "Ação registrada · atividade criada / pipeline atualizado".
 
-**Quando parar de responder:**
-- Lead sem resposta há 24h (checked)
-- Fora do horário comercial (checked)
-- Mais de 10 mensagens sem evolução (unchecked)
+## 5. Chips rápidos no input
 
-## 7. Exemplo de atendimento (chat reaproveitado, secundário)
+Logo acima do round input (mas abaixo das ações rápidas), linha de chips clicáveis pequenos:
+- "Confirmar visita" · "Enviar proposta" · "Aguardar retorno"
 
-Grid `lg:grid-cols-[1fr_320px]`:
+Ao clicar, preenchem o input com texto pronto (estado controlado `draft`).
 
-**Esquerda — preview de conversa (read-only):**
-- Header pequeno: "Exemplo de atendimento da IA" + 3 chips para alternar entre `aiConversations` (Felipe / Renata / Marcelo).
-- Mostra apenas as **últimas 4 mensagens** da conversa selecionada (slice), com bolhas no mesmo estilo atual mas reduzidas.
-- **Sem input ativo** — remover completamente o campo de mensagem.
-- Botão `outline` "Ver conversa completa" no rodapé (toast).
+## 6. Painel direito — enriquecimento
 
-**Direita — Inteligência extraída (evolução do bloco atual):**
-- Bloco no topo: "Score de qualificação" (número grande + barra de progresso baseada em `conv.score`).
-- "Intenção detectada": chip colorido (ex: "Compra ativa", "Investimento", "Pesquisa inicial") — derivado por id.
-- "Próxima ação sugerida": destaque em card laranja claro (`bg-orange-50 border-l-4 border-l-orange-400`) com texto tipo "Agendar visita para sábado 10h".
-- Lista de dados extraídos (mantém `conv.extracted` atual).
+Mantém estrutura (lead identificado / dados / interesse / botão). Adiciona, antes do bloco "Interesse":
+
+**Score do lead** — card com:
+- número grande `font-display text-3xl` (`meta.score`)
+- barra de progresso (shadcn `Progress`)
+- chip de classificação: Frio (slate), Morno (amber), Quente (warm/orange)
+
+**Próxima ação sugerida** — card destacado:
+- `bg-orange-50 border-l-4 border-l-orange-400 rounded-md p-3`
+- Label "Próxima ação" + texto `meta.proximaAcao`
+- Botão pequeno "Marcar como feita" (toast).
+
+## 7. Comportamento de IA pausada
+
+Estado local `iaOverrides: Record<string, boolean>` permite "Assumir conversa" alternar IA→Humano apenas no front. Quando `iaAtiva` derivado é true, mensagens da IA no histórico ganham prefixo visual: pequeno chip "IA" sobre a bolha (já existem mensagens com prefixo `[IA]` em C-4 — manter texto, mas adicionar marcador visual sobre todas as bolhas `from: "you"` enquanto IA estiver ativa).
 
 ## Detalhes técnicos
 
-- Manter `export const Route = createFileRoute("/app/ia")(...)` e função `AIPage`.
-- Estados locais novos: `iaAtiva: boolean`, `tom`, `objetivo`, `autonomia` (strings), `transferir: Set<string>`, `parar: Set<string>`, `active` (já existe — id da conversa do exemplo).
-- Mapa local `intencoes[id] = { intencao, proxima }` para os 3 ids existentes (AI-1, AI-2, AI-3).
-- Reutilizar shadcn presentes: `Button`, `Checkbox`, `toast` (sonner). Ícones lucide adicionais: `Pause`, `Play`, `Settings2`, `UserCheck`, `MessageCircle`, `Wifi`, `Clock`, `TrendingUp`, `Target`, `Sparkles`, `QrCode`.
-- QR Code mock: componente inline com `grid grid-cols-12` e array de 144 booleans fixos renderizando quadrados pretos/brancos (sem libs).
-- Manter paleta: `bg-navy`, `bg-card`, `border-border`, `text-orange-*`, `text-emerald-*`.
-- Remover do JSX atual: input de mensagem, botão Send grande, layout 3-colunas tipo inbox.
+- Imports adicionais lucide: `UserCheck`, `Sparkles`, `Calendar`, `FileText`, `CheckSquare`, `ArrowRightCircle`, `Home`, `Flame`, `Clock`, `AlertTriangle`, `X`, `Bot`.
+- Componentes shadcn novos no arquivo: `Dialog`, `Progress`, `Button`, `Input`, `Textarea`, `Select`, `toast` (sonner).
+- Estados novos: `draft: string`, `iaOverrides`, `dismissedSuggestions`, `openModal: null | "imovel" | "visita" | "proposta" | "tarefa" | "pipeline"`, `etapaOverrides: Record<string, Etapa>` para refletir mudanças do modal "Mover no pipeline" no header.
+- Sem alterar `inboxConversations` em `mock.ts`. Reaproveitar `pipelineStages` para cores e select.
+- Manter `grid-cols-[300px_1fr_320px]`, paleta atual (`bg-navy`, `bg-card`, `bg-surface`, `text-warm`).
 
 ## Não alterar
 
-- `src/data/mock.ts` (estrutura de `aiConversations` permanece).
-- Sidebar, outras rotas, `routeTree.gen.ts`.
-- Identidade visual (cores, tipografia, radius).
+- Layout 3-colunas, tipografia, espaçamentos, radius.
+- `src/data/mock.ts`, sidebar, outras rotas, `routeTree.gen.ts`.
+- Estrutura do chat (lista de bolhas + input redondo).
