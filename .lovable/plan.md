@@ -1,89 +1,124 @@
-## Evolução da tela Atividades — Agenda comercial inteligente
+## Reestruturação da tela IA Assistente — Central de Controle e Performance
 
-Único arquivo alterado: `src/routes/app.atividades.tsx`. Sem mudanças em `mock.ts`, sidebar, rotas ou outras telas. Toda a riqueza extra (impacto, etapa, parceria, atrasos, sugestões) é derivada localmente da lista existente via mapa estático por `id`, mantendo o tipo `ActivityItem` intacto.
+Único arquivo alterado: `src/routes/app.ia.tsx`. Sem mudanças em `mock.ts`, sidebar, rotas ou outras telas. Todos os dados extras (performance, configurações, conexão, comportamento) são constantes locais com dados fictícios. O chat existente continua presente, mas como bloco secundário "Exemplo de atendimento".
 
-## 1. Resumo do dia (topo estratégico)
-
-Logo abaixo do header, três cards horizontais compactos:
+## Nova estrutura da página (top → bottom)
 
 ```text
-[ Atividades hoje  4 ] [ Alto impacto  2 ] [ Atrasadas  1 (laranja) ]
+┌──────────────────────────────────────────────────────────────────────┐
+│ Header: "IA Assistente"  · subtítulo                                  │
+│ Ações: [Pausar IA] [Editar comportamento] [Assumir conversa]          │
+├──────────────────────────────────────────────────────────────────────┤
+│ 1. STATUS DA IA (3 cards)                                             │
+│  [● IA ativa]  [WhatsApp conectado]  [Tempo médio resposta 12s]       │
+├──────────────────────────────────────────────────────────────────────┤
+│ 2. PERFORMANCE — "Últimos 30 dias" (4 cards)                          │
+│  [Leads atendidos 32] [Qualificados 18] [Visitas 9] [Resp. 96%]       │
+├──────────────────────────────────────────────────────────────────────┤
+│ 3. Grid 2 colunas:                                                    │
+│  ┌─ Configuração da IA ─┐  ┌─ Conexão WhatsApp ─┐                     │
+│  │ Tom de voz (chips)   │  │  [QR Code mock]    │                     │
+│  │ Objetivo (chips)     │  │  Conectado ✓       │                     │
+│  │ Autonomia (chips)    │  │  [Reconectar]      │                     │
+│  └──────────────────────┘  └────────────────────┘                     │
+├──────────────────────────────────────────────────────────────────────┤
+│ 4. Comportamento (full width)                                         │
+│  Quando transferir p/ humano: [✓ após qualificação] [✓ pediu humano]  │
+│                               [○ intenção de compra]                  │
+│  Quando parar: [✓ sem resposta 24h] [✓ fora do horário]               │
+├──────────────────────────────────────────────────────────────────────┤
+│ 5. Exemplo de atendimento (grid 2 col)                                │
+│  ┌─ Mini chat preview (read-only) ─┐ ┌─ Inteligência extraída ─┐      │
+│  │ Seletor de conversa (3 chips)   │ │ Score de qualificação 88│      │
+│  │ Últimas 4 mensagens (truncado)  │ │ Intenção: compra ativa  │      │
+│  │ [Ver conversa completa]         │ │ Próx. ação: Agendar     │      │
+│  │                                 │ │ visita sábado           │      │
+│  │  (sem input ativo)              │ │ ─────────────           │      │
+│  │                                 │ │ Dados extraídos (lista) │      │
+│  └─────────────────────────────────┘ └─────────────────────────┘      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-- Layout `grid grid-cols-3 gap-3`, cada card em `border border-border bg-card rounded-2xl p-4`.
-- "Atrasadas" usa `text-orange-600` + ícone `AlertTriangle`.
+## 1. Header + ações principais
 
-## 2. Bloco "Prioridades do dia" (sugestões IA)
+Bloco no topo com título "IA Assistente", subtítulo "Central de controle do seu atendente virtual". À direita, três botões:
+- `Pausar IA` (outline, ícone `Pause`) — alterna estado local `iaAtiva`, dispara toast.
+- `Editar comportamento` (outline, ícone `Settings2`) — rola até bloco Comportamento (anchor scroll).
+- `Assumir conversa` (default navy, ícone `UserCheck`) — toast.
 
-Acima da lista, card único com 3 sugestões fictícias:
+## 2. Status da IA (3 cards horizontais)
 
-- "Follow-up com João Mendes — 3 dias sem resposta"
-- "Confirmar visita de Camila Andrade"
-- "Enviar proposta para Roberto e Lúcia"
+`grid grid-cols-1 md:grid-cols-3 gap-3`. Cada card `border border-border bg-card rounded-2xl p-4`:
+- **IA ativa/pausada** — bullet verde pulsante quando ativa (`bg-emerald-500`), cinza quando pausada. Título dinâmico via `iaAtiva`.
+- **WhatsApp conectado** — ícone `MessageCircle` verde, texto "Conectado · +55 21 9 9999-0000".
+- **Tempo médio de resposta** — número grande "12s", legenda "Últimas 24h".
 
-Estilo: `border-l-4 border-l-orange-400 bg-orange-50/40`, ícone `Sparkles`. Cada item com botão pequeno "Adicionar à agenda" (apenas toast).
+## 3. Performance (4 cards — ROI da IA)
 
-## 3. Toggle Lista / Calendário
+Header da seção: "Performance · Últimos 30 dias". Grid `md:grid-cols-4`. Cada card mostra label pequeno, número grande (`font-display text-3xl`) e variação (`+18% vs mês anterior` em verde):
+- Leads atendidos — 32
+- Leads qualificados — 18
+- Visitas geradas — 9
+- Taxa de resposta — 96%
 
-Abaixo do título "Atividades":
+## 4. Configuração da IA (card editável)
 
-```text
-[ Lista (ativo) ] [ Calendário ]
-```
+Estado local com 3 grupos. Cada grupo é uma linha "Label" + chips clicáveis (botões com `bg-navy text-navy-foreground` quando selecionado, `border border-border bg-background` quando não):
+- **Tom de voz**: Consultivo · Premium · Direto
+- **Objetivo**: Qualificar leads · Agendar visitas · Enviar imóveis
+- **Nível de autonomia**: Total · Assistido · Apenas triagem
 
-- Estado local `view: "lista" | "calendario"`.
-- Modo Calendário: grid semanal estática (Seg–Dom × faixas de horário 08–20h) com blocos coloridos correspondentes às atividades de "Hoje" e "Amanhã" — visual apenas, sem interação real. Implementado com CSS grid simples.
+Mudança de chip dispara toast "Configuração atualizada".
 
-## 4. Cards de atividade enriquecidos
+## 5. Conexão WhatsApp (card lateral)
 
-Mantém a estrutura/ícones atuais e adiciona campos derivados de um mapa local `meta[id]`:
+- Quadrado 160x160 com SVG/CSS simulando QR Code (grid 8x8 de pixels pretos/brancos pseudo-aleatórios via array fixo).
+- Status "Conectado ✓" em verde + número fictício.
+- Botão `outline` "Reconectar" (toast).
+- Microcopy: "Sessão ativa há 14 dias".
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ [icon] Camila Andrade                            09:30  ⏰   │
-│        Ligação · Casa em Itaipu — R$ 1.180.000               │
-│        Etapa: Visita    [Alto impacto]    Parceria: Marina T.│
-│        Confirmar visita de sábado.                            │
-│        [✔ Concluir] [⏰ Reagendar] [📊 Pipeline] [💬 Conversa]│
-└──────────────────────────────────────────────────────────────┘
-```
+## 6. Comportamento (card full-width)
 
-Novos elementos no card:
-- **Imóvel vinculado**: usa `a.imovel` se existir; caso contrário, valor do mapa local (ex: "Casa em Itaipu — R$ 1.180.000").
-- **Etapa do pipeline**: chip `bg-navy/5 text-navy` (Lead, Qualificado, Visita, Proposta).
-- **Tag de impacto**: chip colorido — Alto (`bg-orange-100 text-orange-700`), Médio (`bg-amber-100 text-amber-800`), Baixo (`bg-muted text-muted-foreground`).
-- **Parceria** (opcional): linha "Parceria com Marina Tavares" com ícone `Handshake`.
-- **Status atrasado**: se `data === "Hoje"` e `hora` < hora atual (e `id` não está no set local `concluidas`), exibir badge `Atrasado` em vermelho à direita do horário.
-- **Ações rápidas**: 4 botões `ghost size="sm"` com ícones `Check`, `Clock`, `BarChart3`, `MessageCircle`. "Concluir" adiciona o id ao set `concluidas` (risca o card via `line-through opacity-60`); demais ações disparam `toast`.
+Duas subseções com checkboxes (shadcn `Checkbox`):
 
-## 5. Agrupamento por dia com contagem
+**Quando transferir para humano:**
+- Após qualificação completa (checked)
+- Quando o cliente pedir explicitamente (checked)
+- Quando detectar intenção de compra (unchecked)
 
-Header de cada seção: `Hoje (4 atividades)` em vez de só `Hoje`. A contagem usa `items.length` já disponível.
+**Quando parar de responder:**
+- Lead sem resposta há 24h (checked)
+- Fora do horário comercial (checked)
+- Mais de 10 mensagens sem evolução (unchecked)
 
-## 6. Modal "Nova atividade"
+## 7. Exemplo de atendimento (chat reaproveitado, secundário)
 
-Botão existente "Nova atividade" passa a abrir `Dialog` com formulário (estado local, sem persistir):
+Grid `lg:grid-cols-[1fr_320px]`:
 
-- Nome do lead (Input)
-- Tipo (Select: Ligação, Visita, Reunião, Follow-up, E-mail)
-- Data (Input `type="date"`) e Hora (Input `type="time"`)
-- Imóvel vinculado — opcional (Input)
-- Parceria vinculada — opcional (Input)
-- Observação (Textarea)
+**Esquerda — preview de conversa (read-only):**
+- Header pequeno: "Exemplo de atendimento da IA" + 3 chips para alternar entre `aiConversations` (Felipe / Renata / Marcelo).
+- Mostra apenas as **últimas 4 mensagens** da conversa selecionada (slice), com bolhas no mesmo estilo atual mas reduzidas.
+- **Sem input ativo** — remover completamente o campo de mensagem.
+- Botão `outline` "Ver conversa completa" no rodapé (toast).
 
-Botões: Cancelar / Salvar. Salvar fecha o modal e dispara `toast` ("Atividade criada"). Não persiste na lista (mantém dados fictícios estáveis).
+**Direita — Inteligência extraída (evolução do bloco atual):**
+- Bloco no topo: "Score de qualificação" (número grande + barra de progresso baseada em `conv.score`).
+- "Intenção detectada": chip colorido (ex: "Compra ativa", "Investimento", "Pesquisa inicial") — derivado por id.
+- "Próxima ação sugerida": destaque em card laranja claro (`bg-orange-50 border-l-4 border-l-orange-400`) com texto tipo "Agendar visita para sábado 10h".
+- Lista de dados extraídos (mantém `conv.extracted` atual).
 
 ## Detalhes técnicos
 
-- Manter export `Route` e função `ActivitiesPage` no mesmo arquivo.
-- Novos estados: `view`, `concluidas: Set<string>`, `openNova: boolean`, `form` (campos do modal).
-- `meta` constante por id contendo `{ etapa, impacto, imovel?, valor?, parceria? }` para os 8 ids existentes (A-01 … A-08).
-- Helper `isAtrasada(a)` compara `hora` com `new Date()` quando `data === "Hoje"`.
-- Reutilizar shadcn já presentes: `Dialog`, `Input`, `Select`, `Textarea`, `Button`, `toast` (sonner). Ícones extras de `lucide-react`: `AlertTriangle`, `Sparkles`, `Handshake`, `Check`, `Clock`, `BarChart3`, `MessageCircle`, `LayoutList`, `CalendarDays`.
-- Calendário semanal: grid CSS estática (`grid-cols-8`, primeira coluna = horários), blocos posicionados manualmente para Hoje/Amanhã usando classes Tailwind — sem libs.
-- Manter paleta: `bg-navy`, `text-orange-*`, `bg-card`, `border-border`.
+- Manter `export const Route = createFileRoute("/app/ia")(...)` e função `AIPage`.
+- Estados locais novos: `iaAtiva: boolean`, `tom`, `objetivo`, `autonomia` (strings), `transferir: Set<string>`, `parar: Set<string>`, `active` (já existe — id da conversa do exemplo).
+- Mapa local `intencoes[id] = { intencao, proxima }` para os 3 ids existentes (AI-1, AI-2, AI-3).
+- Reutilizar shadcn presentes: `Button`, `Checkbox`, `toast` (sonner). Ícones lucide adicionais: `Pause`, `Play`, `Settings2`, `UserCheck`, `MessageCircle`, `Wifi`, `Clock`, `TrendingUp`, `Target`, `Sparkles`, `QrCode`.
+- QR Code mock: componente inline com `grid grid-cols-12` e array de 144 booleans fixos renderizando quadrados pretos/brancos (sem libs).
+- Manter paleta: `bg-navy`, `bg-card`, `border-border`, `text-orange-*`, `text-emerald-*`.
+- Remover do JSX atual: input de mensagem, botão Send grande, layout 3-colunas tipo inbox.
 
 ## Não alterar
 
-- `src/data/mock.ts`, sidebar, outras rotas, `routeTree.gen.ts`.
-- Estrutura geral (header, agrupamento por dia, ícones de tipo permanecem).
+- `src/data/mock.ts` (estrutura de `aiConversations` permanece).
+- Sidebar, outras rotas, `routeTree.gen.ts`.
+- Identidade visual (cores, tipografia, radius).
