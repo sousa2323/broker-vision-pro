@@ -1,97 +1,79 @@
-## Evolução da tela Indicações — Painel de crescimento recorrente
+## Evolução da tela Perfil — Base estruturada do corretor
 
-Único arquivo alterado: `src/routes/app.indicacoes.tsx`. Sem alterações em `src/data/mock.ts`, sidebar, rotas ou outras telas. Todos os novos números são derivados localmente a partir de `referrals` e `kpis.metaIsencao`.
+Único arquivo alterado: `src/routes/app.perfil.tsx`. Sem mudanças em `mock.ts`, sidebar, rotas ou outras telas. A estrutura base (coluna esquerda identidade + coluna direita informações) é mantida — apenas enriquecida.
 
-A estrutura atual (hero NAVY com link, 3 stats, tabela de indicados) é mantida e enriquecida — não substituída. Adicionamos novos blocos abaixo dos existentes.
-
-## Layout final (top → bottom)
+## Layout final
 
 ```text
-┌─ Header simples ─────────────────────────────────────────────────┐
-│ Indicações                                                       │
-│ Transforme sua rede de corretores em receita recorrente.         │
-└──────────────────────────────────────────────────────────────────┘
-┌─ Hero NAVY (existente) ──────────────────────────────────────────┐
-│ Link único + Copiar / Compartilhar                               │
-│ Microcopy: "Indique corretores e ganhe sobre as assinaturas..."  │
-└──────────────────────────────────────────────────────────────────┘
-┌─ Resumo de performance (4 cards) — substitui os 3 atuais ───────┐
-│ Indicados ativos │ MRR mensal │ Total acumulado │ Conversão     │
-│      4           │ R$ 480/mês │   R$ 1.920      │ 4 de 9 (44%)  │
-└──────────────────────────────────────────────────────────────────┘
-┌─ Bloco de incentivo (warm/orange) ──────────────────────────────┐
-│ 💡 Você está a R$ 120 de não pagar nada pelo sistema.            │
-│    Suas indicações já cobriram 80% da sua mensalidade.           │
-│    [progress bar 80%]            [ Indicar mais corretores → ]   │
-└──────────────────────────────────────────────────────────────────┘
-┌─ Como funciona (5 passos numerados) ─────────────────────────────┐
-│ 1 Compartilhe seu link                                           │
-│ 2 O corretor entra na Ubroker                                    │
-│ 3 Se contratar IA / Inbox, você ganha recorrência                │
-│ 4 Se cobrir sua mensalidade, você não paga nada                  │
-│ 5 O excedente pode ser recebido em dinheiro                      │
-└──────────────────────────────────────────────────────────────────┘
-┌─ Lista de indicados (existente, enriquecida) ────────────────────┐
-│ Nome · Data entrada · Produto · Status · Receita · Situação      │
-│ inclui agora 5 linhas: 4 ativos + 1 "Em teste" (Carla Souza)     │
-└──────────────────────────────────────────────────────────────────┘
-┌─ Potencial de crescimento ───────────────────────────────────────┐
-│ Ganho atual R$ 480/mês  →  Meta R$ 840/mês                       │
-│ "Se ativar mais 3 corretores, pode gerar R$ 840/mês"             │
-│ [progress bar até meta]                                          │
-└──────────────────────────────────────────────────────────────────┘
+┌─ Coluna esquerda (1/3) ─────────┐  ┌─ Coluna direita (2/3) ──────────────────┐
+│ Foto                            │  │ Nota: "Essas informações ajudam a IA    │
+│ Nome (Ramon Cardozo Capone)     │  │ e outros corretores a entender seu      │
+│ "Essas informações são          │  │ perfil de atuação."                     │
+│  utilizadas para personalizar   │  ├──────────────────────────────────────────┤
+│  sua experiência na Ubroker."   │  │ INFORMAÇÕES (existente, mantido)        │
+│ Chip Plano Free                 │  │ E-mail · Telefone · CRECI · Região      │
+│ [Fazer upgrade para Pro]        │  │   principal (era "Região de atuação")   │
+└─────────────────────────────────┘  ├──────────────────────────────────────────┤
+                                     │ REGIÕES SECUNDÁRIAS (NOVO)              │
+                                     │ chips: Niterói, São Gonçalo, Maricá +   │
+                                     ├──────────────────────────────────────────┤
+                                     │ PERFIL DE ATUAÇÃO (NOVO)                │
+                                     │ - Especialidades (tags multi)           │
+                                     │ - Faixa de ticket médio (select)        │
+                                     │ - Tipo de imóvel (chips multi)          │
+                                     │ - Perfil de cliente (chips multi)       │
+                                     ├──────────────────────────────────────────┤
+                                     │ BIO PÚBLICA (existente, placeholder     │
+                                     │ ajustado)                               │
+                                     ├──────────────────────────────────────────┤
+                                     │ [Cancelar]  [Salvar alterações]         │
+                                     └──────────────────────────────────────────┘
 ```
 
 ## Mudanças por bloco
 
-### 1. Header
-Adicionar título e subtítulo acima do hero NAVY existente (não dentro dele).
+### Coluna esquerda
+- Adicionar microtexto cinza abaixo do nome: "Essas informações são utilizadas para personalizar sua experiência na Ubroker."
+- Manter foto, nome, chip de plano e botão de upgrade exatamente como estão.
 
-### 2. Hero NAVY (existente)
-Manter como está. Apenas ajustar microcopy se necessário para alinhar à mensagem comercial nova.
+### Coluna direita — topo
+- Adicionar bloco de orientação acima do card "Informações": pequeno texto em `text-muted-foreground` com ícone `Sparkles` ou `Info`: "Essas informações ajudam a IA e outros corretores a entender melhor seu perfil de atuação."
 
-### 3. Resumo de performance — 4 cards (era 3)
-Substituir o grid atual de 3 stats por 4:
-- **Indicados ativos**: `referrals.ativos.length` → 4
-- **Receita recorrente mensal**: `sum(mrr)` → R$ 480/mês
-- **Total acumulado**: `mrrTotal * 4` (4 meses fictícios) → R$ 1.920
-- **Conversão**: `4 de 9 indicados ativos` (9 = total fictício local)
+### Card "Informações" (existente)
+- Manter campos: E-mail, Telefone, CRECI.
+- Renomear "Região de atuação" → "Região principal" (mesmo `Field`, valor "Niterói / RJ").
 
-Componente `Stat` reutilizado (já existe).
+### Card "Regiões secundárias" (NOVO)
+- Card branco separado com título "Regiões secundárias" e microcopy "Outras regiões onde você atende".
+- Lista de chips removíveis (visuais): Niterói, São Gonçalo, Maricá, Itaipu.
+- Botão tracejado "+ Adicionar região" (puramente visual, sem lógica real).
 
-### 4. Bloco de incentivo (NOVO) — warm/orange
-Card `rounded-2xl border-l-4 border-l-warm bg-orange-50/60 p-5` com:
-- Ícone `Sparkles` + título "Você está a R$ 120 de não pagar nada pelo sistema."
-- Subtexto: "Suas indicações já cobriram 80% da sua mensalidade."
-- Barra de progresso (`Progress` do shadcn) com `value={80}`.
-- Botão `bg-warm text-warm-foreground` "Indicar mais corretores" (scroll para hero ou ação de copiar link).
+### Card "Perfil de atuação" (NOVO)
+Card branco com 4 subgrupos empilhados, cada um com label + controle visual:
 
-### 5. Como funciona (NOVO)
-Card branco com título "Como funciona" e 5 passos numerados em badges circulares (1..5) + texto curto. Layout em coluna única, sem ícones complexos.
+1. **Especialidades** — chips selecionáveis (estado local toggle): Coberturas (selecionado), Casas em condomínio (selecionado), Alto padrão (selecionado), Apartamentos compactos, Lançamentos, Pé na areia.
+2. **Faixa de ticket médio** — `Select` shadcn com opções: Até R$ 500k · R$ 500k – R$ 1M · R$ 1M – R$ 3M (selecionado) · R$ 3M – R$ 10M · Acima de R$ 10M.
+3. **Tipo de imóvel** — chips multi: Residencial (on), Comercial, Lançamentos (on), Temporada.
+4. **Perfil de cliente** — chips multi: Família (on), Investidor (on), Primeira compra, Mudança interestadual (on).
 
-### 6. Lista de indicados (existente) — enriquecer
-- Adicionar colunas: **Data entrada** (fictícia: "12/jul", "03/ago", etc.) e **Produto** ("Combo IA + Inbox", "IA Assistente", "Inbox").
-- Mudar coluna "Plano" para "Produto".
-- Manter coluna Status com chip verde para Ativo, amber para "Em teste", muted para "Cancelado".
-- Adicionar 1 linha fictícia "Carla Souza · Em teste · Inbox · R$ 0".
-- Coluna final "Situação": "Gerando receita" / "Aguardando conversão".
-- Dados derivados localmente (array constante dentro do componente, sem mexer em `mock.ts`).
+Chips ativos usam `bg-navy text-navy-foreground`, inativos `bg-surface text-muted-foreground border border-border`. Estado via `useState` local — apenas visual.
 
-### 7. Potencial de crescimento (NOVO)
-Card final com:
-- Título "Potencial de crescimento" + ícone `TrendingUp`.
-- Texto: "Se você ativar mais 3 corretores, pode gerar R$ 840/mês em recorrência."
-- Linha com 2 valores lado a lado: "Atual R$ 480/mês" → "Meta R$ 840/mês".
-- Barra de progresso com `value={Math.round(480/840*100)}` ≈ 57%.
+### Card "Bio pública" (existente)
+- Manter campo `<textarea>`.
+- Trocar placeholder/defaultValue para sugerir: "Descreva seu posicionamento, experiência e diferenciais no mercado." (manter o defaultValue atual como exemplo preenchido OU usar como placeholder se vazio — manter texto atual e ajustar `placeholder` no textarea).
+
+### Botões
+- Manter "Cancelar" e "Salvar alterações" como estão.
 
 ## Detalhes técnicos
-- Imports adicionais: `TrendingUp`, `Gift`, `Users`, `CheckCircle2` de `lucide-react`; `Progress` de `@/components/ui/progress`; `Button` de `@/components/ui/button`; `Badge` de `@/components/ui/badge`.
-- Manter `Stat`, `Copy`, `Share2`, `Sparkles` já usados.
-- Toda a tabela e novos cards reutilizam classes existentes (`bg-card`, `border-border`, `text-warm`, `bg-navy`, `text-emerald-700`).
-- Sem novas rotas, sem alteração de mock, sem novas dependências.
-- CTA "Indicar mais corretores" rola para o topo (link do hero) — sem nova rota.
+- Imports adicionais em `app.perfil.tsx`: `useState` de react; `Sparkles` (ou `Info`) e `X`, `Plus` de `lucide-react`; `Select, SelectTrigger, SelectValue, SelectContent, SelectItem` de `@/components/ui/select`.
+- Componente helper local `Chip({label, active, onClick})` para os chips toggláveis, reutilizado em Especialidades, Tipo de imóvel e Perfil de cliente.
+- Estado local: `useState` para arrays de selecionados e para o ticket. Sem persistência, sem chamadas externas.
+- Reaproveitar componente `Field` existente para os 4 campos de informações.
+- Manter classes e identidade visual (`bg-card`, `border-border`, `bg-navy`, `bg-surface`, `text-muted-foreground`).
 
 ## Não alterar
-- `src/data/mock.ts`, `routeTree.gen.ts`, sidebar, outras rotas.
-- Hero NAVY (link de indicação) — apenas microcopy se necessário.
-- Identidade visual, tipografia, paleta.
+- `src/data/mock.ts`, sidebar, rotas, outras telas.
+- Estrutura de duas colunas (1/3 + 2/3) e identidade visual.
+- Foto, nome, chip de plano, botão de upgrade, botões finais.
+- Campos existentes (E-mail, Telefone, CRECI) — apenas "Região de atuação" é renomeado para "Região principal".
