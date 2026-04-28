@@ -114,9 +114,14 @@ function FinanceiroPage() {
     });
   }
 
-  function adicionarInteracao(id: string, interacao: ConciliacaoInteracao) {
-    setConciliacoes((prev) => prev.map((c) => c.id === id ? { ...c, interacoes: [...c.interacoes, interacao] } : c));
-    setConcDetalhe((cur) => cur && cur.id === id ? { ...cur, interacoes: [...cur.interacoes, interacao] } : cur);
+  function reabrirConciliacao(c: Conciliacao, justificativa: string) {
+    // Reseta para Pendente zerando o recebido — exige nova conciliação
+    atualizarConciliacao(c.id, { recebido: 0, pagoEm: undefined, statusOperacional: "Em cobrança" }, {
+      data: agora(), autor: "Superadmin",
+      acao: `Conciliação reaberta — Justificativa: ${justificativa}`,
+      valorAnterior: c.recebido, valorNovo: 0,
+    });
+    toast.warning(`${c.id} reaberto para nova conciliação`);
   }
 
   const concCorretores = useMemo(
