@@ -795,6 +795,37 @@ function FinanceiroPage() {
               </tbody>
             </table>
           </div>
+          )}
+
+          {/* Modal de reabertura */}
+          <AlertDialog open={!!concReabrir} onOpenChange={(o) => { if (!o) setConcReabrir(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reabrir conciliação {concReabrir?.id}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação reabre a conciliação para edição. A justificativa será registrada no log de auditoria.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <Textarea
+                value={concReabrirJustificativa}
+                onChange={(e) => setConcReabrirJustificativa(e.target.value)}
+                placeholder="Justificativa obrigatória (mín. 10 caracteres)…"
+                className="min-h-[80px] text-sm"
+              />
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (concReabrirJustificativa.trim().length < 10) { toast.error("Justificativa obrigatória (mín. 10 caracteres)"); return; }
+                    if (concReabrir) reabrirConciliacao(concReabrir, concReabrirJustificativa.trim());
+                    setConcReabrir(null); setConcReabrirJustificativa("");
+                  }}
+                >
+                  Confirmar reabertura
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
 
