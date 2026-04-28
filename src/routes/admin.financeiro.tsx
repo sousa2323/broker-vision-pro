@@ -603,12 +603,56 @@ function FinanceiroPage() {
               <Switch checked={concSomenteDiv} onCheckedChange={setConcSomenteDiv} />
               Só com divergência
             </label>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Switch checked={concAgrupar} onCheckedChange={setConcAgrupar} />
+              <Users className="h-3.5 w-3.5" /> Agrupar por corretor
+            </label>
             <div className="ml-auto">
               <ExportarConciliacaoMenu conciliacoes={concFiltradas} />
             </div>
           </div>
 
-          {/* Tabela */}
+          {/* Tabela agregada por corretor */}
+          {concAgrupar ? (
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <table className="w-full text-sm">
+                <thead className="bg-surface">
+                  <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground">
+                    <th className="px-4 py-3">Corretor</th>
+                    <th className="px-4 py-3 text-right">Casos</th>
+                    <th className="px-4 py-3 text-right">Total devido</th>
+                    <th className="px-4 py-3 text-right">Total recebido</th>
+                    <th className="px-4 py-3 text-right">Em atraso</th>
+                    <th className="px-4 py-3 text-right">Inadimplência</th>
+                    <th className="px-4 py-3 w-32"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {concAgrupado.map((g) => (
+                    <tr key={g.corretor} className="hover:bg-surface/40">
+                      <td className="px-4 py-3 font-medium">{g.corretor}</td>
+                      <td className="px-4 py-3 text-right num text-muted-foreground">{g.casos}</td>
+                      <td className="px-4 py-3 text-right num">{formatBRL(g.totalDevido)}</td>
+                      <td className="px-4 py-3 text-right num text-emerald-700">{formatBRL(g.totalRecebido)}</td>
+                      <td className="px-4 py-3 text-right num text-amber-700">{formatBRL(g.totalAtraso)}</td>
+                      <td className={cn("px-4 py-3 text-right num font-medium", g.inadimplenciaPct > 25 ? "text-red-700" : g.inadimplenciaPct > 10 ? "text-amber-700" : "text-emerald-700")}>
+                        {g.inadimplenciaPct.toFixed(1)}%
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setConcCorretor(g.corretor); setConcAgrupar(false); }}>
+                          Ver itens
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {concAgrupado.length === 0 && (
+                    <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum dado para agrupar.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+          /* Tabela detalhada */
           <div className="overflow-hidden rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
               <thead className="bg-surface">
@@ -622,6 +666,9 @@ function FinanceiroPage() {
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Risco</th>
                   <th className="px-4 py-3">Operacional</th>
+                  <th className="px-4 py-3">Responsável</th>
+                  <th className="px-4 py-3">SLA</th>
+                  <th className="px-4 py-3">Previsão</th>
                   <th className="px-4 py-3 w-10"></th>
                 </tr>
               </thead>
@@ -630,6 +677,8 @@ function FinanceiroPage() {
                   const dif = c.esperado - c.recebido;
                   const risco = classificarRiscoConc(c);
                   const alertas = alertasConc(c);
+                  const sla = calcularSLA(c);
+                  const bloqueada = c.status === "Confirmada";
                   return (
                     <tr key={c.id} className={cn("cursor-pointer hover:bg-surface/40", (c.status === "Divergente" || c.status === "Parcial") && "bg-red-50/40")} onClick={() => setConcDetalhe(c)}>
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
@@ -637,6 +686,9 @@ function FinanceiroPage() {
                           {alertas.map((a, i) => (
                             <TooltipProvider key={i}><Tooltip><TooltipTrigger asChild><span className="cursor-help">{a.icon}</span></TooltipTrigger><TooltipContent><p className="text-xs">{a.msg}</p></TooltipContent></Tooltip></TooltipProvider>
                           ))}
+                          {bloqueada && (
+                            <TooltipProvider><Tooltip><TooltipTrigger asChild><span className="cursor-help"><Lock className="h-3 w-3 text-emerald-600" /></span></TooltipTrigger><TooltipContent><p className="text-xs">Conciliação confirmada — bloqueada</p></TooltipContent></Tooltip></TooltipProvider>
+                          )}
                           {c.id}
                         </div>
                       </td>
@@ -672,32 +724,65 @@ function FinanceiroPage() {
                           <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-muted-foreground">{c.statusOperacional}</span>
                         ) : <span className="text-muted-foreground">—</span>}
                       </td>
+                      <td className="px-4 py-3 text-xs" onClick={(e) => e.stopPropagation()}>
+                        <ResponsavelChip
+                          c={c}
+                          onAtribuir={(r) => atualizarConciliacao(c.id, { responsavel: r }, { data: agora(), autor: "Superadmin", acao: c.responsavel ? `Responsável reatribuído para ${r.nome}` : `Responsável atribuído: ${r.nome}` })}
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {bloqueada ? <span className="text-muted-foreground">—</span> : (
+                          <span className={cn("rounded-full px-2 py-0.5 text-[11px]", sla.atrasado ? "bg-red-50 text-red-700" : "bg-surface text-muted-foreground")}>
+                            {sla.atrasado ? `Atrasado +${Math.abs(sla.restanteDias)}d` : `Resolver em ${sla.restanteDias}d`}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs" onClick={(e) => e.stopPropagation()}>
+                        <PrevisaoChip
+                          c={c}
+                          onSet={(d) => atualizarConciliacao(c.id, { previsaoPagamento: d }, { data: agora(), autor: "Superadmin", acao: `Previsão de pagamento definida: ${d}`, valorAnterior: undefined, valorNovo: undefined })}
+                        />
+                      </td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Ação direta</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, { data: agora(), autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: c.recebido, valorNovo: c.esperado }); toast.success(`Pagamento de ${c.id} confirmado`); }}>
-                              <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> Confirmar pagamento
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
-                              <Pencil className="mr-2 h-4 w-4" /> Ajustar valor recebido
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, {}, { data: agora(), autor: "Superadmin", acao: "Marcado como divergente manualmente" }); toast.warning(`${c.id} marcado para revisão`); }}>
-                              <AlertTriangle className="mr-2 h-4 w-4 text-amber-600" /> Marcar como divergente
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
-                              <Phone className="mr-2 h-4 w-4" /> Registrar contato
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
-                              <FileSearch className="mr-2 h-4 w-4" /> Ver cobrança completa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toast.info(`Contrato da parceria ${c.venda}`, { description: "Documento abriria em nova aba (mock)." })}>
-                              <FileSignature className="mr-2 h-4 w-4" /> Ver contrato da parceria
-                            </DropdownMenuItem>
+                            {bloqueada ? (
+                              <>
+                                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Conciliação confirmada</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                                  <Eye className="mr-2 h-4 w-4" /> Ver detalhes
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setConcReabrir(c); setConcReabrirJustificativa(""); }}>
+                                  <RotateCcw className="mr-2 h-4 w-4 text-amber-600" /> Reabrir conciliação
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <>
+                                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Ação direta</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, { data: agora(), autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: c.recebido, valorNovo: c.esperado }); toast.success(`Pagamento de ${c.id} confirmado`); }}>
+                                  <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> Confirmar pagamento
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                                  <Pencil className="mr-2 h-4 w-4" /> Ajustar valor recebido
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, {}, { data: agora(), autor: "Superadmin", acao: "Marcado como divergente manualmente" }); toast.warning(`${c.id} marcado para revisão`); }}>
+                                  <AlertTriangle className="mr-2 h-4 w-4 text-amber-600" /> Marcar como divergente
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                                  <Phone className="mr-2 h-4 w-4" /> Registrar contato
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                                  <FileSearch className="mr-2 h-4 w-4" /> Ver cobrança completa
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => toast.info(`Contrato da parceria ${c.venda}`, { description: "Documento abriria em nova aba (mock)." })}>
+                                  <FileSignature className="mr-2 h-4 w-4" /> Ver contrato da parceria
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -705,7 +790,7 @@ function FinanceiroPage() {
                   );
                 })}
                 {concFiltradas.length === 0 && (
-                  <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma conciliação para os filtros aplicados.</td></tr>
+                  <tr><td colSpan={13} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma conciliação para os filtros aplicados.</td></tr>
                 )}
               </tbody>
             </table>
