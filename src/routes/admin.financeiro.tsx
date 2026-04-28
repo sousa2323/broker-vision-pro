@@ -4,7 +4,8 @@ import {
   CheckCircle2, Eye, Pencil, MoreHorizontal, AlertTriangle, ShieldCheck,
   FileSearch, Download, FileText, Filter as FilterIcon, X, Calendar as CalendarIcon,
   Clock, Receipt, AlertCircle, Phone, MessageSquare, Handshake, FileSignature,
-  Activity,
+  Activity, Users, UserPlus, RotateCcw, Lock, Upload, Mail, Smartphone, Paperclip,
+  Timer, BarChart3,
 } from "lucide-react";
 import {
   cobrancas as cobrancasMock,
@@ -12,7 +13,10 @@ import {
   conciliacoes as conciliacoesMock,
   corretorRisco,
   calcularStatusConciliacao,
-  type Cobranca,
+  calcularSLA,
+  calcularPrioridade,
+  agruparPorCorretor,
+  RESPONSAVEIS_DISPONIVEIS,
   type Conciliacao,
   type ConciliacaoInteracao,
   type ConciliacaoAuditoria,
@@ -20,6 +24,9 @@ import {
   type StatusOperacionalCobranca,
   type StatusCobrancaTipo,
   type OrigemCobranca,
+  type Cobranca,
+  type ResponsavelCobranca,
+  type ComprovantePagamento,
 } from "@/data/admin-mock";
 import { formatBRL } from "@/data/mock";
 import { cn } from "@/lib/utils";
