@@ -1143,8 +1143,31 @@ function FinanceiroPage() {
 
 // ============== Subcomponentes ==============
 
-function ExportarMenu({ cobrancas }: { cobrancas: Cobranca[] }) {
-  const exportar = (tipo: "filtrados" | "corretor" | "contabil" | "inadimplencia") => {
+function ExportarMenu({
+  cobrancas,
+  despesas,
+  receitaTotal,
+  totalDespesas,
+  resultadoLiquido,
+  margem,
+}: {
+  cobrancas: Cobranca[];
+  despesas: Despesa[];
+  receitaTotal: number;
+  totalDespesas: number;
+  resultadoLiquido: number;
+  margem: number;
+}) {
+  const exportar = (
+    tipo:
+      | "filtrados"
+      | "corretor"
+      | "contabil"
+      | "inadimplencia"
+      | "despesas"
+      | "resultado"
+      | "consolidado",
+  ) => {
     let rows: Record<string, string | number>[] = [];
     let nome = "cobrancas";
     if (tipo === "filtrados") {
@@ -1164,10 +1187,37 @@ function ExportarMenu({ cobrancas }: { cobrancas: Cobranca[] }) {
       const com = cobrancas.filter((c) => c.origem !== "SaaS").reduce((a, b) => a + b.valor, 0);
       rows = [{ Categoria: "SaaS (recorrente)", Valor: saas }, { Categoria: "Comissão (parceria/lead)", Valor: com }, { Categoria: "Total", Valor: saas + com }];
       nome = "relatorio-contabil";
-    } else {
+    } else if (tipo === "inadimplencia") {
       rows = cobrancas.filter((c) => c.status === "Atrasado" || c.status === "Contestado")
         .map((c) => ({ ID: c.id, Corretor: c.corretor, Valor: c.valor, Vencimento: c.vencimento, DiasAtraso: c.diasAtraso ?? 0, Status: c.status }));
       nome = "relatorio-inadimplencia";
+    } else if (tipo === "despesas") {
+      rows = despesas.map((d) => ({
+        ID: d.id, Data: d.data, Categoria: d.categoria, Descrição: d.descricao,
+        Tipo: d.tipo, Valor: d.valor, Status: d.status, Responsável: d.responsavel ?? "",
+        Observação: d.observacao ?? "",
+      }));
+      nome = "relatorio-despesas";
+    } else if (tipo === "resultado") {
+      rows = [
+        { Indicador: "Receita total", Valor: receitaTotal },
+        { Indicador: "Despesas totais", Valor: totalDespesas },
+        { Indicador: "Resultado líquido", Valor: resultadoLiquido },
+        { Indicador: "Margem (%)", Valor: Number(margem.toFixed(2)) },
+      ];
+      nome = "relatorio-resultado";
+    } else {
+      // consolidado
+      const porCat: Record<string, number> = {};
+      despesas.forEach((d) => { porCat[d.categoria] = (porCat[d.categoria] ?? 0) + d.valor; });
+      rows = [
+        { Bloco: "Receita", Item: "Receita total", Valor: receitaTotal },
+        { Bloco: "Despesas", Item: "Total", Valor: totalDespesas },
+        ...Object.entries(porCat).map(([k, v]) => ({ Bloco: "Despesas", Item: k, Valor: v })),
+        { Bloco: "Resultado", Item: "Líquido", Valor: resultadoLiquido },
+        { Bloco: "Resultado", Item: "Margem (%)", Valor: Number(margem.toFixed(2)) },
+      ];
+      nome = "financeiro-consolidado";
     }
     baixarCSV(nome, rows);
     toast.success("Relatório exportado", { description: `${rows.length} linha(s) · ${nome}.csv` });
@@ -1180,8 +1230,8 @@ function ExportarMenu({ cobrancas }: { cobrancas: Cobranca[] }) {
           <Download className="h-4 w-4" /> Exportar
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Exportação inteligente</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Cobranças</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => exportar("filtrados")}>
           <FileText className="mr-2 h-4 w-4" /> Dados filtrados (CSV)
         </DropdownMenuItem>
@@ -1194,10 +1244,166 @@ function ExportarMenu({ cobrancas }: { cobrancas: Cobranca[] }) {
         <DropdownMenuItem onClick={() => exportar("inadimplencia")}>
           <FileText className="mr-2 h-4 w-4" /> Relatório de inadimplência
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Resultado & despesas</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => exportar("despesas")}>
+          <FileText className="mr-2 h-4 w-4" /> Relatório de despesas
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportar("resultado")}>
+          <FileText className="mr-2 h-4 w-4" /> Relatório de resultado (receita × despesas)
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportar("consolidado")}>
+          <FileText className="mr-2 h-4 w-4" /> Relatório financeiro consolidado
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
+
+function DespesaModal({
+  open,
+  despesa,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  despesa: Despesa | null;
+  onClose: () => void;
+  onSave: (d: Despesa) => void;
+}) {
+  const [data, setData] = useState("");
+  const [categoria, setCategoria] = useState<CategoriaDespesa>("Operacional");
+  const [descricao, setDescricao] = useState("");
+  const [valor, setValor] = useState<string>("");
+  const [tipo, setTipo] = useState<TipoDespesa>("Variável");
+  const [statusD, setStatusD] = useState<StatusDespesa>("A pagar");
+  const [observacao, setObservacao] = useState("");
+  const [responsavel, setResponsavel] = useState("");
+
+  // Sincroniza ao abrir
+  React.useEffect(() => {
+    if (!open) return;
+    if (despesa) {
+      setData(despesa.data);
+      setCategoria(despesa.categoria);
+      setDescricao(despesa.descricao);
+      setValor(String(despesa.valor));
+      setTipo(despesa.tipo);
+      setStatusD(despesa.status);
+      setObservacao(despesa.observacao ?? "");
+      setResponsavel(despesa.responsavel ?? "");
+    } else {
+      const hoje = new Date();
+      const dd = String(hoje.getDate()).padStart(2, "0");
+      const mm = String(hoje.getMonth() + 1).padStart(2, "0");
+      setData(`${dd}/${mm}`);
+      setCategoria("Operacional");
+      setDescricao("");
+      setValor("");
+      setTipo("Variável");
+      setStatusD("A pagar");
+      setObservacao("");
+      setResponsavel("");
+    }
+  }, [open, despesa]);
+
+  const submit = () => {
+    if (!data.trim() || !descricao.trim() || !valor.trim()) {
+      toast.error("Preencha data, descrição e valor");
+      return;
+    }
+    const v = parseFloat(valor.replace(",", "."));
+    if (Number.isNaN(v) || v <= 0) {
+      toast.error("Valor inválido");
+      return;
+    }
+    const novo: Despesa = {
+      id: despesa?.id ?? `DP-${Math.floor(Math.random() * 9000 + 1000)}`,
+      data: data.trim(),
+      categoria,
+      descricao: descricao.trim(),
+      tipo,
+      valor: v,
+      status: statusD,
+      observacao: observacao.trim() || undefined,
+      responsavel: responsavel.trim() || undefined,
+    };
+    onSave(novo);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 font-display">
+            <Wallet className="h-5 w-5" /> {despesa ? "Editar despesa" : "Nova despesa"}
+          </DialogTitle>
+          <DialogDescription>
+            {despesa ? `Atualize os dados da despesa ${despesa.id}.` : "Lançamentos impactam automaticamente o resultado do período."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Data (dd/mm) *</label>
+            <Input value={data} onChange={(e) => setData(e.target.value)} placeholder="28/04" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Valor (R$) *</label>
+            <Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Categoria *</label>
+            <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaDespesa)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CATEGORIAS_DESPESA.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Tipo *</label>
+            <Select value={tipo} onValueChange={(v) => setTipo(v as TipoDespesa)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Fixo">Fixo</SelectItem>
+                <SelectItem value="Variável">Variável</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Descrição *</label>
+            <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Mídia paga — Meta Ads" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Status *</label>
+            <Select value={statusD} onValueChange={(v) => setStatusD(v as StatusDespesa)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="A pagar">A pagar</SelectItem>
+                <SelectItem value="Pago">Pago</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Responsável</label>
+            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Opcional" />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Observação</label>
+            <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Opcional" className="min-h-[60px]" />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={submit}>{despesa ? "Salvar alterações" : "Criar despesa"}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function CobrancaDetalheModal({ cobranca, onClose }: { cobranca: Cobranca | null; onClose: () => void }) {
   const venda = cobranca?.vendaId ? vendasDetalhadas.find((v) => v.id === cobranca.vendaId) : undefined;
