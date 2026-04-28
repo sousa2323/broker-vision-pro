@@ -724,3 +724,95 @@ export const performanceCorretores = {
     { id: "U-005", nome: "Joana Maciel", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=128&q=80", motivo: "Conversão 6% · poucos leads", severidade: "amber" },
   ] as CorretorBaixa[],
 };
+
+// ============================================================
+// Rede de Indicações — datasets aditivos (não altera referralTree)
+// ============================================================
+
+export type RedeIndicacaoStatus = "Ativo" | "Teste" | "Inativo";
+
+export type RedeIndicacaoItem = {
+  id: string;
+  nome: string;
+  nivel: 1 | 2 | 3;
+  indicador: string;
+  indicados: number;
+  status: RedeIndicacaoStatus;
+  mrr: number;
+  receitaAcumulada: number;
+  receitaPaga: number;
+  receitaPendente: number;
+  dataEntrada: string; // dd/mm/aaaa
+  crescimentoPct: number;
+};
+
+export const redeIndicacoes: RedeIndicacaoItem[] = [
+  // N1 — indicados diretos por Ramon
+  { id: "RI-001", nome: "Joana Maciel", nivel: 1, indicador: "Ramon Capone", indicados: 2, status: "Inativo", mrr: 240, receitaAcumulada: 2_880, receitaPaga: 2_400, receitaPendente: 480, dataEntrada: "12/03/2025", crescimentoPct: -18 },
+  { id: "RI-002", nome: "Pedro Verissimo", nivel: 1, indicador: "Ramon Capone", indicados: 2, status: "Ativo", mrr: 360, receitaAcumulada: 4_320, receitaPaga: 3_960, receitaPendente: 360, dataEntrada: "08/02/2025", crescimentoPct: 22 },
+  { id: "RI-003", nome: "Carla Fontes", nivel: 1, indicador: "Ramon Capone", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 1_440, receitaPaga: 1_320, receitaPendente: 120, dataEntrada: "21/04/2025", crescimentoPct: 8 },
+  { id: "RI-004", nome: "Tiago Sá", nivel: 1, indicador: "Ramon Capone", indicados: 0, status: "Teste", mrr: 120, receitaAcumulada: 360, receitaPaga: 240, receitaPendente: 120, dataEntrada: "02/10/2025", crescimentoPct: 0 },
+  // N2
+  { id: "RI-005", nome: "Lúcia Mota", nivel: 2, indicador: "Joana Maciel", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 1_080, receitaPaga: 960, receitaPendente: 120, dataEntrada: "18/05/2025", crescimentoPct: 12 },
+  { id: "RI-006", nome: "Pedro Inácio", nivel: 2, indicador: "Joana Maciel", indicados: 0, status: "Inativo", mrr: 120, receitaAcumulada: 720, receitaPaga: 720, receitaPendente: 0, dataEntrada: "22/06/2025", crescimentoPct: -25 },
+  { id: "RI-007", nome: "Carla Souza", nivel: 2, indicador: "Pedro Verissimo", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 1_320, receitaPaga: 1_200, receitaPendente: 120, dataEntrada: "10/04/2025", crescimentoPct: 6 },
+  { id: "RI-008", nome: "Bruno Lemos", nivel: 2, indicador: "Pedro Verissimo", indicados: 1, status: "Ativo", mrr: 240, receitaAcumulada: 2_640, receitaPaga: 2_400, receitaPendente: 240, dataEntrada: "14/03/2025", crescimentoPct: 18 },
+  { id: "RI-009", nome: "Diego Prado", nivel: 2, indicador: "Carla Fontes", indicados: 0, status: "Teste", mrr: 0, receitaAcumulada: 0, receitaPaga: 0, receitaPendente: 0, dataEntrada: "12/10/2025", crescimentoPct: 0 },
+  // N3
+  { id: "RI-010", nome: "Tatiana Reis", nivel: 3, indicador: "Bruno Lemos", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 720, receitaPaga: 600, receitaPendente: 120, dataEntrada: "11/07/2025", crescimentoPct: 14 },
+  { id: "RI-011", nome: "Felipe Andrade", nivel: 3, indicador: "Carla Souza", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 480, receitaPaga: 360, receitaPendente: 120, dataEntrada: "20/08/2025", crescimentoPct: 9 },
+  { id: "RI-012", nome: "Marina Lopes", nivel: 3, indicador: "Lúcia Mota", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 600, receitaPaga: 480, receitaPendente: 120, dataEntrada: "05/07/2025", crescimentoPct: 11 },
+  { id: "RI-013", nome: "Otávio Pires", nivel: 3, indicador: "Bruno Lemos", indicados: 0, status: "Inativo", mrr: 0, receitaAcumulada: 240, receitaPaga: 240, receitaPendente: 0, dataEntrada: "02/06/2025", crescimentoPct: -40 },
+  { id: "RI-014", nome: "Nina Bastos", nivel: 3, indicador: "Carla Souza", indicados: 0, status: "Teste", mrr: 0, receitaAcumulada: 0, receitaPaga: 0, receitaPendente: 0, dataEntrada: "18/10/2025", crescimentoPct: 0 },
+];
+
+export const redeIndicacoesPeriodoAnterior = {
+  totalIndicados: 12,
+  mrrN1: 780,
+  mrrN2: 540,
+  mrrN3: 420,
+  receitaTotal: 1_740,
+};
+
+export type RedeAlertaSeveridade = "atencao" | "critico";
+export type RedeAlerta = {
+  id: string;
+  severidade: RedeAlertaSeveridade;
+  titulo: string;
+  descricao: string;
+  corretor?: string;
+};
+
+export const redeAlertas: RedeAlerta[] = [
+  { id: "AL-1", severidade: "critico", titulo: "Joana Maciel parou de gerar receita", descricao: "Sem novos indicados há 38 dias · MRR caiu 18%.", corretor: "Joana Maciel" },
+  { id: "AL-2", severidade: "atencao", titulo: "Queda de 12% na rede em outubro", descricao: "MRR consolidado abaixo do mês anterior." },
+  { id: "AL-3", severidade: "atencao", titulo: "3 indicados em churn neste mês", descricao: "Pedro Inácio, Otávio Pires e 1 indicado N2 deixaram a rede." },
+  { id: "AL-4", severidade: "critico", titulo: "Redução da receita recorrente", descricao: "Receita recorrente total recuou R$ 180/mês vs período anterior." },
+];
+
+export const redeInsights = {
+  concentracaoTop: 64, // % da receita gerada pelos top 3
+  profundidadeMedia: 2.3,
+  conversaoPorNivel: [
+    { nivel: 1, pct: 62 },
+    { nivel: 2, pct: 38 },
+    { nivel: 3, pct: 21 },
+  ],
+  evolucaoRede: [
+    { mes: "Mai", indicados: 6, mrr: 720 },
+    { mes: "Jun", indicados: 8, mrr: 960 },
+    { mes: "Jul", indicados: 10, mrr: 1_200 },
+    { mes: "Ago", indicados: 11, mrr: 1_320 },
+    { mes: "Set", indicados: 13, mrr: 1_560 },
+    { mes: "Out", indicados: 14, mrr: 1_680 },
+  ],
+};
+
+export const redeRepassesMock = [
+  { data: "30/10/2025", valor: 120, status: "Pago" as const },
+  { data: "30/09/2025", valor: 240, status: "Pago" as const },
+  { data: "30/08/2025", valor: 240, status: "Pago" as const },
+  { data: "30/07/2025", valor: 120, status: "Pago" as const },
+  { data: "30/06/2025", valor: 240, status: "Pago" as const },
+  { data: "30/05/2025", valor: 120, status: "Pago" as const },
+];
