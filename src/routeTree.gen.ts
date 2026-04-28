@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AppPipelineRouteImport } from './routes/app.pipeline'
 import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppLeadsRouteImport } from './routes/app.leads'
@@ -23,6 +24,17 @@ import { Route as AppIaRouteImport } from './routes/app.ia'
 import { Route as AppGanhosRouteImport } from './routes/app.ganhos'
 import { Route as AppConfiguracoesRouteImport } from './routes/app.configuracoes'
 import { Route as AppAtividadesRouteImport } from './routes/app.atividades'
+import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
+import { Route as AdminSuporteRouteImport } from './routes/admin.suporte'
+import { Route as AdminParceriasRouteImport } from './routes/admin.parcerias'
+import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
+import { Route as AdminIndicacoesRouteImport } from './routes/admin.indicacoes'
+import { Route as AdminInboxRouteImport } from './routes/admin.inbox'
+import { Route as AdminImoveisRouteImport } from './routes/admin.imoveis'
+import { Route as AdminIaRouteImport } from './routes/admin.ia'
+import { Route as AdminFinanceiroRouteImport } from './routes/admin.financeiro'
+import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configuracoes'
+import { Route as AdminAuditoriaRouteImport } from './routes/admin.auditoria'
 import { Route as AppParceriasIndexRouteImport } from './routes/app.parcerias.index'
 import { Route as AppParceriasAtivaRouteImport } from './routes/app.parcerias.ativa'
 import { Route as AppParceriasIdRouteImport } from './routes/app.parcerias.$id'
@@ -46,6 +58,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AppPipelineRoute = AppPipelineRouteImport.update({
   id: '/pipeline',
@@ -97,6 +114,61 @@ const AppAtividadesRoute = AppAtividadesRouteImport.update({
   path: '/atividades',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSuporteRoute = AdminSuporteRouteImport.update({
+  id: '/suporte',
+  path: '/suporte',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminParceriasRoute = AdminParceriasRouteImport.update({
+  id: '/parcerias',
+  path: '/parcerias',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLeadsRoute = AdminLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminIndicacoesRoute = AdminIndicacoesRouteImport.update({
+  id: '/indicacoes',
+  path: '/indicacoes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInboxRoute = AdminInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminImoveisRoute = AdminImoveisRouteImport.update({
+  id: '/imoveis',
+  path: '/imoveis',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminIaRoute = AdminIaRouteImport.update({
+  id: '/ia',
+  path: '/ia',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFinanceiroRoute = AdminFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminConfiguracoesRoute = AdminConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AppParceriasIndexRoute = AppParceriasIndexRouteImport.update({
   id: '/parcerias/',
   path: '/parcerias/',
@@ -115,8 +187,19 @@ const AppParceriasIdRoute = AppParceriasIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
+  '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
+  '/admin/ia': typeof AdminIaRoute
+  '/admin/imoveis': typeof AdminImoveisRoute
+  '/admin/inbox': typeof AdminInboxRoute
+  '/admin/indicacoes': typeof AdminIndicacoesRoute
+  '/admin/leads': typeof AdminLeadsRoute
+  '/admin/parcerias': typeof AdminParceriasRoute
+  '/admin/suporte': typeof AdminSuporteRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/app/atividades': typeof AppAtividadesRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
   '/app/ganhos': typeof AppGanhosRoute
@@ -127,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/app/leads': typeof AppLeadsRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/pipeline': typeof AppPipelineRoute
+  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/app/parcerias/$id': typeof AppParceriasIdRoute
   '/app/parcerias/ativa': typeof AppParceriasAtivaRoute
@@ -134,7 +218,17 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
+  '/admin/ia': typeof AdminIaRoute
+  '/admin/imoveis': typeof AdminImoveisRoute
+  '/admin/inbox': typeof AdminInboxRoute
+  '/admin/indicacoes': typeof AdminIndicacoesRoute
+  '/admin/leads': typeof AdminLeadsRoute
+  '/admin/parcerias': typeof AdminParceriasRoute
+  '/admin/suporte': typeof AdminSuporteRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/app/atividades': typeof AppAtividadesRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
   '/app/ganhos': typeof AppGanhosRoute
@@ -145,6 +239,7 @@ export interface FileRoutesByTo {
   '/app/leads': typeof AppLeadsRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/pipeline': typeof AppPipelineRoute
+  '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
   '/app/parcerias/$id': typeof AppParceriasIdRoute
   '/app/parcerias/ativa': typeof AppParceriasAtivaRoute
@@ -153,8 +248,19 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/app': typeof AppRouteWithChildren
+  '/admin/auditoria': typeof AdminAuditoriaRoute
+  '/admin/configuracoes': typeof AdminConfiguracoesRoute
+  '/admin/financeiro': typeof AdminFinanceiroRoute
+  '/admin/ia': typeof AdminIaRoute
+  '/admin/imoveis': typeof AdminImoveisRoute
+  '/admin/inbox': typeof AdminInboxRoute
+  '/admin/indicacoes': typeof AdminIndicacoesRoute
+  '/admin/leads': typeof AdminLeadsRoute
+  '/admin/parcerias': typeof AdminParceriasRoute
+  '/admin/suporte': typeof AdminSuporteRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/app/atividades': typeof AppAtividadesRoute
   '/app/configuracoes': typeof AppConfiguracoesRoute
   '/app/ganhos': typeof AppGanhosRoute
@@ -165,6 +271,7 @@ export interface FileRoutesById {
   '/app/leads': typeof AppLeadsRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/pipeline': typeof AppPipelineRoute
+  '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/app/parcerias/$id': typeof AppParceriasIdRoute
   '/app/parcerias/ativa': typeof AppParceriasAtivaRoute
@@ -176,6 +283,17 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/admin/auditoria'
+    | '/admin/configuracoes'
+    | '/admin/financeiro'
+    | '/admin/ia'
+    | '/admin/imoveis'
+    | '/admin/inbox'
+    | '/admin/indicacoes'
+    | '/admin/leads'
+    | '/admin/parcerias'
+    | '/admin/suporte'
+    | '/admin/usuarios'
     | '/app/atividades'
     | '/app/configuracoes'
     | '/app/ganhos'
@@ -186,6 +304,7 @@ export interface FileRouteTypes {
     | '/app/leads'
     | '/app/perfil'
     | '/app/pipeline'
+    | '/admin/'
     | '/app/'
     | '/app/parcerias/$id'
     | '/app/parcerias/ativa'
@@ -193,7 +312,17 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
+    | '/admin/auditoria'
+    | '/admin/configuracoes'
+    | '/admin/financeiro'
+    | '/admin/ia'
+    | '/admin/imoveis'
+    | '/admin/inbox'
+    | '/admin/indicacoes'
+    | '/admin/leads'
+    | '/admin/parcerias'
+    | '/admin/suporte'
+    | '/admin/usuarios'
     | '/app/atividades'
     | '/app/configuracoes'
     | '/app/ganhos'
@@ -204,6 +333,7 @@ export interface FileRouteTypes {
     | '/app/leads'
     | '/app/perfil'
     | '/app/pipeline'
+    | '/admin'
     | '/app'
     | '/app/parcerias/$id'
     | '/app/parcerias/ativa'
@@ -213,6 +343,17 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/admin/auditoria'
+    | '/admin/configuracoes'
+    | '/admin/financeiro'
+    | '/admin/ia'
+    | '/admin/imoveis'
+    | '/admin/inbox'
+    | '/admin/indicacoes'
+    | '/admin/leads'
+    | '/admin/parcerias'
+    | '/admin/suporte'
+    | '/admin/usuarios'
     | '/app/atividades'
     | '/app/configuracoes'
     | '/app/ganhos'
@@ -223,6 +364,7 @@ export interface FileRouteTypes {
     | '/app/leads'
     | '/app/perfil'
     | '/app/pipeline'
+    | '/admin/'
     | '/app/'
     | '/app/parcerias/$id'
     | '/app/parcerias/ativa'
@@ -231,7 +373,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AppRoute: typeof AppRouteWithChildren
 }
 
@@ -264,6 +406,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/app/pipeline': {
       id: '/app/pipeline'
@@ -335,6 +484,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAtividadesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/usuarios': {
+      id: '/admin/usuarios'
+      path: '/usuarios'
+      fullPath: '/admin/usuarios'
+      preLoaderRoute: typeof AdminUsuariosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/suporte': {
+      id: '/admin/suporte'
+      path: '/suporte'
+      fullPath: '/admin/suporte'
+      preLoaderRoute: typeof AdminSuporteRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/parcerias': {
+      id: '/admin/parcerias'
+      path: '/parcerias'
+      fullPath: '/admin/parcerias'
+      preLoaderRoute: typeof AdminParceriasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/leads': {
+      id: '/admin/leads'
+      path: '/leads'
+      fullPath: '/admin/leads'
+      preLoaderRoute: typeof AdminLeadsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/indicacoes': {
+      id: '/admin/indicacoes'
+      path: '/indicacoes'
+      fullPath: '/admin/indicacoes'
+      preLoaderRoute: typeof AdminIndicacoesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/inbox': {
+      id: '/admin/inbox'
+      path: '/inbox'
+      fullPath: '/admin/inbox'
+      preLoaderRoute: typeof AdminInboxRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/imoveis': {
+      id: '/admin/imoveis'
+      path: '/imoveis'
+      fullPath: '/admin/imoveis'
+      preLoaderRoute: typeof AdminImoveisRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/ia': {
+      id: '/admin/ia'
+      path: '/ia'
+      fullPath: '/admin/ia'
+      preLoaderRoute: typeof AdminIaRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/financeiro': {
+      id: '/admin/financeiro'
+      path: '/financeiro'
+      fullPath: '/admin/financeiro'
+      preLoaderRoute: typeof AdminFinanceiroRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/configuracoes': {
+      id: '/admin/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/admin/configuracoes'
+      preLoaderRoute: typeof AdminConfiguracoesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/auditoria': {
+      id: '/admin/auditoria'
+      path: '/auditoria'
+      fullPath: '/admin/auditoria'
+      preLoaderRoute: typeof AdminAuditoriaRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/app/parcerias/': {
       id: '/app/parcerias/'
       path: '/parcerias'
@@ -358,6 +584,38 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminAuditoriaRoute: typeof AdminAuditoriaRoute
+  AdminConfiguracoesRoute: typeof AdminConfiguracoesRoute
+  AdminFinanceiroRoute: typeof AdminFinanceiroRoute
+  AdminIaRoute: typeof AdminIaRoute
+  AdminImoveisRoute: typeof AdminImoveisRoute
+  AdminInboxRoute: typeof AdminInboxRoute
+  AdminIndicacoesRoute: typeof AdminIndicacoesRoute
+  AdminLeadsRoute: typeof AdminLeadsRoute
+  AdminParceriasRoute: typeof AdminParceriasRoute
+  AdminSuporteRoute: typeof AdminSuporteRoute
+  AdminUsuariosRoute: typeof AdminUsuariosRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAuditoriaRoute: AdminAuditoriaRoute,
+  AdminConfiguracoesRoute: AdminConfiguracoesRoute,
+  AdminFinanceiroRoute: AdminFinanceiroRoute,
+  AdminIaRoute: AdminIaRoute,
+  AdminImoveisRoute: AdminImoveisRoute,
+  AdminInboxRoute: AdminInboxRoute,
+  AdminIndicacoesRoute: AdminIndicacoesRoute,
+  AdminLeadsRoute: AdminLeadsRoute,
+  AdminParceriasRoute: AdminParceriasRoute,
+  AdminSuporteRoute: AdminSuporteRoute,
+  AdminUsuariosRoute: AdminUsuariosRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AppRouteChildren {
   AppAtividadesRoute: typeof AppAtividadesRoute
@@ -397,7 +655,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
