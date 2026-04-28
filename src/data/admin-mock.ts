@@ -240,7 +240,9 @@ export function calcularStatusConciliacao(esperado: number, recebido: number): S
   return "Divergente"; // recebido > esperado também é divergente
 }
 
-export const conciliacoes: Conciliacao[] = [
+const CONTRATO_PADRAO: ContratoAplicado = { versao: "v1.2", data: "01/01/2026", regras: "6% comissão · 60/30/10 captador/parceiro/fee Ubroker" };
+
+const _conciliacoesBase: Omit<Conciliacao, "slaDias" | "contrato" | "historicoCorretor" | "responsavel" | "previsaoPagamento" | "comprovante">[] = [
   {
     id: "CC-441", venda: "VD-118", corretor: "Alessandra Freixo",
     esperado: 14_100, recebido: 14_100, status: "Confirmada",
