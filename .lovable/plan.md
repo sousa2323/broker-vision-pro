@@ -1,106 +1,129 @@
-## Plano — Dashboard Admin como painel estratégico (aditivo)
+## Plano — Indicações Admin como sistema escalável de gestão de rede (aditivo)
 
-Atualização **estritamente aditiva** sobre `src/routes/admin.index.tsx`. Nada existente é removido ou renomeado. Sem nova rota, sem novo arquivo. Reusa dados de `src/data/admin-mock.ts` (incluindo `despesasMock` já criado).
+Atualização **estritamente aditiva** sobre `src/routes/admin.indicacoes.tsx`. Nada existente é removido. Sem nova rota, sem novo arquivo de página. Reusa `referralTree`, `adminBrokers` e `formatBRL` existentes. Adiciona dados de rede em `src/data/admin-mock.ts`.
 
 ---
 
-### 1. Camada de dados (`src/data/admin-mock.ts`) — pequenos aditivos
+### 1. Camada de dados (`src/data/admin-mock.ts`) — aditivos no final
 
-Adicionar ao final do arquivo, sem tocar em nada existente:
+Tipos e datasets novos, sem alterar `referralTree` nem `ReferralNode`:
 
-- `adminKpisExtra`:
-  - `receitaMesAnterior: 540_000` (para comparativo de tendência)
-  - `inadimplenciaAtualPct: 8.4`, `inadimplenciaMesAnteriorPct: 6.1`
-  - `conversaoMesPct: 14.2`, `conversaoMesAnteriorPct: 16.0`
-- `inteligenciaMercado`:
-  - `regioesDemanda`: top 5 (cidade/bairro, leads, visitas) — Niterói/Icaraí, SP/Pinheiros, Rio/Barra, Maricá, Curitiba.
-  - `tiposImovel`: top 5 (label, buscas) — Apto 2 quartos, Cobertura, Casa, Studio, Sala comercial.
-  - `faixaPrecoDominante`: `{ min: 500_000, max: 1_000_000, share: 38 }` + 2 faixas secundárias.
-  - `conversaoPorOrigem`: `[ {origem:"Lead Ubroker", pct:18}, {origem:"Parceria", pct:24}, {origem:"Indicação", pct:31} ]`.
-- `performanceCorretores`:
-  - `top`: 5 melhores (derivados de `adminBrokers` ordenado por `receita` + `conversaoPct` mock por nome).
-  - `baixaPerformance`: 4 com baixa conversão / inativos (usa `Tiago Sá`, `Carla Souza`, `Rafael Couto`, `Joana Maciel`) com motivo (`"Inatividade 21d"`, `"Conversão 3%"`, etc.).
+- `type RedeIndicacaoStatus = "Ativo" | "Teste" | "Inativo"`
+- `type RedeIndicacaoItem`: `{ id, nome, nivel: 1|2|3, indicador: string, indicados: number, status, mrr, receitaAcumulada, receitaPaga, receitaPendente, dataEntrada: string, crescimentoPct: number }`
+- `redeIndicacoes: RedeIndicacaoItem[]` — derivado/expandido a partir de `referralTree` (achatado) e enriquecido com dados financeiros mock (≈ 14 itens cobrindo N1/N2/N3, com ao menos 2 inativos, 2 em teste).
+- `redeIndicacoesPeriodoAnterior`: `{ totalIndicados, mrrN1, mrrN2, mrrN3, receitaTotal }` — para % crescimento.
+- `redeAlertas`: lista de alertas dinâmicos (ex.: "Joana Maciel parou de gerar receita", "Queda de 12% na rede em outubro", "3 indicados em churn").
+- `redeInsights`:
+  - `concentracaoTop`: `% da receita gerada pelos top 3 indicadores`.
+  - `profundidadeMedia`: número (média de níveis por ramo).
+  - `conversaoPorNivel`: `[ {nivel:1, pct:62}, {nivel:2, pct:38}, {nivel:3, pct:21} ]`.
+  - `evolucaoRede`: 6 meses `[ {mes, indicados, mrr} ]`.
 
-Tipos exportados para tudo acima.
+### 2. Topo — manter os 4 KPIs + Receita recorrente, adicionar 2 evoluções
 
-### 2. Topo do Dashboard — Resultado real (substitui a primeira faixa atual)
+Estrutura atual preservada (mesmo grid 4 colunas + bloco "Receita recorrente total"). Aditivos:
 
-Em `admin.index.tsx`, a section atual com 3 `BigKPI` (Receita total, Receita do mês, MRR SaaS) é **reorganizada em duas linhas** mantendo o componente `BigKPI`:
+- Em cada KPI de MRR (N1/N2/N3) e em "Total de indicados": badge pequeno abaixo do valor com `+X% vs mês anterior` (verde/vermelho conforme sinal), calculado a partir de `redeIndicacoesPeriodoAnterior`.
+- No bloco "Receita recorrente total": adicionar mini-barras horizontais mostrando **% de contribuição por nível** (N1/N2/N3) com valor numérico ao lado.
 
-**Linha 1 — Visão operacional (curto prazo)** — 4 cards:
-1. **Receita do mês** — `adminKpis.receitaMes` (verde, padrão atual).
-2. **Despesas do mês** — soma de `despesasMock` (neutro/cinza).
-3. **Resultado líquido** — `receitaMes - despesasMes` (verde se ≥0, vermelho se <0).
-4. **Margem (%)** — `resultado / receitaMes`. Badge: verde >20%, âmbar 0–20%, vermelho <0%.
+### 3. Nova seção — Filtros da rede
 
-**Linha 2 — Visão de escala (longo prazo)** — 2 cards:
-1. **Receita total da plataforma** — `adminKpis.receitaTotal` (acumulado).
-2. **MRR SaaS** — `adminKpis.mrrSaas`.
+Inserida **logo abaixo do bloco "Receita recorrente total"**, antes da árvore atual. Barra única com:
 
-Receita do mês **não é duplicada** — só aparece na linha 1. A linha 2 traz acumulado e recorrência.
+- Campo de busca (input) por nome.
+- Select "Período": Este mês / Últimos 3 meses / Últimos 6 meses / Tudo.
+- Select "Nível": Todos / N1 / N2 / N3.
+- Select "Status": Todos / Ativo / Teste / Inativo.
+- Select "Faixa de receita": Todos / Até R$200 / R$200–500 / R$500+.
+- Botão "Limpar filtros".
 
-### 3. Evolução de receita — comparativo + tendência
+Estado local (`useState`) controla todos os filtros e alimenta a tabela da seção 4. Sem efeito sobre árvore, KPIs ou outros blocos (filtros locais à tabela).
 
-Mantém o gráfico SVG atual. Adiciona acima do gráfico um pequeno header:
-- Variação vs mês anterior (`(receitaMes - receitaMesAnterior) / receitaMesAnterior * 100`).
-- Ícone de tendência: `TrendingUp` verde (>+3%), `Minus` cinza (-3% a +3%), `TrendingDown` vermelho (<-3%).
-- Label textual: "Crescimento" / "Estabilidade" / "Queda".
+### 4. Nova seção — Lista da rede (tabela escalável)
 
-### 4. Receita por origem — % dinâmico + destaque
+Inserida **logo após a barra de filtros**, antes da árvore. Card com título "Rede de indicações" e botão "Exportar" (dropdown — ver seção 8).
 
-Mantém o donut. Ajustes mínimos:
-- O `pct()` já existe e já é dinâmico — nada a mudar nesse ponto.
-- Adicionar **destaque visual** ao slice de maior valor: sua linha na legenda recebe `font-medium`, badge "Principal fonte" e ponto colorido maior. O slice correspondente no SVG ganha `strokeWidth="22"` (vs 20).
+Tabela com colunas:
+Corretor (avatar+nome) · Nível (badge N1/N2/N3) · Indicador · Indicados · Status (badge colorido) · MRR · Receita acumulada · Receita paga · Receita pendente · Data entrada · Ações.
 
-### 5. Nova seção — Inteligência de mercado
+Coluna Ações: ícones — "Ver detalhes" (abre dialog com dados financeiros completos do corretor), "Expandir rede" (rola para a árvore e expande o nó correspondente), "Exportar" (gera CSV individual).
 
-Inserida **abaixo dos gráficos principais** (após a section "Receita por origem + Evolução"), antes dos MiniKPIs operacionais. Um único `Card` com título "Inteligência de mercado" contendo grid de 4 sub-blocos (2x2 em desktop, 1 col em mobile):
+Paginação simples client-side (10 por página) ou virtualização leve via `slice`. Ordenável por receita/indicados/data clicando no header.
 
-1. **Regiões com maior demanda** — lista top 5 (região · leads · visitas) com mini-barras horizontais proporcionais.
-2. **Tipos de imóvel mais buscados** — lista top 5 com contagem.
-3. **Faixa de preço dominante** — destaque grande da faixa principal + 2 secundárias com `%`.
-4. **Conversão por origem** — barras horizontais com `%` por origem (Lead Ubroker, Parceria, Indicação).
+### 5. Atualização da árvore existente — colapsada por padrão + drill-down
 
-Todos usam o mesmo padrão visual de `Card` interno do arquivo.
+Mantém o componente atual (mesmo card, mesmo layout visual), mas troca a renderização achatada por uma versão recursiva colapsável:
 
-### 6. Nova seção — Performance de corretores
+- Cada nó com `filhos` exibe um chevron (`ChevronRight`/`ChevronDown`) clicável.
+- Estado `expanded: Set<string>` (por nome) controla quais nós estão abertos.
+- **Inicialmente apenas a raiz aparece expandida** (Ramon Capone visível, filhos colapsados).
+- Botões "Expandir tudo" / "Recolher tudo" no topo do card.
+- Quando o usuário clica em "Expandir rede" na tabela (seção 4), o nó alvo entra no Set e o card rola até ele.
 
-Inserida **abaixo de Inteligência de mercado**, antes dos MiniKPIs. Grid 2 colunas:
+Visual idêntico ao atual (mesmas badges N0/N1/N2/N3, mesma tipografia).
 
-- **Top corretores** (`Card`): tabela compacta — Avatar · Nome · Receita · Conversão · Badge "Top". Top 5.
-- **Baixa performance** (`Card`): tabela compacta — Avatar · Nome · Motivo · Badge âmbar/vermelho. Lista 4. Botão "Ver no admin de usuários" (Link para `/admin/usuarios`).
+### 6. Nova seção — Performance da rede
 
-Reusa `adminBrokers` (avatar, nome, receita) + dados de `performanceCorretores`.
+Inserida **abaixo da árvore**, substituindo o bloco fixo "Top indicadores da rede" por um grid de 3 cards (mesmo padrão visual):
 
-### 7. MiniKPIs operacionais — sem alteração
+1. **Top por receita** — top 5 ordenados por `mrr` (lista atual evoluída, agora dinâmica de `redeIndicacoes`).
+2. **Top por crescimento** — top 5 por `crescimentoPct` (badge verde com `+X%`).
+3. **Indicadores inativos** — lista dos `status === "Inativo"` com motivo ("Sem receita há Xd") e botão "Notificar".
 
-`Corretores ativos · Leads gerados · Parcerias ativas · Vendas registradas` permanecem como estão.
+O bloco fixo atual é **substituído pelo card "Top por receita"** (mantém a mesma intenção, mas dinâmico). Nenhum dado novo conflita.
 
-### 8. Alertas estratégicos — evolução do bloco existente
+### 7. Camada financeira por corretor
 
-Mantém o bloco "Alertas estratégicos" e seus 4 alertas atuais. **Adiciona** novos alertas calculados dinamicamente, ao topo da lista, apenas quando aplicáveis:
+Já entra na tabela (seção 4) como 3 colunas: Receita acumulada, Receita paga, Receita pendente. Adicionalmente, no dialog "Ver detalhes" da seção 4, mostrar:
 
-- `resultadoLiquido < 0` → alerta vermelho: "Resultado negativo no mês".
-- Margem < margem mês anterior em > 5pp → alerta âmbar: "Margem em queda vs mês anterior".
-- `inadimplenciaAtualPct > inadimplenciaMesAnteriorPct + 1` → alerta âmbar: "Inadimplência crescente".
-- `conversaoMesPct < conversaoMesAnteriorPct - 1` → alerta âmbar: "Queda de conversão".
-- `despesasMes > receitaMes * 0.7` → alerta âmbar: "Aumento de despesas vs receita".
+- Resumo financeiro grande (3 cards: gerada / paga / pendente).
+- Mini-tabela de últimos 6 repasses mock (data, valor, status).
 
-Reusa o componente `Alerta` já presente no arquivo. Os 4 alertas atuais (cobranças, parcerias, bypass, conciliações) seguem renderizados em seguida.
+### 8. Exportação
 
-### 9. Restrições respeitadas
+Botão "Exportar" no header do card "Rede de indicações" abre dropdown com 5 opções:
 
-- Nenhuma rota nova. Nenhum arquivo novo. Edição de **2 arquivos**.
-- Componentes existentes (`BigKPI`, `MiniKPI`, `Card`, `Alerta`) reusados — sem mudanças.
-- Identidade visual mantida (oklch tokens atuais, mesmas classes Tailwind).
+- Relatório por corretor (CSV de um corretor — habilita só após seleção; ou abre seletor)
+- Relatório da rede completa (CSV de `redeIndicacoes`)
+- Receita por período (CSV de `evolucaoRede`)
+- Receita por nível (CSV agregado por N1/N2/N3)
+- Histórico de repasses (CSV mock)
+
+Implementação: helper local `downloadCSV(filename, rows)` que monta blob `text/csv` e dispara `<a download>`. Sem dependência nova.
+
+### 9. Nova seção — Alertas da rede
+
+Card "Alertas da rede" inserido **acima da seção Performance** (entre tabela e performance). Lista os itens de `redeAlertas` com ícone (`AlertTriangle` âmbar / `AlertCircle` vermelho) + texto + ação opcional ("Ver corretor"). Tipos:
+- Indicador parou de gerar receita
+- Queda de performance da rede no mês
+- Redução de receita recorrente
+- Churn de indicados (saídas no período)
+
+Reusa o padrão visual de alertas já existente em outras telas admin (mesma estrutura de `Card` com lista divisível).
+
+### 10. Nova seção — Insights estratégicos
+
+Card "Insights da rede" inserido **abaixo de Performance da rede** (último bloco da página). Grid 2x2 em desktop:
+
+1. **Concentração de receita** — "Top 3 indicadores geram X% da receita" + barra horizontal.
+2. **Profundidade da rede** — número grande (média de níveis) + breakdown N1/N2/N3 (quantidade de nós).
+3. **Conversão por nível** — 3 barras horizontais com `%` (N1/N2/N3) usando `conversaoPorNivel`.
+4. **Evolução da rede** — mini-gráfico SVG (mesmo padrão SVG já usado em `admin.index.tsx`) com linha de MRR ou indicados ao longo de 6 meses.
+
+### 11. Restrições respeitadas
+
+- Sem nova rota, sem novo arquivo de página. Edição de **2 arquivos**: `src/data/admin-mock.ts` + `src/routes/admin.indicacoes.tsx`.
+- KPIs do topo, bloco de receita recorrente total e árvore **mantidos** (árvore apenas torna-se colapsável; tipo `ReferralNode` intacto).
+- Lógica de cálculo dos níveis não muda (`flatten` continua funcionando; novos selectors derivam da mesma estrutura).
+- Componentes shadcn já presentes reusados (`Badge`, `Button`, `Input`, `Card`, `Table`, `Dialog`, `DropdownMenu`, `Collapsible`).
 - Sem novas dependências.
-- Dashboard "consome" dados de Financeiro reusando `despesasMock` já existente em `admin-mock.ts` (mesmo módulo de dados que `admin.financeiro.tsx` usa).
+- Identidade visual mantida (mesmos tokens, mesmas classes Tailwind, mesma família tipográfica `font-display`, `num`).
 
 ---
 
 ### Arquivos afetados
 
-- **Editado** `src/data/admin-mock.ts` — adiciona `adminKpisExtra`, `inteligenciaMercado`, `performanceCorretores` e tipos relacionados ao final do arquivo.
-- **Editado** `src/routes/admin.index.tsx` — reorganiza topo em 2 linhas (operacional/escala), adiciona header de tendência ao gráfico de evolução, destaque na receita por origem, 2 novas seções (Inteligência de mercado, Performance de corretores), e novos alertas dinâmicos no bloco existente.
+- **Editado** `src/data/admin-mock.ts` — adiciona ao final: tipos `RedeIndicacaoStatus`, `RedeIndicacaoItem`; datasets `redeIndicacoes`, `redeIndicacoesPeriodoAnterior`, `redeAlertas`, `redeInsights`. Nada existente alterado.
+- **Editado** `src/routes/admin.indicacoes.tsx` — adiciona % crescimento e contribuição por nível no topo; novas seções (filtros, tabela da rede com ações + dialog de detalhes, alertas, performance dinâmica em 3 cards, insights); converte renderização da árvore para versão colapsável (preservando aparência); adiciona helper `downloadCSV` e dropdown de exportação.
 
-Nenhum arquivo deletado. Nenhuma rota alterada. Nenhuma funcionalidade existente removida.
+Nenhum arquivo deletado. Nenhuma rota alterada. Nenhum KPI ou bloco existente removido.
