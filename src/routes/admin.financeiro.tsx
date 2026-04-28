@@ -656,7 +656,7 @@ function FinanceiroPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Ação direta</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => atualizarConciliacao(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, { data: agora(), autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: c.recebido, valorNovo: c.esperado }) || toast.success(`Pagamento de ${c.id} confirmado`)}>
+                            <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, { data: agora(), autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: c.recebido, valorNovo: c.esperado }); toast.success(`Pagamento de ${c.id} confirmado`); }}>
                               <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> Confirmar pagamento
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
