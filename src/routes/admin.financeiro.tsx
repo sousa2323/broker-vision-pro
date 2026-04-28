@@ -538,42 +538,166 @@ function FinanceiroPage() {
       )}
 
       {tab === "conciliacao" && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead className="bg-surface">
-              <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground">
-                <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">Venda</th>
-                <th className="px-4 py-3">Corretor</th>
-                <th className="px-4 py-3 text-right">Esperado</th>
-                <th className="px-4 py-3 text-right">Recebido</th>
-                <th className="px-4 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {conciliacoes.map((c) => (
-                <tr key={c.id} className={cn(c.status === "Divergente" && "bg-red-50/50")}>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{c.id}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{c.venda}</td>
-                  <td className="px-4 py-3">{c.corretor}</td>
-                  <td className="px-4 py-3 text-right num">{formatBRL(c.esperado)}</td>
-                  <td className={cn("px-4 py-3 text-right num", c.status === "Divergente" && "text-red-700 font-medium")}>{formatBRL(c.recebido)}</td>
-                  <td className="px-4 py-3">
-                    <span className={cn(
-                      "rounded-full px-2 py-0.5 text-xs",
-                      c.status === "Confirmada" && "bg-emerald-50 text-emerald-700",
-                      c.status === "Pendente" && "bg-amber-50 text-amber-700",
-                      c.status === "Divergente" && "bg-red-50 text-red-700",
-                    )}>{c.status}</span>
-                  </td>
+        <div className="space-y-4">
+          {/* Visão de controle */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MiniKPI label="Total conciliado" value={formatBRL(concKpis.conciliado)} tone="green" hint={`${concFiltradas.filter((c) => c.status === "Confirmada").length} venda(s)`} />
+            <MiniKPI label="Total divergente" value={formatBRL(concKpis.divergente)} tone="red" hint={`${concFiltradas.filter((c) => c.status === "Divergente" || c.status === "Parcial").length} caso(s)`} />
+            <MiniKPI label="Total pendente" value={formatBRL(concKpis.pendente)} tone="amber" hint={`${concFiltradas.filter((c) => c.status === "Pendente").length} aberto(s)`} />
+            <MiniKPI label="Valor em risco" value={formatBRL(concKpis.risco)} tone="red" hint="Divergências + pendentes" />
+          </div>
+
+          {/* Filtros */}
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
+            <FilterIcon className="h-4 w-4 text-muted-foreground" />
+            <Select value={concStatusFiltro} onValueChange={(v) => setConcStatusFiltro(v as typeof concStatusFiltro)}>
+              <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                {(["Todos", "Confirmada", "Parcial", "Divergente", "Pendente"] as const).map((s) => (
+                  <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={concRiscoFiltro} onValueChange={(v) => setConcRiscoFiltro(v as typeof concRiscoFiltro)}>
+              <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Risco" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos" className="text-xs">Todos os riscos</SelectItem>
+                <SelectItem value="baixo" className="text-xs">Baixo</SelectItem>
+                <SelectItem value="medio" className="text-xs">Médio</SelectItem>
+                <SelectItem value="alto" className="text-xs">Alto</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={concCorretor} onValueChange={setConcCorretor}>
+              <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Corretor" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos" className="text-xs">Todos os corretores</SelectItem>
+                {concCorretores.map((n) => <SelectItem key={n} value={n} className="text-xs">{n}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Input className="h-8 w-[110px] text-xs" placeholder="Valor mín" value={concValMin} onChange={(e) => setConcValMin(e.target.value)} />
+            <Input className="h-8 w-[110px] text-xs" placeholder="Valor máx" value={concValMax} onChange={(e) => setConcValMax(e.target.value)} />
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Switch checked={concSomenteDiv} onCheckedChange={setConcSomenteDiv} />
+              Só com divergência
+            </label>
+            <div className="ml-auto">
+              <ExportarConciliacaoMenu conciliacoes={concFiltradas} />
+            </div>
+          </div>
+
+          {/* Tabela */}
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead className="bg-surface">
+                <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <th className="px-4 py-3">ID</th>
+                  <th className="px-4 py-3">Venda</th>
+                  <th className="px-4 py-3">Corretor</th>
+                  <th className="px-4 py-3 text-right">Esperado</th>
+                  <th className="px-4 py-3 text-right">Recebido</th>
+                  <th className="px-4 py-3 text-right">Diferença</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Risco</th>
+                  <th className="px-4 py-3">Operacional</th>
+                  <th className="px-4 py-3 w-10"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {concFiltradas.map((c) => {
+                  const dif = c.esperado - c.recebido;
+                  const risco = classificarRiscoConc(c);
+                  const alertas = alertasConc(c);
+                  return (
+                    <tr key={c.id} className={cn("cursor-pointer hover:bg-surface/40", (c.status === "Divergente" || c.status === "Parcial") && "bg-red-50/40")} onClick={() => setConcDetalhe(c)}>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          {alertas.map((a, i) => (
+                            <TooltipProvider key={i}><Tooltip><TooltipTrigger asChild><span className="cursor-help">{a.icon}</span></TooltipTrigger><TooltipContent><p className="text-xs">{a.msg}</p></TooltipContent></Tooltip></TooltipProvider>
+                          ))}
+                          {c.id}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs">{c.venda}</td>
+                      <td className="px-4 py-3">{c.corretor}</td>
+                      <td className="px-4 py-3 text-right num">{formatBRL(c.esperado)}</td>
+                      <td className="px-4 py-3 text-right num">{formatBRL(c.recebido)}</td>
+                      <td className={cn("px-4 py-3 text-right num font-medium", dif > 0 && "text-amber-700", dif < 0 && "text-blue-700")}>
+                        {dif === 0 ? "—" : formatBRL(Math.abs(dif))}
+                      </td>
+                      <td className="px-4 py-3"><ConcStatusBadge status={c.status} /></td>
+                      <td className="px-4 py-3">
+                        <HoverCard>
+                          <HoverCardTrigger asChild>
+                            <span className={cn("inline-flex h-2 w-2 rounded-full",
+                              risco === "baixo" && "bg-emerald-500",
+                              risco === "medio" && "bg-amber-500",
+                              risco === "alto" && "bg-red-500",
+                            )} />
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-72 text-xs">
+                            <div className="font-semibold mb-1.5 capitalize">Risco {risco}</div>
+                            <ul className="space-y-1 text-muted-foreground">
+                              <li>Dias desde fatura: <span className="text-foreground">{c.diasDesdeFatura}</span></li>
+                              <li>Divergência: <span className="text-foreground">{c.esperado === 0 ? "0%" : `${(((c.esperado - c.recebido) / c.esperado) * 100).toFixed(1)}%`}</span></li>
+                              <li>Histórico do corretor: <span className="text-foreground">{corretorRisco[c.corretor]?.nivel ?? "n/d"} · {corretorRisco[c.corretor]?.pctAtraso ?? 0}% atraso</span></li>
+                            </ul>
+                          </HoverCardContent>
+                        </HoverCard>
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {c.statusOperacional !== "—" ? (
+                          <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-muted-foreground">{c.statusOperacional}</span>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Ação direta</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => atualizarConciliacao(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, { data: agora(), autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: c.recebido, valorNovo: c.esperado }) || toast.success(`Pagamento de ${c.id} confirmado`)}>
+                              <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> Confirmar pagamento
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                              <Pencil className="mr-2 h-4 w-4" /> Ajustar valor recebido
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => atualizarConciliacao(c.id, {}, { data: agora(), autor: "Superadmin", acao: "Marcado como divergente manualmente" }) || toast.warning(`${c.id} marcado para revisão`)}>
+                              <AlertTriangle className="mr-2 h-4 w-4 text-amber-600" /> Marcar como divergente
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                              <Phone className="mr-2 h-4 w-4" /> Registrar contato
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                              <FileSearch className="mr-2 h-4 w-4" /> Ver cobrança completa
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toast.info(`Contrato da parceria ${c.venda}`, { description: "Documento abriria em nova aba (mock)." })}>
+                              <FileSignature className="mr-2 h-4 w-4" /> Ver contrato da parceria
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {concFiltradas.length === 0 && (
+                  <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma conciliação para os filtros aplicados.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       <CobrancaDetalheModal cobranca={cobrancaDetalhe} onClose={() => setCobrancaDetalhe(null)} />
+      <ConciliacaoDetalheModal
+        conciliacao={concDetalhe}
+        onClose={() => setConcDetalhe(null)}
+        onUpdate={atualizarConciliacao}
+        onInteracao={adicionarInteracao}
+      />
+
     </div>
   );
 }
