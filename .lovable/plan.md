@@ -1,153 +1,111 @@
-## Ambiente Admin Ubroker — Painel estratégico do superadmin
 
-Novo ambiente paralelo ao app do corretor, com **sidebar própria**, identidade visual mais densa e foco em leitura de dados. **Nenhum dado real, sem APIs, sem cálculos dinâmicos** — tudo mock visual reaproveitando `src/data/mock.ts` quando útil.
+# Financeiro V2 — Governança e Controle
 
-## Estrutura de rotas (TanStack file-based)
+Evolução da tela `/admin/financeiro` adicionando camadas de governança, rastreabilidade, risco e exportação **sem alterar** a estrutura base (cards do topo, abas, tabela). Todas as adições são incrementais.
 
-```text
-src/routes/
-  admin.tsx                  ← layout (sidebar + header Admin)
-  admin.index.tsx            ← /admin              Dashboard estratégico
-  admin.financeiro.tsx       ← /admin/financeiro   Cobranças, vendas, conciliação
-  admin.indicacoes.tsx       ← /admin/indicacoes   Árvore trinível
-  admin.usuarios.tsx         ← /admin/usuarios     Lista de corretores
-  admin.imoveis.tsx          ← /admin/imoveis      Inventário global
-  admin.leads.tsx            ← /admin/leads        Todos os leads
-  admin.parcerias.tsx        ← /admin/parcerias    Lista de parcerias
-  admin.ia.tsx               ← /admin/ia           Performance da IA
-  admin.inbox.tsx            ← /admin/inbox        Canais e volumes
-  admin.configuracoes.tsx    ← /admin/configuracoes Regras de negócio
-  admin.auditoria.tsx        ← /admin/auditoria    Logs de eventos
-  admin.suporte.tsx          ← /admin/suporte      Disputas e bypass
+## 1. Enriquecer mock (`src/data/admin-mock.ts`)
 
-src/data/admin-mock.ts       ← novo: cobranças, conciliações, logs, disputas, etc.
-```
+Estender o tipo `Cobranca` (não-breaking — campos adicionais opcionais) e popular dados realistas:
 
-A landing pública (`/`) e o app do corretor (`/app/*`) **não são alterados**. Adicionar um link discreto "Admin" no rodapé da landing apontando para `/admin` (acesso demonstrativo).
+- `status` agora inclui `"Contestado"`.
+- Novos campos: `criadoEm`, `faturadoEm`, `pagoEm?`, `vendaId?` (link para `VendaDetalhada`), `diasAtraso?`, `divergencia?: { esperado: number; cobrado: number }`.
+- Nova estrutura `corretorRisco: Record<string, { nivel: "baixo" | "medio" | "alto"; pctAtraso: number; totalAberto: number }>`.
+- Expandir lista de cobranças (12–16 itens) com mistura realista de origens, status, divergências e atrasos para alimentar todas as visualizações.
 
-## Layout do Admin (`admin.tsx`)
+## 2. Filtros avançados (Camada 1)
 
-Mesma anatomia geral do `app.tsx`, porém com paleta admin (`bg-navy` mais profundo, badge "ADMIN" no header) e densidade maior.
+Acima da tabela de Cobranças, adicionar barra de filtros colapsável:
 
-```text
-┌─ Sidebar (w-64, dark) ──────┬─ Header (Admin · Superadmin) ───────┐
-│ UBROKER · ADMIN             │ Busca global · Sino · Avatar admin  │
-│                             ├─────────────────────────────────────┤
-│ ── OPERAÇÃO ──              │                                     │
-│ • Dashboard                 │  <Outlet />                          │
-│ • Financeiro       (badge)  │                                     │
-│ • Indicações                │                                     │
-│                             │                                     │
-│ ── REDE ──                  │                                     │
-│ • Usuários                  │                                     │
-│ • Imóveis                   │                                     │
-│ • Leads                     │                                     │
-│ • Parcerias                 │                                     │
-│                             │                                     │
-│ ── INTELIGÊNCIA ──          │                                     │
-│ • IA Assistente             │                                     │
-│ • Inbox                     │                                     │
-│                             │                                     │
-│ ── GOVERNANÇA ──            │                                     │
-│ • Configurações             │                                     │
-│ • Auditoria                 │                                     │
-│ • Suporte / Disputas (badge)│                                     │
-│                             │                                     │
-│ ──────────────              │                                     │
-│ [avatar] Superadmin Ubroker │                                     │
-└─────────────────────────────┴─────────────────────────────────────┘
-```
+- **Período**: date-range (Popover + Calendar shadcn, `mode="range"`, `pointer-events-auto`).
+- **Corretor**: Select com busca (Command/Popover) usando lista derivada das cobranças.
+- **Tipo de receita**: chips (Parceria / Lead Ubroker / SaaS).
+- **Status**: chips estendidos (inclui Contestado) — substitui o filtro atual mantendo o mesmo visual.
+- **Estratégicos** (linha secundária recolhível "Filtros avançados"): valor mín/máx, atraso > N dias, "Apenas alto valor (> R$5k)" toggle.
+- Botão "Limpar filtros" + contador "X de Y cobranças".
 
-Badges numéricos pequenos em Financeiro (cobranças atrasadas) e Suporte (disputas abertas) usando `bg-warm`.
+Estado local com `useState` e função `aplicarFiltros(cobrancas)` pura.
 
-## Módulos — conteúdo visual de cada tela
+## 3. Seletor de período + KPIs dinâmicos (Camada 7)
 
-### 1. Dashboard (`admin.index.tsx`)
-- **Faixa de receita** (3 KPIs grandes): Receita total plataforma · Receita do mês · MRR SaaS.
-- **Receita por origem** (donut SVG estático + legenda): Comissão imóveis / SaaS / Indicações.
-- **Operação** (4 KPIs): Corretores ativos · Leads gerados · Parcerias ativas · Vendas registradas.
-- **Alertas estratégicos** (lista colorida): cobranças em atraso (vermelho), parcerias paradas (laranja), possíveis bypass (vermelho/escuro).
-- **Mini-gráfico evolução de receita** (SVG polyline reaproveitando padrão da landing).
+Acima dos 3 cards principais existentes, adicionar tira com 4 chips: **Hoje · 7 dias · 30 dias · Personalizado**. Recalcula `totalRecebido`, `totalPendente`, `totalAtraso` via filtragem por `pagoEm`/`vencimento`. Cards principais permanecem visualmente idênticos.
 
-### 2. Financeiro (`admin.financeiro.tsx`)
-Tabs: **Cobranças** · **Vendas** · **Conciliação**.
-- **Cobranças**: tabela (Corretor · Origem · Valor · Vencimento · Status badge · Ação "Marcar como pago" / "Ver origem"). Filtros chips: Todos / Pendente / Faturado / Pago / Atrasado. Status colorido (verde pago, laranja pendente, vermelho atrasado).
-- **Vendas (detalhamento)**: cards expansíveis mostrando Imóvel · Valor venda · Comissão total · Split (corretor A / corretor B / fee Ubroker) com barras proporcionais.
-- **Conciliação**: tabela (Venda · Corretor · Valor esperado · Valor recebido · Status: Pendente / Confirmada / Divergente). Linha divergente destacada em vermelho.
+## 4. Indicadores de saúde financeira (Camada 8)
 
-### 3. Indicações (`admin.indicacoes.tsx`)
-- Árvore visual trinível (3 colunas em cascata, conectores SVG simples).
-- KPIs: Total indicados · Receita por nível (N1, N2, N3) · MRR recorrente total.
-- Top 5 indicadores da rede (lista com avatar + receita gerada).
+Logo abaixo dos 3 cards atuais, grid de 4 mini-cards densos:
 
-### 4. Usuários (`admin.usuarios.tsx`)
-- Tabela densa: Avatar · Nome · CRECI · Cidade · Plano (Free/Pro chip) · Status (Ativo/Inativo/Bloqueado) · Receita gerada · Ações (Alterar plano · Bloquear).
-- Filtros chips no topo: Todos / Pro / Free / Bloqueados. Busca.
-- Reaproveita avatares e padrões de `mock.ts`; gera ~12 corretores fictícios em `admin-mock.ts`.
+- Taxa de inadimplência (%)
+- Ticket médio
+- Tempo médio de pagamento (dias)
+- % receita por origem (mini barra empilhada Parceria / Lead / SaaS)
 
-### 5. Imóveis (`admin.imoveis.tsx`)
-- Tabela: Foto thumb · Nome · Bairro · Valor · Corretor responsável · Status (Ativo/Vendido/Removido) · Marketplace (badge). Reaproveitar `properties` do `mock.ts`.
+Mesmo estilo visual dos KPIs existentes, mas em variante compacta para não competir com os cards principais.
 
-### 6. Leads (`admin.leads.tsx`)
-- Tabela global: ID · Nome · Origem (IA/Inbox/Marketplace/Indicação) · Corretor atribuído · Status · Última interação. Filtros por origem. Reaproveitar `leads` do mock.
+## 5. Coluna "Risco" (Camada 4)
 
-### 7. Parcerias (`admin.parcerias.tsx`)
-- Tabela: Imóvel · Corretor captador · Corretor parceiro · Status (Ativa/Finalizada/Cancelada) · Comissão estimada · Ações (Ver contrato · Ver pipeline). Linha clicável abre painel lateral com timeline mock.
+Nova coluna entre `Status` e `Ações`. Bolinha colorida (`bg-emerald-500` / `bg-amber-500` / `bg-red-500`) + label curto. HoverCard (shadcn) com:
 
-### 8. IA Assistente (`admin.ia.tsx`)
-- KPIs globais: Leads atendidos · Leads qualificados · Taxa qualificação · Tempo médio resposta.
-- Gráfico barras semanal (SVG estático).
-- Tabela "Logs de atendimento" (Lead · Canal · Score · Resultado · Data).
+- % de pagamentos em atraso do corretor
+- Total em aberto
+- Histórico curto (últimas 3 cobranças)
 
-### 9. Inbox (`admin.inbox.tsx`)
-- Cards de canais: WhatsApp · Instagram · Marketplace · Email — com status conectado e volume de conversas.
-- KPIs: Conversas totais · Sem resposta (alerta laranja) · Tempo médio.
+## 6. Mini-conciliação visual (Camada 9)
 
-### 10. Configurações (`admin.configuracoes.tsx`)
-Cards de regras de negócio (input visual, sem persistência):
-- **Comissão padrão** (% slider/input + texto explicativo).
-- **Fee Ubroker — Parceria** (% input).
-- **Fee Ubroker — Lead próprio** (% input).
-- **Regras de indicação trinível** (3 inputs % por nível: N1 / N2 / N3).
-- **Mensalidade do plano Pro** (R$ input).
-- Botão "Salvar alterações" (visual, sem ação).
+Ícone à esquerda do `valor`:
 
-### 11. Auditoria (`admin.auditoria.tsx`)
-- Timeline densa de logs: ícone por tipo · Ator · Ação · Alvo · Timestamp.
-- Filtros por tipo: Venda registrada · Parceria criada · Contrato assinado · Bloqueio · Alteração de regra.
-- Eventos críticos destacados em vermelho/laranja.
+- ✓ verde quando `divergencia` ausente.
+- ⚠ âmbar quando há divergência.
 
-### 12. Suporte / Disputas (`admin.suporte.tsx`)
-Tabs: **Disputas** · **Contestações** · **Possíveis bypass**.
-- **Disputas**: cards com Corretor A vs Corretor B · motivo · status (Aberta/Em análise/Resolvida) · botão "Abrir caso".
-- **Contestações de venda**: lista de vendas contestadas com valor em risco.
-- **Possíveis bypass**: alertas vermelhos com indício (ex: "lead recebido pela Ubroker fechado fora do sistema") + Corretor + Lead + Ação "Investigar".
+Tooltip mostra "Esperado X · Cobrado Y · Δ Z".
 
-## Diretrizes visuais
+## 7. Coluna "Origem detalhada" + Modal (Camadas 2 e 3)
 
-- **Paleta**: reaproveitar tokens existentes (`bg-navy`, `bg-card`, `bg-surface`, `text-warm`, `bg-warm`).
-  - Azul (primary) → padrão de ações.
-  - **Laranja (`bg-warm` / `text-warm`)** → alertas e atenção.
-  - **Verde (`text-emerald-600` / `bg-emerald-50`)** → pagos / positivos.
-  - **Vermelho (`text-red-600` / `bg-red-50`)** → atraso / risco / bypass.
-- Tabelas densas (`text-sm`, `py-2`), cabeçalhos `uppercase tracking-widest text-[11px] text-muted-foreground`.
-- Badges de status reutilizáveis (componente local `StatusBadge` por tela quando útil).
-- Cards `rounded-xl border bg-card`, espaçamento `space-y-6` consistente com o app do corretor.
-- Header do admin mostra chip "ADMIN" em `bg-warm` ao lado do título.
+Botão ícone `<FileSearch />` em nova coluna (ou dentro de Ações como item primário "Ver origem"). Abre `Dialog` shadcn com 4 seções:
+
+1. **Venda vinculada**: imóvel, VGV, tipo de operação (consulta `vendasDetalhadas` por `vendaId`; fallback "Cobrança SaaS recorrente" quando não houver venda).
+2. **Comissão**: % total, divisão por participante, % Ubroker, **valor calculado vs valor cobrado** com badge de divergência se aplicável.
+3. **Envolvidos**: lista corretor(es) com avatar.
+4. **Timeline financeira** (Camada 3): linha vertical com nós Criado → Faturado → Vencimento → Pago. Se atrasado, badge vermelho "X dias em atraso" no nó de Vencimento.
+
+## 8. Ações operacionais expandidas (Camada 5)
+
+DropdownMenu na coluna Ações (substitui os 3 ícones soltos por um trigger `<MoreHorizontal />` + mantém o atalho "Marcar como pago" como ícone visível para fluxo rápido):
+
+- ✓ Marcar como pago
+- 📄 Gerar cobrança (toast simulado)
+- ⚠ Marcar como contestado
+- 🔍 Ver origem (abre o modal)
+- ✏ Editar cobrança (toast simulado)
+
+Usar `sonner` (`toast.success`) para feedback simulado — sem mutação real do mock.
+
+## 9. Exportação inteligente (Camada 6)
+
+Adicionar botão "Exportar" no header da seção (não existia ainda). DropdownMenu com 4 opções, todas geram CSV client-side via `Blob` e `URL.createObjectURL`:
+
+- Exportar dados filtrados (CSV)
+- Relatório por corretor (agrupado)
+- Relatório contábil (SaaS vs Comissão)
+- Relatório de inadimplência (apenas Atrasado/Contestado)
+
+## 10. Agrupamento (Camada 10 — preparação)
+
+Adicionar utilitário `agruparCobrancas(cobrancas, por: "corretor" | "origem" | "mes")` em `src/data/admin-mock.ts`, sem UI agora. Comentário `// TODO: usado por views futuras de agrupamento`.
+
+## Arquivos afetados
+
+- **Editar** `src/data/admin-mock.ts` — estender tipo Cobranca, adicionar `corretorRisco`, util de agrupamento, dados ricos.
+- **Editar** `src/routes/admin.financeiro.tsx` — toda a UI nova (filtros, KPIs de saúde, novas colunas, modal, dropdowns, export). Aba "Cobranças" recebe ~80% das mudanças; abas "Vendas" e "Conciliação" permanecem intactas.
 
 ## Detalhes técnicos
 
-- **Sem novas dependências**. Apenas `lucide-react`, shadcn (`Badge`, `Button`, `Card`, `Tabs`, `Input`, `Select`, `Table`) já presentes.
-- **Roteamento**: arquivos seguem convenção `admin.<rota>.tsx`. Layout `admin.tsx` exporta `createFileRoute("/admin")` com `component` que renderiza sidebar + `<Outlet />`. `routeTree.gen.ts` é regenerado automaticamente — não editar manualmente.
-- **Mock data novo** (`src/data/admin-mock.ts`): exporta `adminBrokers`, `cobrancas`, `vendasDetalhadas`, `conciliacoes`, `disputas`, `bypassAlertas`, `auditLogs`, `iaLogs`, `inboxCanais`, `referralTree`. Tipos explícitos. Reaproveita `leads`, `properties`, `formatBRL` de `mock.ts`.
-- **Componentes locais por arquivo** (sem novos componentes globais): `Section`, `KPI`, `StatusBadge`, `RowAction` definidos dentro de cada rota como já é padrão no projeto.
-- **Acesso**: link discreto no footer da landing (`src/routes/index.tsx`) "Admin (demo)" → `/admin`. Sem autenticação (é demo).
-- **Sidebar collapse**: não implementar agora — manter sempre visível em `md:flex` como no app do corretor.
+- shadcn já disponível: `dialog`, `dropdown-menu`, `popover`, `calendar`, `command`, `hover-card`, `tooltip`, `select`, `sonner`. Sem novas deps.
+- Date range: `Calendar mode="range"` com `className="p-3 pointer-events-auto"`.
+- Status "Contestado" → cor `bg-purple-50 text-purple-700`, mantendo o padrão de pílulas existente.
+- CSV: helper local `toCSV(rows: Record<string, unknown>[])` com escape de `"` e separador `;` (compatível com Excel pt-BR).
+- Tipos derivados (`StatusCobranca`) atualizados para incluir `Contestado`.
+- Layout base, classes Tailwind, paleta (`bg-warm`, `bg-surface`, `text-emerald-700` etc.) e estrutura de abas **inalterados**.
 
-## O que NÃO será feito
+## Fora de escopo
 
-- Sem banco de dados, sem Supabase, sem APIs.
-- Sem cálculos dinâmicos (totais são valores escritos no mock).
-- Sem alterações em rotas `/app/*` ou na landing além do link discreto no footer.
-- Sem login/RBAC — apenas visual/demonstrativo.
-- Sem editar `src/routeTree.gen.ts`.
+- Sem gateway de pagamento, sem persistência, sem mudanças em outras telas admin.
+- Sem alteração nas abas "Detalhamento de vendas" e "Conciliação" além de poderem se beneficiar dos mesmos dados de venda.
