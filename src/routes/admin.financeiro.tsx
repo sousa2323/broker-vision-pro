@@ -4,7 +4,7 @@ import {
   CheckCircle2, Eye, Pencil, MoreHorizontal, AlertTriangle, ShieldCheck,
   FileSearch, Download, FileText, Filter as FilterIcon, X, Calendar as CalendarIcon,
   Clock, Receipt, AlertCircle, Phone, MessageSquare, Handshake, FileSignature,
-  TrendingDown, TrendingUp, Activity,
+  Activity,
 } from "lucide-react";
 import {
   cobrancas as cobrancasMock,
