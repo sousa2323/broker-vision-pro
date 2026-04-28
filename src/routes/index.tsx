@@ -418,7 +418,10 @@ function Footer() {
       </div>
       <div className="mx-auto mt-12 flex max-w-7xl items-center justify-between border-t border-white/10 pt-8 text-xs text-white/40">
         <div>© 2026 Ubroker. Todos os direitos reservados.</div>
-        <div className="flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> CRECI Conformidade</div>
+        <div className="flex items-center gap-4">
+          <Link to="/admin" className="hover:text-white/70">Admin (demo)</Link>
+          <span className="flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> CRECI Conformidade</span>
+        </div>
       </div>
     </footer>
   );
