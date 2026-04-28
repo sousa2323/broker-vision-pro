@@ -421,6 +421,7 @@ function FinanceiroPage() {
         <TabBtn active={tab === "cobrancas"} onClick={() => setTab("cobrancas")}>Cobranças</TabBtn>
         <TabBtn active={tab === "vendas"} onClick={() => setTab("vendas")}>Detalhamento de vendas</TabBtn>
         <TabBtn active={tab === "conciliacao"} onClick={() => setTab("conciliacao")}>Conciliação</TabBtn>
+        <TabBtn active={tab === "despesas"} onClick={() => setTab("despesas")}>Despesas</TabBtn>
       </div>
 
       {tab === "cobrancas" && (
