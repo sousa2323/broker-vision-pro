@@ -1,152 +1,133 @@
-# Plano — Admin/Indicações como Rede Dinâmica (grafo navegável, níveis relativos)
+# Plano — Indicações Admin: Visão Geral primeiro, rede de corretor sob demanda
 
-Atualização **estritamente aditiva/refatora interna** sobre os 2 arquivos já existentes. Sem nova rota, sem nova tela, sem mudança de identidade visual.
+Refatorar a tela `/admin/indicacoes` para abrir como **painel global da rede Ubroker** e só mudar para o **modo "rede do corretor"** quando o admin selecionar um. Sem nova rota, sem nova tela, sem mudar identidade visual.
 
-Arquivos editados:
-- `src/data/admin-mock.ts` — adiciona `indicadorId` em cada item da rede e helpers de grafo.
-- `src/routes/admin.indicacoes.tsx` — refatora lógica para "usuário base" + níveis relativos calculados.
+Arquivo único editado: `src/routes/admin.indicacoes.tsx`
+(`src/data/admin-mock.ts` já tem tudo que precisamos: `redeIndicacoes`, `getIndicadosDiretos`, `getRedeRelativa`, `redeRepassesMock`, períodos anteriores.)
 
 ---
 
-## 1. Modelo de dados — virar grafo (mock)
+## 1. Dois modos da tela
 
-Em `redeIndicacoes`, adicionar 2 campos por item (mantendo todos os existentes):
-- `id` (já existe)
-- `indicadorId: string | null` — id do indicador direto (`null` = raiz / Ramon).
-- Manter `indicador: string` (nome) para compatibilidade.
+Substituir `baseId` (que hoje começa em `"RI-000"` — Ramon) por:
 
-Adicionar **Ramon Capone** como item raiz (`id: "RI-000"`, `indicadorId: null`) para que ele também seja "usuário base" selecionável.
+- `mode: "global" | "broker"` — começa em `"global"`.
+- `baseId: string | null` — `null` no modo global; preenchido só no modo broker.
 
-Remover semanticamente o uso de `nivel` fixo (campo permanece no tipo por compatibilidade, mas a tela ignora — sempre calcula).
+Toda a renderização passa a ramificar por `mode`. Trocar para `"broker"` acontece apenas via:
+- Botão "Buscar corretor" no header (abre Dialog de busca).
+- Ação "Ver rede" na tabela de indicadores.
+- Botão "Ver corretor" em alertas/insights.
 
-Novos helpers exportados:
-- `getIndicadosDiretos(baseId)` — filhos imediatos.
-- `getRedeRelativa(baseId)` — BFS retornando `Map<id, { item, nivelRelativo }>` apenas dos descendentes (níveis 1, 2, 3+).
-- `getCaminho(baseId, alvoId)` — caminho ascendente (para breadcrumb opcional).
+Voltar para `"global"`: botão "← Voltar para visão geral" visível só no modo broker.
 
-Tudo puro, sem dependência nova.
+## 2. Header
 
-## 2. Estado de "Usuário Base" (contexto da tela)
+**Modo global:**
+- Título: "Visão geral da rede Ubroker"
+- Subtexto: "Consolidado de indicações, recorrência e repasses da rede."
+- Botão primário: "Buscar corretor" (ícone Search) → abre Dialog com Input de busca por nome/agência sobre `redeIndicacoes` (exclui `RI-000`). Selecionar → `setMode("broker")` + `setBaseId(id)`.
+- Dropdown "Exportar" (ver §7).
 
-No componente:
-- `const [baseId, setBaseId] = useState<string>("RI-000")` (Ramon por padrão).
-- `const baseUser = useMemo(() => redeIndicacoes.find(r => r.id === baseId), [baseId])`.
-- `const redeRelativa = useMemo(() => getRedeRelativa(baseId), [baseId])` — recalcula tudo ao trocar.
+**Modo broker:**
+- Botão "← Voltar para visão geral" (ghost) acima do título.
+- Título: "Visualizando rede de: {nome}"
+- Subtexto: "Indicador direto: {pai} · Entrada: {data}" (ou "Raiz da rede" se Ramon).
+- Botões: "Trocar corretor" (reabre o Dialog de busca) + "Exportar" (ver §7).
 
-Trocar usuário: dispara recálculo de KPIs, tabela, distribuição, insights, alertas. Sem reload de página, instantâneo.
+## 3. KPIs do topo
 
-## 3. Header novo — "Visualizando rede de:"
+**Modo global** — 5 cards baseados em `redeIndicacoes` inteiro (excluindo `RI-000` da contagem):
+1. Total de corretores na rede
+2. MRR total de indicações (soma de `mrr`)
+3. Receita paga no período (soma de `valorPago`)
+4. Receita pendente (soma de `valorPendente`)
+5. Crescimento da rede — % comparado ao mock `redeIndicacoesPeriodoAnterior` (variação no número de corretores ativos)
 
-Logo abaixo do título existente "Indicações", inserir uma faixa:
-- Avatar (inicial em círculo, padrão atual) + nome do `baseUser`.
-- Subtítulo: "Indicador direto: {nome do pai} · Entrada: {data}" (ou "Raiz da rede" se Ramon).
-- Botão "Trocar usuário" → abre `Dialog` com `Command`/Input de busca por nome (busca em todo `redeIndicacoes`). Selecionar → `setBaseId` e fecha.
-- Botão "Voltar para Ramon" (atalho rápido) quando `baseId !== "RI-000"`.
+Sem destaque de N1/N2/N3 nesses cards.
 
-## 4. KPIs do topo — agora relativos
+**Modo broker** — manter os 4 cards atuais (Total de indicados, MRR N1, N2, N3 — relativos ao base, com `pctBadge`), exatamente como hoje.
 
-Os 4 cards existentes passam a refletir a rede do `baseUser`:
-- **Total de indicados** = tamanho de `redeRelativa`.
-- **MRR Nível 1 / 2 / 3** = soma de MRR dos itens com `nivelRelativo === 1/2/3`.
-- Variação vs período anterior: continua usando `redeIndicacoesPeriodoAnterior` (mock; quando `baseId !== "RI-000"`, escala proporcionalmente pelo share do baseUser para parecer realista).
-- Adicionar abaixo de cada KPI de MRR: **% de participação** (MRR do nível ÷ MRR total da rede relativa).
+## 4. Distribuição da rede
 
-Bloco "Receita recorrente total" → vira **Distribuição dinâmica N1/N2/N3** com:
-- Barras horizontais proporcionais (largura = % do MRR total).
-- Valor absoluto + percentual à direita.
-- Tudo relativo ao `baseUser`.
+**Modo global** — substituir o bloco "Distribuição N1/N2/N3 (relativa)" por **3 sub-blocos lado a lado** (grid responsivo):
 
-## 5. Tabela "Rede de indicações" — refatorada
+a) **Receita por nível global** — barras horizontais para N1/N2/N3 calculadas via `getRedeRelativa(ROOT_ID)` (Ramon como raiz absoluta da Ubroker). Mostra valor + %.
 
-Fonte: `Array.from(redeRelativa.values())` (apenas descendentes, **não** o próprio base).
+b) **Status da rede** — 3 contadores com mini-barras: Ativos / Em teste / Inativos. Source: agregação por `status` em `redeIndicacoes`.
+
+c) **Produtos contratados** — 3 contadores: IA Assistente / Inbox / Combo. Source: agregação por campo `produto` (já existe no mock).
+
+**Modo broker** — manter o bloco atual de Distribuição N1/N2/N3 relativa ao base.
+
+## 5. Tabela principal
+
+**Modo global** — listar **apenas indicadores** (corretores que têm pelo menos 1 indicado direto) ordenados por MRR gerado desc.
+
+Source: `redeIndicacoes.filter(r => getIndicadosDiretos(r.id).length > 0)`.
 
 Colunas:
-- Corretor (avatar + nome)
-- **Nível (relativo)** — badge N1/N2/N3+ calculado
-- **Indicador direto** — `indicador` (nome do pai)
-- Indicados (quantos descendentes diretos esse corretor tem)
-- Status
-- MRR atual
-- Receita acumulada
-- Valor pago
-- Valor pendente
-- Data de entrada
-- Ações
+- Corretor (avatar + nome + agência)
+- Indicados diretos (count via `getIndicadosDiretos(id).length`)
+- Rede total (count via `getRedeRelativa(id).size`)
+- MRR gerado — soma de MRR de toda sub-rede
+- Receita acumulada — soma `receitaAcumulada` da sub-rede
+- Receita paga — soma `valorPago` da sub-rede
+- Receita pendente — soma `valorPendente` da sub-rede
+- Status (do próprio corretor)
+- Ações (dropdown):
+  - "Ver rede" → entra no modo broker
+  - "Ver detalhes" → abre Dialog atual (financial/repasses)
+  - "Exportar relatório do corretor" → CSV individual
 
-Filtros existentes mantidos (busca, nível, status, faixa). **Adicionar:**
-- Período: 7d / 30d / 90d / Personalizado (mock — só filtra visual).
-- Tipo de produto: Todos / IA / Inbox / Combo (mock — adicionar campo `produto` aos itens em admin-mock).
+Filtros: busca + status + faixa de MRR gerado. Paginação 10/pág (mantida).
 
-Paginação client-side mantida (10/pág).
+**Modo broker** — manter a tabela atual de descendentes (rede relativa do base), filtros e ações como hoje.
 
-## 6. Ações por linha (dropdown)
+## 6. Árvore / Grafo
 
-Substituir ações atuais por 3 itens:
-- 🔎 **Ver rede deste corretor** → `setBaseId(row.id)` + scroll ao topo. Recalcula tudo.
-- 📊 **Ver detalhes** → abre o `Dialog` já existente, agora enriquecido: mini-gráfico de evolução (SVG já presente em `EvolucaoChart`), histórico de repasses (já existe), composição da própria sub-rede (contagem N1/N2/N3 a partir de `getRedeRelativa(row.id)`).
-- ⬇ **Exportar individual** → CSV daquele corretor + sub-rede.
+**Modo global** — remover render da árvore lazy. Substituir por um Card compacto:
+- Texto: "Visualize o grafo navegável da rede a partir de qualquer corretor."
+- Botão único "Abrir grafo da rede" → entra no modo broker com `baseId = ROOT_ID` (Ramon).
 
-## 7. Árvore — lazy / 1 nível por vez
+**Modo broker** — manter o `LazyNode` atual (1 nível por vez, expandir sob demanda), inalterado.
 
-Refatorar a árvore atual (que hoje usa `referralTree` estático) para usar `redeIndicacoes` como grafo:
-- Renderizar **apenas o `baseUser`** + **filhos diretos** colapsados por padrão.
-- Cada nó com indicados mostra chevron; click expande **somente** seus filhos diretos (busca via `getIndicadosDiretos(node.id)` no momento do clique). Sem recursão antecipada.
-- Estado: `expanded: Set<string>` com ids expandidos.
-- Ao clicar "Ver rede deste corretor" na tabela, a árvore também troca seu nó raiz para o novo base (consistente com o resto da tela).
-- Botões "Expandir tudo" / "Recolher tudo" removidos (incompatível com escalabilidade). Substituir por contador "{n} indicados diretos · clique para expandir".
+## 7. Exportação (dropdown)
 
-`referralTree` deixa de ser usado pela tela, mas permanece exportado em `admin-mock.ts` (não remover — pode ser usado em outro lugar).
+**Modo global:**
+- "Consolidado da rede" — CSV de todos `redeIndicacoes` (id, nome, indicador, status, produto, mrr, acumulado, pago, pendente, data).
+- "Relatório financeiro global" — agregados por status + totais.
+- "Pendências de repasse" — todos com `valorPendente > 0`.
 
-## 8. Insights automáticos (novo bloco)
+**Modo broker** (mantém atual):
+- "Rede completa de {nome}"
+- "Receita por nível (relativo)"
+- "Repasses do corretor"
 
-Card "Insights da rede" recalculado por `baseUser`. Regras simples sobre `redeRelativa`:
-- Se MRR N1 caiu >10% vs período anterior → "Seu nível 1 caiu X% este mês".
-- Se MRR N2 cresceu >15% → "Nível 2 está crescendo acima da média".
-- Conta itens `Inativo` → "{n} usuários inativos impactando receita".
-- Concentração: se top 3 > 60% do MRR → "Risco de concentração: top 3 = X%".
+Cabeçalho de contexto em todos os CSVs (já implementado via param `context` em `downloadCSV`).
 
-Substitui (mantendo o card) os insights mock estáticos atuais.
+## 8. Insights e Alertas
 
-## 9. Alertas — relativos ao base
+**Modo global** — recalcular sobre a rede inteira:
+- Insights: top 3 indicadores por MRR gerado, corretores inativos com receita acumulada > R$ 1k, concentração (top 3 / MRR total).
+- Alertas: mesmas regras atuais, mas avaliando `redeIndicacoes` completo. Botão "Ver corretor" entra no modo broker.
 
-`redeAlertas` deixa de ser estático; gerado dinamicamente:
-- Cada `Inativo` com `receitaAcumulada > 1000` → alerta âmbar "Indicador parou de gerar receita".
-- Cada `crescimentoPct < -15` → alerta vermelho "Queda de performance".
-- Concentração >60% → alerta âmbar.
-Botão "Ver corretor" no alerta → `setBaseId(corretor.id)`.
+**Modo broker** — manter lógica atual (relativa ao base).
 
-## 10. Exportação — respeita contexto
+## 9. Detalhes técnicos
 
-Dropdown de exportação (já existe) atualizado:
-- "Rede completa de {nome do base}" — CSV de `redeRelativa`.
-- "Receita por nível (relativo)" — agregado N1/N2/N3.
-- "Relatório financeiro" — pago/pendente/acumulado por corretor da rede.
-- "Histórico de repasses" — `redeRepassesMock` (mantido).
+- Estado novo: `const [mode, setMode] = useState<"global"|"broker">("global"); const [baseId, setBaseId] = useState<string|null>(null);`
+- `baseUser = mode === "broker" && baseId ? redeIndicacoes.find(r => r.id === baseId) : null`
+- Memos globais novos: `globalKPIs`, `nivelGlobal` (via `getRedeRelativa(ROOT_ID)`), `statusAgg`, `produtoAgg`, `indicadoresList` (com sub-rede agregada por id, calculado uma vez).
+- Memos atuais (rede relativa, KPIs por nível, etc.) só rodam quando `mode === "broker"`.
+- O Dialog de busca de corretor é reutilizado para "Buscar corretor" (global) e "Trocar corretor" (broker) — mesmo componente interno, controlado por `searchOpen`.
+- Ação "Ver rede" e "Voltar para visão geral" fazem `window.scrollTo({top:0})` para feedback.
+- Toast (sonner já disponível) ao entrar/sair do modo broker: "Visualizando rede de {nome}" / "Voltando à visão geral".
 
-Cada CSV inclui cabeçalho de contexto: `# Usuário base: {nome} · Período: {filtro} · Gerado em: {data}`.
+## 10. Restrições respeitadas
 
-## 11. Escalabilidade
-
-- Sem expandir árvore inteira; só lazy 1 nível.
-- Tabela paginada (10/pág) — funciona com 10k itens.
-- Busca de "trocar usuário" usa `Command` com filtro client-side (rápido até alguns milhares de mocks). Para o mock atual (15 itens) é trivial.
-- `getRedeRelativa` é BFS O(n); roda só ao trocar `baseId` (memoizado).
-
-## 12. UX / preservação visual
-
-- Mesma paleta, mesmas classes Tailwind, mesma tipografia (`font-display`, `num`).
-- Mesmos componentes shadcn (`Card`, `Badge`, `Button`, `Input`, `Table`, `Dialog`, `DropdownMenu`, `Command` para a busca de troca de usuário).
+- Mesma rota, mesmo arquivo, mesma identidade visual (Tailwind/shadcn).
+- Lógica de rede dinâmica e níveis relativos preservada (modo broker).
+- Árvore continua lazy; no modo global ela nem renderiza.
 - Sem nova dependência.
-- Trocar usuário tem feedback instantâneo: toast "Visualizando rede de {nome}" + animação sutil de fade nos KPIs (CSS já existente).
-
----
-
-## Restrições respeitadas
-
-- ✅ Sem nova tela / nova rota.
-- ✅ Identidade visual preservada.
-- ✅ Estrutura base mantida (mesmos blocos, mesma ordem geral).
-- ✅ Nível **calculado** (nunca fixo) e **relativo ao base**.
-- ✅ Árvore lazy (1 nível por vez).
-- ✅ Exportação respeita contexto.
-- ✅ Sem dependência nova; só edição em 2 arquivos já existentes.
+- `admin-mock.ts` intocado.
