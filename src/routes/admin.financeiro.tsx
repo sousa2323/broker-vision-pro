@@ -121,7 +121,11 @@ function FinanceiroPage() {
       acao: `Conciliação reaberta — Justificativa: ${justificativa}`,
       valorAnterior: c.recebido, valorNovo: 0,
     });
-    toast.warning(`${c.id} reaberto para nova conciliação`);
+  }
+
+  function adicionarInteracao(id: string, interacao: ConciliacaoInteracao) {
+    setConciliacoes((prev) => prev.map((c) => c.id === id ? { ...c, interacoes: [...c.interacoes, interacao] } : c));
+    setConcDetalhe((cur) => cur && cur.id === id ? { ...cur, interacoes: [...cur.interacoes, interacao] } : cur);
   }
 
   const concCorretores = useMemo(
