@@ -157,8 +157,4 @@ function Alerta({ cor, titulo, sub }: { cor: "red" | "amber"; titulo: string; su
     </li>
   );
 }
-
-// Filter icon import shim (avoid extra import line)
-import { Filter } from "lucide-react";
-// Suppress unused warning
 void formatBRL;
