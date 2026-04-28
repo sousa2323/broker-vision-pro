@@ -5,7 +5,7 @@ import {
   FileSearch, Download, FileText, Filter as FilterIcon, X, Calendar as CalendarIcon,
   Clock, Receipt, AlertCircle, Phone, MessageSquare, Handshake, FileSignature,
   Activity, Users, UserPlus, RotateCcw, Lock, Upload, Mail, Smartphone, Paperclip,
-  Timer, BarChart3,
+  Timer, BarChart3, Plus, Trash2, Wallet, TrendingUp, TrendingDown,
 } from "lucide-react";
 import {
   cobrancas as cobrancasMock,
@@ -17,6 +17,8 @@ import {
   calcularPrioridade,
   agruparPorCorretor,
   RESPONSAVEIS_DISPONIVEIS,
+  CATEGORIAS_DESPESA,
+  despesasMock,
   type Conciliacao,
   type ConciliacaoInteracao,
   type ConciliacaoAuditoria,
@@ -27,6 +29,10 @@ import {
   type Cobranca,
   type ResponsavelCobranca,
   type ComprovantePagamento,
+  type Despesa,
+  type CategoriaDespesa,
+  type TipoDespesa,
+  type StatusDespesa,
 } from "@/data/admin-mock";
 import { formatBRL } from "@/data/mock";
 import { cn } from "@/lib/utils";
