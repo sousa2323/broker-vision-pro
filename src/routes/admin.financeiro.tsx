@@ -4,7 +4,8 @@ import {
   CheckCircle2, Eye, Pencil, MoreHorizontal, AlertTriangle, ShieldCheck,
   FileSearch, Download, FileText, Filter as FilterIcon, X, Calendar as CalendarIcon,
   Clock, Receipt, AlertCircle, Phone, MessageSquare, Handshake, FileSignature,
-  Activity,
+  Activity, Users, UserPlus, RotateCcw, Lock, Upload, Mail, Smartphone, Paperclip,
+  Timer, BarChart3,
 } from "lucide-react";
 import {
   cobrancas as cobrancasMock,
@@ -12,7 +13,10 @@ import {
   conciliacoes as conciliacoesMock,
   corretorRisco,
   calcularStatusConciliacao,
-  type Cobranca,
+  calcularSLA,
+  calcularPrioridade,
+  agruparPorCorretor,
+  RESPONSAVEIS_DISPONIVEIS,
   type Conciliacao,
   type ConciliacaoInteracao,
   type ConciliacaoAuditoria,
@@ -20,6 +24,9 @@ import {
   type StatusOperacionalCobranca,
   type StatusCobrancaTipo,
   type OrigemCobranca,
+  type Cobranca,
+  type ResponsavelCobranca,
+  type ComprovantePagamento,
 } from "@/data/admin-mock";
 import { formatBRL } from "@/data/mock";
 import { cn } from "@/lib/utils";
@@ -86,6 +93,9 @@ function FinanceiroPage() {
   const [concValMin, setConcValMin] = useState("");
   const [concValMax, setConcValMax] = useState("");
   const [concSomenteDiv, setConcSomenteDiv] = useState(false);
+  const [concAgrupar, setConcAgrupar] = useState(false);
+  const [concReabrir, setConcReabrir] = useState<Conciliacao | null>(null);
+  const [concReabrirJustificativa, setConcReabrirJustificativa] = useState("");
 
   function atualizarConciliacao(id: string, patch: Partial<Conciliacao>, audit?: ConciliacaoAuditoria) {
     setConciliacoes((prev) => prev.map((c) => {
@@ -104,6 +114,15 @@ function FinanceiroPage() {
     });
   }
 
+  function reabrirConciliacao(c: Conciliacao, justificativa: string) {
+    // Reseta para Pendente zerando o recebido — exige nova conciliação
+    atualizarConciliacao(c.id, { recebido: 0, pagoEm: undefined, statusOperacional: "Em cobrança" }, {
+      data: agora(), autor: "Superadmin",
+      acao: `Conciliação reaberta — Justificativa: ${justificativa}`,
+      valorAnterior: c.recebido, valorNovo: 0,
+    });
+  }
+
   function adicionarInteracao(id: string, interacao: ConciliacaoInteracao) {
     setConciliacoes((prev) => prev.map((c) => c.id === id ? { ...c, interacoes: [...c.interacoes, interacao] } : c));
     setConcDetalhe((cur) => cur && cur.id === id ? { ...cur, interacoes: [...cur.interacoes, interacao] } : cur);
@@ -115,7 +134,7 @@ function FinanceiroPage() {
   );
 
   const concFiltradas = useMemo(() => {
-    return conciliacoes.filter((c) => {
+    const lista = conciliacoes.filter((c) => {
       if (concStatusFiltro !== "Todos" && c.status !== concStatusFiltro) return false;
       if (concCorretor !== "Todos" && c.corretor !== concCorretor) return false;
       const min = parseFloat(concValMin); const max = parseFloat(concValMax);
@@ -126,7 +145,11 @@ function FinanceiroPage() {
       if (concRiscoFiltro !== "Todos" && classificarRiscoConc(c) !== concRiscoFiltro) return false;
       return true;
     });
+    // Ordenação default: prioridade desc (Confirmadas vão para o final)
+    return lista.slice().sort((a, b) => calcularPrioridade(b) - calcularPrioridade(a));
   }, [conciliacoes, concStatusFiltro, concCorretor, concValMin, concValMax, concSomenteDiv, concRiscoFiltro]);
+
+  const concAgrupado = useMemo(() => agruparPorCorretor(concFiltradas), [concFiltradas]);
 
   const concKpis = useMemo(() => {
     const conciliado = concFiltradas.filter((c) => c.status === "Confirmada").reduce((a, b) => a + b.recebido, 0);
@@ -580,12 +603,56 @@ function FinanceiroPage() {
               <Switch checked={concSomenteDiv} onCheckedChange={setConcSomenteDiv} />
               Só com divergência
             </label>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Switch checked={concAgrupar} onCheckedChange={setConcAgrupar} />
+              <Users className="h-3.5 w-3.5" /> Agrupar por corretor
+            </label>
             <div className="ml-auto">
               <ExportarConciliacaoMenu conciliacoes={concFiltradas} />
             </div>
           </div>
 
-          {/* Tabela */}
+          {/* Tabela agregada por corretor */}
+          {concAgrupar ? (
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <table className="w-full text-sm">
+                <thead className="bg-surface">
+                  <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground">
+                    <th className="px-4 py-3">Corretor</th>
+                    <th className="px-4 py-3 text-right">Casos</th>
+                    <th className="px-4 py-3 text-right">Total devido</th>
+                    <th className="px-4 py-3 text-right">Total recebido</th>
+                    <th className="px-4 py-3 text-right">Em atraso</th>
+                    <th className="px-4 py-3 text-right">Inadimplência</th>
+                    <th className="px-4 py-3 w-32"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {concAgrupado.map((g) => (
+                    <tr key={g.corretor} className="hover:bg-surface/40">
+                      <td className="px-4 py-3 font-medium">{g.corretor}</td>
+                      <td className="px-4 py-3 text-right num text-muted-foreground">{g.casos}</td>
+                      <td className="px-4 py-3 text-right num">{formatBRL(g.totalDevido)}</td>
+                      <td className="px-4 py-3 text-right num text-emerald-700">{formatBRL(g.totalRecebido)}</td>
+                      <td className="px-4 py-3 text-right num text-amber-700">{formatBRL(g.totalAtraso)}</td>
+                      <td className={cn("px-4 py-3 text-right num font-medium", g.inadimplenciaPct > 25 ? "text-red-700" : g.inadimplenciaPct > 10 ? "text-amber-700" : "text-emerald-700")}>
+                        {g.inadimplenciaPct.toFixed(1)}%
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setConcCorretor(g.corretor); setConcAgrupar(false); }}>
+                          Ver itens
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {concAgrupado.length === 0 && (
+                    <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum dado para agrupar.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+          /* Tabela detalhada */
           <div className="overflow-hidden rounded-xl border border-border bg-card">
             <table className="w-full text-sm">
               <thead className="bg-surface">
@@ -599,6 +666,9 @@ function FinanceiroPage() {
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Risco</th>
                   <th className="px-4 py-3">Operacional</th>
+                  <th className="px-4 py-3">Responsável</th>
+                  <th className="px-4 py-3">SLA</th>
+                  <th className="px-4 py-3">Previsão</th>
                   <th className="px-4 py-3 w-10"></th>
                 </tr>
               </thead>
@@ -607,6 +677,8 @@ function FinanceiroPage() {
                   const dif = c.esperado - c.recebido;
                   const risco = classificarRiscoConc(c);
                   const alertas = alertasConc(c);
+                  const sla = calcularSLA(c);
+                  const bloqueada = c.status === "Confirmada";
                   return (
                     <tr key={c.id} className={cn("cursor-pointer hover:bg-surface/40", (c.status === "Divergente" || c.status === "Parcial") && "bg-red-50/40")} onClick={() => setConcDetalhe(c)}>
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
@@ -614,6 +686,9 @@ function FinanceiroPage() {
                           {alertas.map((a, i) => (
                             <TooltipProvider key={i}><Tooltip><TooltipTrigger asChild><span className="cursor-help">{a.icon}</span></TooltipTrigger><TooltipContent><p className="text-xs">{a.msg}</p></TooltipContent></Tooltip></TooltipProvider>
                           ))}
+                          {bloqueada && (
+                            <TooltipProvider><Tooltip><TooltipTrigger asChild><span className="cursor-help"><Lock className="h-3 w-3 text-emerald-600" /></span></TooltipTrigger><TooltipContent><p className="text-xs">Conciliação confirmada — bloqueada</p></TooltipContent></Tooltip></TooltipProvider>
+                          )}
                           {c.id}
                         </div>
                       </td>
@@ -649,32 +724,65 @@ function FinanceiroPage() {
                           <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-muted-foreground">{c.statusOperacional}</span>
                         ) : <span className="text-muted-foreground">—</span>}
                       </td>
+                      <td className="px-4 py-3 text-xs" onClick={(e) => e.stopPropagation()}>
+                        <ResponsavelChip
+                          c={c}
+                          onAtribuir={(r) => atualizarConciliacao(c.id, { responsavel: r }, { data: agora(), autor: "Superadmin", acao: c.responsavel ? `Responsável reatribuído para ${r.nome}` : `Responsável atribuído: ${r.nome}` })}
+                        />
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {bloqueada ? <span className="text-muted-foreground">—</span> : (
+                          <span className={cn("rounded-full px-2 py-0.5 text-[11px]", sla.atrasado ? "bg-red-50 text-red-700" : "bg-surface text-muted-foreground")}>
+                            {sla.atrasado ? `Atrasado +${Math.abs(sla.restanteDias)}d` : `Resolver em ${sla.restanteDias}d`}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs" onClick={(e) => e.stopPropagation()}>
+                        <PrevisaoChip
+                          c={c}
+                          onSet={(d) => atualizarConciliacao(c.id, { previsaoPagamento: d }, { data: agora(), autor: "Superadmin", acao: `Previsão de pagamento definida: ${d}`, valorAnterior: undefined, valorNovo: undefined })}
+                        />
+                      </td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Ação direta</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, { data: agora(), autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: c.recebido, valorNovo: c.esperado }); toast.success(`Pagamento de ${c.id} confirmado`); }}>
-                              <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> Confirmar pagamento
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
-                              <Pencil className="mr-2 h-4 w-4" /> Ajustar valor recebido
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, {}, { data: agora(), autor: "Superadmin", acao: "Marcado como divergente manualmente" }); toast.warning(`${c.id} marcado para revisão`); }}>
-                              <AlertTriangle className="mr-2 h-4 w-4 text-amber-600" /> Marcar como divergente
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
-                              <Phone className="mr-2 h-4 w-4" /> Registrar contato
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
-                              <FileSearch className="mr-2 h-4 w-4" /> Ver cobrança completa
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toast.info(`Contrato da parceria ${c.venda}`, { description: "Documento abriria em nova aba (mock)." })}>
-                              <FileSignature className="mr-2 h-4 w-4" /> Ver contrato da parceria
-                            </DropdownMenuItem>
+                            {bloqueada ? (
+                              <>
+                                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Conciliação confirmada</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                                  <Eye className="mr-2 h-4 w-4" /> Ver detalhes
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setConcReabrir(c); setConcReabrirJustificativa(""); }}>
+                                  <RotateCcw className="mr-2 h-4 w-4 text-amber-600" /> Reabrir conciliação
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <>
+                                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Ação direta</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, { data: agora(), autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: c.recebido, valorNovo: c.esperado }); toast.success(`Pagamento de ${c.id} confirmado`); }}>
+                                  <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> Confirmar pagamento
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                                  <Pencil className="mr-2 h-4 w-4" /> Ajustar valor recebido
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, {}, { data: agora(), autor: "Superadmin", acao: "Marcado como divergente manualmente" }); toast.warning(`${c.id} marcado para revisão`); }}>
+                                  <AlertTriangle className="mr-2 h-4 w-4 text-amber-600" /> Marcar como divergente
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                                  <Phone className="mr-2 h-4 w-4" /> Registrar contato
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
+                                  <FileSearch className="mr-2 h-4 w-4" /> Ver cobrança completa
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => toast.info(`Contrato da parceria ${c.venda}`, { description: "Documento abriria em nova aba (mock)." })}>
+                                  <FileSignature className="mr-2 h-4 w-4" /> Ver contrato da parceria
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -682,11 +790,42 @@ function FinanceiroPage() {
                   );
                 })}
                 {concFiltradas.length === 0 && (
-                  <tr><td colSpan={10} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma conciliação para os filtros aplicados.</td></tr>
+                  <tr><td colSpan={13} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhuma conciliação para os filtros aplicados.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
+          )}
+
+          {/* Modal de reabertura */}
+          <AlertDialog open={!!concReabrir} onOpenChange={(o) => { if (!o) setConcReabrir(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reabrir conciliação {concReabrir?.id}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação reabre a conciliação para edição. A justificativa será registrada no log de auditoria.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <Textarea
+                value={concReabrirJustificativa}
+                onChange={(e) => setConcReabrirJustificativa(e.target.value)}
+                placeholder="Justificativa obrigatória (mín. 10 caracteres)…"
+                className="min-h-[80px] text-sm"
+              />
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (concReabrirJustificativa.trim().length < 10) { toast.error("Justificativa obrigatória (mín. 10 caracteres)"); return; }
+                    if (concReabrir) reabrirConciliacao(concReabrir, concReabrirJustificativa.trim());
+                    setConcReabrir(null); setConcReabrirJustificativa("");
+                  }}
+                >
+                  Confirmar reabertura
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
 
@@ -1064,6 +1203,8 @@ function ConciliacaoDetalheModal({
   if (!conciliacao) return null;
   const c = conciliacao;
   const dif = c.esperado - c.recebido;
+  const bloqueada = c.status === "Confirmada";
+  const sla = calcularSLA(c);
 
   const handleConfirmarPagamento = () => {
     onUpdate(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, {
@@ -1159,15 +1300,20 @@ function ConciliacaoDetalheModal({
             </Section>
 
             <Section title="4 · Ações diretas">
+              {bloqueada && (
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                  <Lock className="h-3.5 w-3.5" /> Conciliação confirmada — edição bloqueada. Use "Reabrir conciliação" no menu da linha para alterar valores.
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" className="gap-2" onClick={() => setConfirmarOpen(true)}><CheckCircle2 className="h-4 w-4" /> Confirmar pagamento</Button>
-                <Button size="sm" variant="outline" className="gap-2" onClick={() => { setNovoValor(String(c.recebido)); setAjustarOpen(true); }}><Pencil className="h-4 w-4" /> Ajustar valor</Button>
-                <Button size="sm" variant="outline" className="gap-2" onClick={handleRegistrarDivergencia}><AlertTriangle className="h-4 w-4 text-amber-600" /> Registrar divergência</Button>
-                <Button size="sm" variant="outline" className="gap-2" onClick={handleRegistrarCobranca}><Phone className="h-4 w-4" /> Registrar cobrança realizada</Button>
+                <Button size="sm" className="gap-2" disabled={bloqueada} onClick={() => setConfirmarOpen(true)}><CheckCircle2 className="h-4 w-4" /> Confirmar pagamento</Button>
+                <Button size="sm" variant="outline" className="gap-2" disabled={bloqueada} onClick={() => { setNovoValor(String(c.recebido)); setAjustarOpen(true); }}><Pencil className="h-4 w-4" /> Ajustar valor</Button>
+                <Button size="sm" variant="outline" className="gap-2" disabled={bloqueada} onClick={handleRegistrarDivergencia}><AlertTriangle className="h-4 w-4 text-amber-600" /> Registrar divergência</Button>
+                <Button size="sm" variant="outline" className="gap-2" disabled={bloqueada} onClick={handleRegistrarCobranca}><Phone className="h-4 w-4" /> Registrar cobrança realizada</Button>
               </div>
               <div className="mt-3 flex items-center gap-2 text-xs">
                 <span className="text-muted-foreground">Status operacional:</span>
-                <Select value={opSel === "—" ? c.statusOperacional : opSel} onValueChange={(v) => { const s = v as StatusOperacionalCobranca; setOpSel(s); onUpdate(c.id, { statusOperacional: s }, { data: agora(), autor: "Superadmin", acao: `Status operacional → ${s}` }); }}>
+                <Select value={opSel === "—" ? c.statusOperacional : opSel} onValueChange={(v) => { const s = v as StatusOperacionalCobranca; setOpSel(s); onUpdate(c.id, { statusOperacional: s }, { data: agora(), autor: "Superadmin", acao: `Status operacional → ${s}` }); }} disabled={bloqueada}>
                   <SelectTrigger className="h-7 w-[200px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {(["—", "Em cobrança", "Em negociação", "Promessa de pagamento", "Sem retorno"] as const).map((s) => (
@@ -1192,13 +1338,65 @@ function ConciliacaoDetalheModal({
               </ol>
             </Section>
 
+            <Section title="6 · Responsável & SLA">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Responsável</div>
+                  <div className="mt-1.5"><ResponsavelChip c={c} onAtribuir={(r) => onUpdate(c.id, { responsavel: r }, { data: agora(), autor: "Superadmin", acao: c.responsavel ? `Responsável reatribuído para ${r.nome}` : `Responsável atribuído: ${r.nome}` })} /></div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">SLA ({c.slaDias}d)</div>
+                  <div className="mt-1.5">
+                    {bloqueada ? <span className="text-xs text-muted-foreground">Concluída</span> : (
+                      <div className="space-y-1">
+                        <div className={cn("text-xs font-medium", sla.atrasado ? "text-red-700" : "text-foreground")}>
+                          {sla.atrasado ? `Atrasado +${Math.abs(sla.restanteDias)}d` : `Resolver em ${sla.restanteDias}d`}
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface">
+                          <div className={cn("h-full", sla.atrasado ? "bg-red-500" : "bg-emerald-500")} style={{ width: `${sla.atrasado ? 100 : Math.max(10, ((c.slaDias - Math.max(sla.restanteDias, 0)) / c.slaDias) * 100)}%` }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Previsão de pagamento</div>
+                  <div className="mt-1.5"><PrevisaoChip c={c} onSet={(d) => onUpdate(c.id, { previsaoPagamento: d }, { data: agora(), autor: "Superadmin", acao: `Previsão de pagamento definida: ${d}` })} /></div>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="7 · Performance do corretor">
+              <div className="grid gap-3 sm:grid-cols-4 text-sm">
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Pagamentos em atraso</div><div className={cn("num font-medium", c.historicoCorretor.pagamentosAtrasoPct > 25 ? "text-red-700" : c.historicoCorretor.pagamentosAtrasoPct > 10 ? "text-amber-700" : "text-emerald-700")}>{c.historicoCorretor.pagamentosAtrasoPct}%</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Tempo médio</div><div className="num">{c.historicoCorretor.tempoMedioPagamentoDias}d</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total já pago ao hub</div><div className="num text-emerald-700">{formatBRL(c.historicoCorretor.totalPagoHub)}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total em aberto</div><div className={cn("num", c.historicoCorretor.totalAberto > 0 ? "text-amber-700" : "text-muted-foreground")}>{formatBRL(c.historicoCorretor.totalAberto)}</div></div>
+              </div>
+            </Section>
+
+            <Section title="8 · Contrato aplicado">
+              <div className="grid gap-2 text-sm sm:grid-cols-3">
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Versão</div><div className="font-medium">{c.contrato.versao}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vigência</div><div>{c.contrato.data}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Regras de comissão</div><div className="text-xs text-muted-foreground">{c.contrato.regras}</div></div>
+              </div>
+              <Button size="sm" variant="ghost" className="mt-2 h-7 gap-1 text-xs" onClick={() => toast.info(`Abrir contrato ${c.contrato.versao}`, { description: "Documento abriria em nova aba (mock)." })}>
+                <FileSignature className="h-3.5 w-3.5" /> Ver contrato completo
+              </Button>
+            </Section>
+
+            <Section title="9 · Comprovante de pagamento">
+              <ComprovanteBlock c={c} bloqueada={bloqueada} onUpdate={onUpdate} />
+            </Section>
+
             <Section title="CRM de cobrança · Interações">
               {c.interacoes.length > 0 ? (
                 <ul className="mb-3 space-y-2">
                   {c.interacoes.map((it, i) => (
                     <li key={i} className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs">
                       <span className="mt-0.5">
-                        {it.tipo === "Ligação" ? <Phone className="h-3.5 w-3.5" /> : it.tipo === "Mensagem" ? <MessageSquare className="h-3.5 w-3.5" /> : <Handshake className="h-3.5 w-3.5" />}
+                        {iconForInteracao(it.tipo)}
                       </span>
                       <div className="flex-1">
                         <div className="font-medium">{it.tipo} <span className="text-muted-foreground font-normal">· {it.data} · {it.autor}</span></div>
@@ -1217,6 +1415,8 @@ function ConciliacaoDetalheModal({
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Ligação" className="text-xs">Ligação</SelectItem>
+                      <SelectItem value="WhatsApp" className="text-xs">WhatsApp</SelectItem>
+                      <SelectItem value="E-mail" className="text-xs">E-mail</SelectItem>
                       <SelectItem value="Mensagem" className="text-xs">Mensagem</SelectItem>
                       <SelectItem value="Negociação" className="text-xs">Negociação</SelectItem>
                     </SelectContent>
@@ -1267,3 +1467,128 @@ function ConciliacaoDetalheModal({
   );
 }
 
+function ResponsavelChip({ c, onAtribuir }: { c: Conciliacao; onAtribuir: (r: ResponsavelCobranca) => void }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        {c.responsavel ? (
+          <button className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2 py-0.5 text-[11px] hover:bg-surface/70">
+            <span className="grid h-4 w-4 place-items-center rounded-full bg-navy text-[8px] font-semibold text-white">{c.responsavel.nome.split(" ").map((p) => p[0]).slice(0, 2).join("")}</span>
+            {c.responsavel.nome}
+          </button>
+        ) : (
+          <button className="inline-flex items-center gap-1 rounded-full border border-dashed border-amber-400 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800 hover:bg-amber-100">
+            <UserPlus className="h-3 w-3" /> Atribuir
+          </button>
+        )}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 p-2 text-xs">
+        <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">{c.responsavel ? "Reatribuir" : "Atribuir responsável"}</div>
+        <div className="space-y-1">
+          {RESPONSAVEIS_DISPONIVEIS.map((r) => (
+            <button
+              key={r.nome}
+              onClick={() => { onAtribuir(r); toast.success(`Responsável: ${r.nome}`); }}
+              className={cn(
+                "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs hover:bg-surface",
+                c.responsavel?.nome === r.nome && "bg-surface font-medium",
+              )}
+            >
+              <span>{r.nome}</span>
+              <span className="text-[10px] text-muted-foreground capitalize">{r.tipo}</span>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function PrevisaoChip({ c, onSet }: { c: Conciliacao; onSet: (data: string) => void }) {
+  const [valor, setValor] = useState(c.previsaoPagamento ?? "");
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        {c.previsaoPagamento ? (
+          <button className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700 hover:bg-blue-100">
+            {c.previsaoPagamento}
+          </button>
+        ) : (
+          <button className="text-[11px] text-muted-foreground hover:text-foreground">— definir</button>
+        )}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 p-3">
+        <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">Previsão de pagamento</div>
+        <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="DD/MM" className="h-8 text-xs" />
+        <Button
+          size="sm" className="mt-2 w-full"
+          onClick={() => { if (!valor.trim()) { toast.error("Informe a data"); return; } onSet(valor.trim()); toast.success("Previsão registrada"); }}
+        >Salvar</Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
+function iconForInteracao(tipo: ConciliacaoInteracao["tipo"]) {
+  switch (tipo) {
+    case "Ligação": return <Phone className="h-3.5 w-3.5" />;
+    case "WhatsApp": return <Smartphone className="h-3.5 w-3.5 text-emerald-600" />;
+    case "E-mail": return <Mail className="h-3.5 w-3.5 text-blue-600" />;
+    case "Mensagem": return <MessageSquare className="h-3.5 w-3.5" />;
+    case "Negociação": return <Handshake className="h-3.5 w-3.5" />;
+  }
+}
+
+function ComprovanteBlock({
+  c, bloqueada, onUpdate,
+}: {
+  c: Conciliacao;
+  bloqueada: boolean;
+  onUpdate: (id: string, patch: Partial<Conciliacao>, audit?: ConciliacaoAuditoria) => void;
+}) {
+  const [referencia, setReferencia] = useState(c.comprovante?.referencia ?? "");
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const tipo: ComprovantePagamento["tipo"] = f.type.includes("pdf") ? "PDF" : "Imagem";
+    const comp: ComprovantePagamento = { nome: f.name, tipo, referencia: referencia || undefined, enviadoEm: agora() };
+    onUpdate(c.id, { comprovante: comp }, { data: agora(), autor: "Superadmin", acao: `Comprovante anexado: ${f.name}` });
+    toast.success("Comprovante anexado", { description: f.name });
+  };
+  const handleRemover = () => {
+    onUpdate(c.id, { comprovante: undefined }, { data: agora(), autor: "Superadmin", acao: `Comprovante removido` });
+    toast.warning("Comprovante removido");
+  };
+  return (
+    <div className="space-y-3">
+      {c.comprovante ? (
+        <div className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-xs">
+          <div className="flex items-center gap-2">
+            <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+            <div>
+              <div className="font-medium">{c.comprovante.nome}</div>
+              <div className="text-muted-foreground">{c.comprovante.tipo} · {c.comprovante.referencia ?? "—"} · {c.comprovante.enviadoEm}</div>
+            </div>
+          </div>
+          {!bloqueada && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-red-600" onClick={handleRemover}>Remover</Button>
+          )}
+        </div>
+      ) : (
+        <div className="text-xs text-muted-foreground">Nenhum comprovante anexado.</div>
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex-1 min-w-[180px]">
+          <div className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">Referência (PIX/TED/banco)</div>
+          <Input value={referencia} onChange={(e) => setReferencia(e.target.value)} placeholder="Ex: PIX BB · E2E…" className="h-8 text-xs" disabled={bloqueada} />
+        </div>
+        <label className={cn("inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs", bloqueada ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-surface")}>
+          <Upload className="h-3.5 w-3.5" />
+          {c.comprovante ? "Substituir" : "Anexar"}
+          <input type="file" accept=".pdf,image/*" className="hidden" onChange={handleFile} disabled={bloqueada} />
+        </label>
+      </div>
+    </div>
+  );
+}

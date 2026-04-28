@@ -137,8 +137,19 @@ export type StatusConciliacao = "Confirmada" | "Divergente" | "Pendente" | "Parc
 export type StatusOperacionalCobranca = "Em cobrança" | "Em negociação" | "Promessa de pagamento" | "Sem retorno" | "—";
 
 export type ConciliacaoSplit = { nome: string; valor: number; tipo: "Captador" | "Parceiro" | "Fee Ubroker" };
-export type ConciliacaoInteracao = { tipo: "Ligação" | "Mensagem" | "Negociação"; obs: string; data: string; autor: string };
+export type ConciliacaoInteracaoTipo = "Ligação" | "WhatsApp" | "E-mail" | "Mensagem" | "Negociação";
+export type ConciliacaoInteracao = { tipo: ConciliacaoInteracaoTipo; obs: string; data: string; autor: string };
 export type ConciliacaoAuditoria = { data: string; autor: string; acao: string; valorAnterior?: number; valorNovo?: number };
+
+export type ResponsavelCobranca = { tipo: "admin" | "operador"; nome: string };
+export type ComprovantePagamento = { nome: string; tipo: "PDF" | "Imagem"; referencia?: string; enviadoEm: string };
+export type ContratoAplicado = { versao: string; data: string; regras: string };
+export type HistoricoCorretorFin = {
+  pagamentosAtrasoPct: number;
+  tempoMedioPagamentoDias: number;
+  totalPagoHub: number;
+  totalAberto: number;
+};
 
 export type Conciliacao = {
   id: string;
@@ -162,7 +173,65 @@ export type Conciliacao = {
   statusOperacional: StatusOperacionalCobranca;
   interacoes: ConciliacaoInteracao[];
   auditoria: ConciliacaoAuditoria[];
+  // V3 — governança final
+  responsavel?: ResponsavelCobranca;
+  slaDias: number;
+  previsaoPagamento?: string;
+  comprovante?: ComprovantePagamento;
+  contrato: ContratoAplicado;
+  historicoCorretor: HistoricoCorretorFin;
 };
+
+export const RESPONSAVEIS_DISPONIVEIS: ResponsavelCobranca[] = [
+  { tipo: "admin", nome: "Superadmin" },
+  { tipo: "operador", nome: "Operador Cobranças" },
+  { tipo: "operador", nome: "Operador Financeiro" },
+];
+
+export function calcularSLA(c: Conciliacao): { restanteDias: number; atrasado: boolean } {
+  if (c.status === "Confirmada") return { restanteDias: 0, atrasado: false };
+  // diasDesdeFatura é a referência (dias decorridos desde fatura emitida)
+  const decorridos = c.diasDesdeFatura;
+  const restante = c.slaDias - decorridos;
+  return { restanteDias: restante, atrasado: restante < 0 };
+}
+
+export function calcularPrioridade(c: Conciliacao): number {
+  if (c.status === "Confirmada") return -1;
+  const histRisco = corretorRisco[c.corretor]?.nivel ?? "baixo";
+  const pesoRisco = histRisco === "alto" ? 30 : histRisco === "medio" ? 15 : 0;
+  const valor = Math.max(c.esperado - c.recebido, 0);
+  const sla = calcularSLA(c);
+  const atrasoExtra = sla.atrasado ? Math.abs(sla.restanteDias) * 5 : 0;
+  return valor / 1000 + c.diasDesdeFatura * 2 + atrasoExtra + pesoRisco;
+}
+
+export type AgrupadoCorretor = {
+  corretor: string;
+  casos: number;
+  totalDevido: number;
+  totalRecebido: number;
+  totalAtraso: number;
+  inadimplenciaPct: number;
+};
+
+export function agruparPorCorretor(lista: Conciliacao[]): AgrupadoCorretor[] {
+  const grupos: Record<string, AgrupadoCorretor> = {};
+  for (const c of lista) {
+    const g = (grupos[c.corretor] ||= {
+      corretor: c.corretor, casos: 0, totalDevido: 0, totalRecebido: 0, totalAtraso: 0, inadimplenciaPct: 0,
+    });
+    g.casos += 1;
+    g.totalDevido += c.esperado;
+    g.totalRecebido += c.recebido;
+    const sla = calcularSLA(c);
+    if (sla.atrasado || c.status === "Pendente") g.totalAtraso += Math.max(c.esperado - c.recebido, 0);
+  }
+  return Object.values(grupos).map((g) => ({
+    ...g,
+    inadimplenciaPct: g.totalDevido > 0 ? (g.totalAtraso / g.totalDevido) * 100 : 0,
+  })).sort((a, b) => b.totalAtraso - a.totalAtraso);
+}
 
 export function calcularStatusConciliacao(esperado: number, recebido: number): StatusConciliacao {
   if (recebido === 0) return "Pendente";
@@ -171,7 +240,9 @@ export function calcularStatusConciliacao(esperado: number, recebido: number): S
   return "Divergente"; // recebido > esperado também é divergente
 }
 
-export const conciliacoes: Conciliacao[] = [
+const CONTRATO_PADRAO: ContratoAplicado = { versao: "v1.2", data: "01/01/2026", regras: "6% comissão · 60/30/10 captador/parceiro/fee Ubroker" };
+
+const _conciliacoesBase: Omit<Conciliacao, "slaDias" | "contrato" | "historicoCorretor" | "responsavel" | "previsaoPagamento" | "comprovante">[] = [
   {
     id: "CC-441", venda: "VD-118", corretor: "Alessandra Freixo",
     esperado: 14_100, recebido: 14_100, status: "Confirmada",
@@ -337,6 +408,63 @@ export const conciliacoes: Conciliacao[] = [
     ],
   },
 ];
+
+// V3 — overrides de governança por id (responsavel, sla, previsão, comprovante, contrato, historicoCorretor)
+const _govOverrides: Record<string, Partial<Conciliacao>> = {
+  "CC-441": {
+    responsavel: { tipo: "admin", nome: "Superadmin" }, slaDias: 3,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 8, tempoMedioPagamentoDias: 9, totalPagoHub: 184_300, totalAberto: 0 },
+    comprovante: { nome: "comprovante-cc441.pdf", tipo: "PDF", referencia: "PIX · BB", enviadoEm: "26/04 11:42" },
+  },
+  "CC-440": {
+    responsavel: { tipo: "operador", nome: "Operador Cobranças" }, slaDias: 3,
+    previsaoPagamento: "30/04",
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 18, tempoMedioPagamentoDias: 12, totalPagoHub: 96_400, totalAberto: 1_800 },
+  },
+  "CC-439": {
+    // não atribuído de propósito — alerta visual
+    slaDias: 5,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 42, tempoMedioPagamentoDias: 22, totalPagoHub: 38_900, totalAberto: 3_420 },
+  },
+  "CC-438": {
+    responsavel: { tipo: "admin", nome: "Superadmin" }, slaDias: 3,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 5, tempoMedioPagamentoDias: 8, totalPagoHub: 142_700, totalAberto: 0 },
+  },
+  "CC-437": {
+    responsavel: { tipo: "operador", nome: "Operador Financeiro" }, slaDias: 3,
+    previsaoPagamento: "29/04",
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 22, tempoMedioPagamentoDias: 14, totalPagoHub: 71_200, totalAberto: 0 },
+  },
+  "CC-436": {
+    responsavel: { tipo: "operador", nome: "Operador Cobranças" }, slaDias: 5,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 55, tempoMedioPagamentoDias: 28, totalPagoHub: 12_400, totalAberto: 4_800 },
+  },
+  "CC-435": {
+    responsavel: { tipo: "operador", nome: "Operador Cobranças" }, slaDias: 3,
+    previsaoPagamento: "02/05",
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 28, tempoMedioPagamentoDias: 16, totalPagoHub: 88_700, totalAberto: 7_200 },
+  },
+  "CC-434": {
+    responsavel: { tipo: "admin", nome: "Superadmin" }, slaDias: 3,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 12, tempoMedioPagamentoDias: 11, totalPagoHub: 64_300, totalAberto: 0 },
+  },
+};
+
+export const conciliacoes: Conciliacao[] = _conciliacoesBase.map((c) => ({
+  slaDias: 3,
+  contrato: CONTRATO_PADRAO,
+  historicoCorretor: { pagamentosAtrasoPct: 0, tempoMedioPagamentoDias: 0, totalPagoHub: 0, totalAberto: 0 },
+  ...c,
+  ..._govOverrides[c.id],
+} as Conciliacao));
 
 export type Disputa = {
   id: string;
