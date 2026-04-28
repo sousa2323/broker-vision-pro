@@ -63,12 +63,16 @@ export const Route = createFileRoute("/admin/financeiro")({
 });
 
 
-type Tab = "cobrancas" | "vendas" | "conciliacao";
+type Tab = "cobrancas" | "vendas" | "conciliacao" | "despesas";
 type StatusFiltro = "Todos" | StatusCobrancaTipo;
 type OrigemFiltro = "Todas" | OrigemCobranca;
 type PeriodoQuick = "hoje" | "7d" | "30d" | "custom";
 
 const STATUS_LIST: StatusFiltro[] = ["Todos", "Pendente", "Faturado", "Pago", "Atrasado", "Contestado"];
+const ORIGEM_LIST: OrigemFiltro[] = ["Todas", "Parceria", "Lead Ubroker", "SaaS"];
+
+function FinanceiroPage() {
+  const [tab, setTab] = useState<Tab>("cobrancas");
 const ORIGEM_LIST: OrigemFiltro[] = ["Todas", "Parceria", "Lead Ubroker", "SaaS"];
 
 function FinanceiroPage() {
