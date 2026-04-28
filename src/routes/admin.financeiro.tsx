@@ -75,6 +75,67 @@ function FinanceiroPage() {
 
   const [cobrancaDetalhe, setCobrancaDetalhe] = useState<Cobranca | null>(null);
 
+  // ===== Conciliação V2 (state local — sem backend) =====
+  const [conciliacoes, setConciliacoes] = useState<Conciliacao[]>(() =>
+    conciliacoesMock.map((c) => ({ ...c, status: calcularStatusConciliacao(c.esperado, c.recebido) })),
+  );
+  const [concDetalhe, setConcDetalhe] = useState<Conciliacao | null>(null);
+  const [concStatusFiltro, setConcStatusFiltro] = useState<"Todos" | StatusConciliacao>("Todos");
+  const [concRiscoFiltro, setConcRiscoFiltro] = useState<"Todos" | "baixo" | "medio" | "alto">("Todos");
+  const [concCorretor, setConcCorretor] = useState<string>("Todos");
+  const [concValMin, setConcValMin] = useState("");
+  const [concValMax, setConcValMax] = useState("");
+  const [concSomenteDiv, setConcSomenteDiv] = useState(false);
+
+  function atualizarConciliacao(id: string, patch: Partial<Conciliacao>, audit?: ConciliacaoAuditoria) {
+    setConciliacoes((prev) => prev.map((c) => {
+      if (c.id !== id) return c;
+      const next = { ...c, ...patch };
+      if (audit) next.auditoria = [...c.auditoria, audit];
+      next.status = calcularStatusConciliacao(next.esperado, next.recebido);
+      return next;
+    }));
+    setConcDetalhe((cur) => {
+      if (!cur || cur.id !== id) return cur;
+      const next = { ...cur, ...patch };
+      if (audit) next.auditoria = [...cur.auditoria, audit];
+      next.status = calcularStatusConciliacao(next.esperado, next.recebido);
+      return next;
+    });
+  }
+
+  function adicionarInteracao(id: string, interacao: ConciliacaoInteracao) {
+    setConciliacoes((prev) => prev.map((c) => c.id === id ? { ...c, interacoes: [...c.interacoes, interacao] } : c));
+    setConcDetalhe((cur) => cur && cur.id === id ? { ...cur, interacoes: [...cur.interacoes, interacao] } : cur);
+  }
+
+  const concCorretores = useMemo(
+    () => Array.from(new Set(conciliacoes.map((c) => c.corretor))).sort(),
+    [conciliacoes],
+  );
+
+  const concFiltradas = useMemo(() => {
+    return conciliacoes.filter((c) => {
+      if (concStatusFiltro !== "Todos" && c.status !== concStatusFiltro) return false;
+      if (concCorretor !== "Todos" && c.corretor !== concCorretor) return false;
+      const min = parseFloat(concValMin); const max = parseFloat(concValMax);
+      if (!Number.isNaN(min) && c.esperado < min) return false;
+      if (!Number.isNaN(max) && c.esperado > max) return false;
+      const dif = c.esperado - c.recebido;
+      if (concSomenteDiv && dif === 0) return false;
+      if (concRiscoFiltro !== "Todos" && classificarRiscoConc(c) !== concRiscoFiltro) return false;
+      return true;
+    });
+  }, [conciliacoes, concStatusFiltro, concCorretor, concValMin, concValMax, concSomenteDiv, concRiscoFiltro]);
+
+  const concKpis = useMemo(() => {
+    const conciliado = concFiltradas.filter((c) => c.status === "Confirmada").reduce((a, b) => a + b.recebido, 0);
+    const divergente = concFiltradas.filter((c) => c.status === "Divergente" || c.status === "Parcial").reduce((a, b) => a + Math.abs(b.esperado - b.recebido), 0);
+    const pendente = concFiltradas.filter((c) => c.status === "Pendente").reduce((a, b) => a + b.esperado, 0);
+    return { conciliado, divergente, pendente, risco: divergente + pendente };
+  }, [concFiltradas]);
+
+
   const corretores = useMemo(
     () => Array.from(new Set(cobrancasMock.map((c) => c.corretor))).sort(),
     [],
