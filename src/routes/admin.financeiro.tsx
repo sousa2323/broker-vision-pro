@@ -662,7 +662,7 @@ function FinanceiroPage() {
                             <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
                               <Pencil className="mr-2 h-4 w-4" /> Ajustar valor recebido
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => atualizarConciliacao(c.id, {}, { data: agora(), autor: "Superadmin", acao: "Marcado como divergente manualmente" }) || toast.warning(`${c.id} marcado para revisão`)}>
+                            <DropdownMenuItem onClick={() => { atualizarConciliacao(c.id, {}, { data: agora(), autor: "Superadmin", acao: "Marcado como divergente manualmente" }); toast.warning(`${c.id} marcado para revisão`); }}>
                               <AlertTriangle className="mr-2 h-4 w-4 text-amber-600" /> Marcar como divergente
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setConcDetalhe(c)}>
