@@ -957,6 +957,139 @@ function FinanceiroPage() {
         </div>
       )}
 
+      {tab === "despesas" && (
+        <div className="space-y-4">
+          {/* KPIs da aba */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MiniKPI label="Total no período" value={formatBRL(despesasFiltradas.reduce((a, b) => a + b.valor, 0))} hint={`${despesasFiltradas.length} lançamento(s)`} />
+            <MiniKPI label="Pagas" value={formatBRL(despPagas)} tone="green" hint={`${despesasFiltradas.filter((d) => d.status === "Pago").length} item(ns)`} />
+            <MiniKPI label="A pagar" value={formatBRL(despAPagar)} tone="amber" hint={`${despesasFiltradas.filter((d) => d.status === "A pagar").length} pendente(s)`} />
+            <MiniKPI label="Maior categoria" value={maiorCategoria ? maiorCategoria[0] : "—"} hint={maiorCategoria ? formatBRL(maiorCategoria[1]) : "Sem despesas"} />
+          </div>
+
+          {/* Filtros + nova despesa */}
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
+            <FilterIcon className="h-4 w-4 text-muted-foreground" />
+            <Select value={despFiltroCat} onValueChange={(v) => setDespFiltroCat(v as typeof despFiltroCat)}>
+              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todas" className="text-xs">Todas as categorias</SelectItem>
+                {CATEGORIAS_DESPESA.map((c) => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={despFiltroStatus} onValueChange={(v) => setDespFiltroStatus(v as typeof despFiltroStatus)}>
+              <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos" className="text-xs">Todos status</SelectItem>
+                <SelectItem value="Pago" className="text-xs">Pago</SelectItem>
+                <SelectItem value="A pagar" className="text-xs">A pagar</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={despFiltroTipo} onValueChange={(v) => setDespFiltroTipo(v as typeof despFiltroTipo)}>
+              <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos" className="text-xs">Todos tipos</SelectItem>
+                <SelectItem value="Fixo" className="text-xs">Fixo</SelectItem>
+                <SelectItem value="Variável" className="text-xs">Variável</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              className="h-8 w-[200px] text-xs"
+              placeholder="Buscar descrição…"
+              value={despBusca}
+              onChange={(e) => setDespBusca(e.target.value)}
+            />
+            <div className="ml-auto">
+              <Button
+                size="sm"
+                className="h-8 gap-2"
+                onClick={() => { setDespesaEdit(null); setDespesaModalOpen(true); }}
+              >
+                <Plus className="h-4 w-4" /> Nova despesa
+              </Button>
+            </div>
+          </div>
+
+          {/* Tabela */}
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead className="bg-surface text-[10px] uppercase tracking-widest text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 text-left">ID</th>
+                  <th className="px-4 py-3 text-left">Data</th>
+                  <th className="px-4 py-3 text-left">Categoria</th>
+                  <th className="px-4 py-3 text-left">Descrição</th>
+                  <th className="px-4 py-3 text-left">Tipo</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {despesasFiltradas.length === 0 && (
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma despesa encontrada com os filtros atuais.</td></tr>
+                )}
+                {despesasFiltradas.map((d) => (
+                  <tr key={d.id} className="hover:bg-surface/50">
+                    <td className="px-4 py-3 font-mono text-xs">{d.id}</td>
+                    <td className="px-4 py-3">{d.data}</td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-surface px-2 py-0.5 text-xs">{d.categoria}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div>{d.descricao}</div>
+                      {d.responsavel && <div className="text-[11px] text-muted-foreground">Responsável: {d.responsavel}</div>}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <span className={cn(
+                        "rounded-full px-2 py-0.5",
+                        d.tipo === "Fixo" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700",
+                      )}>{d.tipo}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right num font-medium">{formatBRL(d.valor)}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn(
+                        "rounded-full px-2 py-0.5 text-xs",
+                        d.status === "Pago" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+                      )}>{d.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => { setDespesaEdit(d); setDespesaModalOpen(true); }}>
+                            <Pencil className="mr-2 h-4 w-4" /> Editar
+                          </DropdownMenuItem>
+                          {d.status === "A pagar" && (
+                            <DropdownMenuItem onClick={() => {
+                              setDespesas((arr) => arr.map((x) => x.id === d.id ? { ...x, status: "Pago" } : x));
+                              toast.success("Despesa marcada como paga", { description: `${d.id} · ${formatBRL(d.valor)}` });
+                            }}>
+                              <CheckCircle2 className="mr-2 h-4 w-4" /> Marcar como paga
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-700 focus:text-red-700"
+                            onClick={() => setDespesaExcluir(d)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <CobrancaDetalheModal cobranca={cobrancaDetalhe} onClose={() => setCobrancaDetalhe(null)} />
       <ConciliacaoDetalheModal
         conciliacao={concDetalhe}
@@ -964,6 +1097,45 @@ function FinanceiroPage() {
         onUpdate={atualizarConciliacao}
         onInteracao={adicionarInteracao}
       />
+
+      <DespesaModal
+        open={despesaModalOpen}
+        despesa={despesaEdit}
+        onClose={() => { setDespesaModalOpen(false); setDespesaEdit(null); }}
+        onSave={(d) => {
+          setDespesas((arr) => {
+            const exists = arr.some((x) => x.id === d.id);
+            return exists ? arr.map((x) => x.id === d.id ? d : x) : [d, ...arr];
+          });
+          toast.success(despesaEdit ? "Despesa atualizada" : "Despesa criada", { description: `${d.descricao} · ${formatBRL(d.valor)}` });
+          setDespesaModalOpen(false); setDespesaEdit(null);
+        }}
+      />
+
+      <AlertDialog open={!!despesaExcluir} onOpenChange={(o) => { if (!o) setDespesaExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir despesa {despesaExcluir?.id}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove o lançamento e recalcula o resultado do período. Não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (despesaExcluir) {
+                  setDespesas((arr) => arr.filter((x) => x.id !== despesaExcluir.id));
+                  toast.success("Despesa excluída", { description: despesaExcluir.id });
+                }
+                setDespesaExcluir(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );
