@@ -133,20 +133,209 @@ export const vendasDetalhadas: VendaDetalhada[] = [
   },
 ];
 
+export type StatusConciliacao = "Confirmada" | "Divergente" | "Pendente" | "Parcial";
+export type StatusOperacionalCobranca = "Em cobrança" | "Em negociação" | "Promessa de pagamento" | "Sem retorno" | "—";
+
+export type ConciliacaoSplit = { nome: string; valor: number; tipo: "Captador" | "Parceiro" | "Fee Ubroker" };
+export type ConciliacaoInteracao = { tipo: "Ligação" | "Mensagem" | "Negociação"; obs: string; data: string; autor: string };
+export type ConciliacaoAuditoria = { data: string; autor: string; acao: string; valorAnterior?: number; valorNovo?: number };
+
 export type Conciliacao = {
   id: string;
   venda: string;
   corretor: string;
   esperado: number;
   recebido: number;
-  status: "Pendente" | "Confirmada" | "Divergente";
+  status: StatusConciliacao;
+  // V2 — contexto da venda
+  imovel: string;
+  vgv: number;
+  tipo: "Parceria" | "Lead Ubroker" | "SaaS";
+  comissaoPct: number;
+  comissaoTotal: number;
+  splits: ConciliacaoSplit[];
+  // V2 — temporalidade e operação
+  criadoEm: string;
+  faturadoEm: string;
+  pagoEm?: string;
+  diasDesdeFatura: number;
+  statusOperacional: StatusOperacionalCobranca;
+  interacoes: ConciliacaoInteracao[];
+  auditoria: ConciliacaoAuditoria[];
 };
 
+export function calcularStatusConciliacao(esperado: number, recebido: number): StatusConciliacao {
+  if (recebido === 0) return "Pendente";
+  if (recebido === esperado) return "Confirmada";
+  if (recebido < esperado) return "Parcial";
+  return "Divergente"; // recebido > esperado também é divergente
+}
+
 export const conciliacoes: Conciliacao[] = [
-  { id: "CC-441", venda: "VD-118", corretor: "Alessandra Freixo", esperado: 14_100, recebido: 14_100, status: "Confirmada" },
-  { id: "CC-440", venda: "VD-117", corretor: "Denise Molinaro", esperado: 20_700, recebido: 18_900, status: "Divergente" },
-  { id: "CC-439", venda: "VD-116", corretor: "Ramon Capone", esperado: 3_420, recebido: 0, status: "Pendente" },
-  { id: "CC-438", venda: "VD-115", corretor: "Marcos Iglesias", esperado: 9_400, recebido: 9_400, status: "Confirmada" },
+  {
+    id: "CC-441", venda: "VD-118", corretor: "Alessandra Freixo",
+    esperado: 14_100, recebido: 14_100, status: "Confirmada",
+    imovel: "Cobertura Linear · Jardim Icaraí", vgv: 2_350_000, tipo: "Parceria",
+    comissaoPct: 6, comissaoTotal: 141_000,
+    splits: [
+      { nome: "Alessandra Freixo", valor: 84_600, tipo: "Captador" },
+      { nome: "Ramon Capone", valor: 42_300, tipo: "Parceiro" },
+      { nome: "Ubroker", valor: 14_100, tipo: "Fee Ubroker" },
+    ],
+    criadoEm: "10/04", faturadoEm: "18/04", pagoEm: "26/04", diasDesdeFatura: 10,
+    statusOperacional: "—",
+    interacoes: [],
+    auditoria: [
+      { data: "10/04 09:12", autor: "Sistema", acao: "Cobrança criada" },
+      { data: "18/04 14:02", autor: "Sistema", acao: "Fatura enviada" },
+      { data: "26/04 11:40", autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: 0, valorNovo: 14_100 },
+    ],
+  },
+  {
+    id: "CC-440", venda: "VD-117", corretor: "Denise Molinaro",
+    esperado: 20_700, recebido: 18_900, status: "Parcial",
+    imovel: "Casa de Praia · Camboinhas", vgv: 3_450_000, tipo: "Parceria",
+    comissaoPct: 6, comissaoTotal: 207_000,
+    splits: [
+      { nome: "Denise Molinaro", valor: 124_200, tipo: "Captador" },
+      { nome: "Aldemar Souza", valor: 62_100, tipo: "Parceiro" },
+      { nome: "Ubroker", valor: 20_700, tipo: "Fee Ubroker" },
+    ],
+    criadoEm: "12/04", faturadoEm: "20/04", pagoEm: "27/04", diasDesdeFatura: 8,
+    statusOperacional: "Em negociação",
+    interacoes: [
+      { tipo: "Ligação", obs: "Corretora confirmou diferença por taxa de TED. Vai complementar.", data: "27/04 16:20", autor: "Superadmin" },
+    ],
+    auditoria: [
+      { data: "12/04 10:00", autor: "Sistema", acao: "Cobrança criada" },
+      { data: "20/04 09:30", autor: "Sistema", acao: "Fatura enviada" },
+      { data: "27/04 15:10", autor: "Superadmin", acao: "Recebimento parcial registrado", valorAnterior: 0, valorNovo: 18_900 },
+    ],
+  },
+  {
+    id: "CC-439", venda: "VD-116", corretor: "Ramon Capone",
+    esperado: 3_420, recebido: 0, status: "Pendente",
+    imovel: "Studio · São Francisco", vgv: 380_000, tipo: "Lead Ubroker",
+    comissaoPct: 6, comissaoTotal: 22_800,
+    splits: [
+      { nome: "Ramon Capone", valor: 19_380, tipo: "Captador" },
+      { nome: "Ubroker", valor: 3_420, tipo: "Fee Ubroker" },
+    ],
+    criadoEm: "01/04", faturadoEm: "08/04", diasDesdeFatura: 20,
+    statusOperacional: "Em cobrança",
+    interacoes: [
+      { tipo: "Mensagem", obs: "Enviado lembrete via WhatsApp.", data: "22/04 10:14", autor: "Superadmin" },
+      { tipo: "Ligação", obs: "Sem retorno.", data: "25/04 14:00", autor: "Superadmin" },
+    ],
+    auditoria: [
+      { data: "01/04 08:00", autor: "Sistema", acao: "Cobrança criada" },
+      { data: "08/04 09:00", autor: "Sistema", acao: "Fatura enviada" },
+      { data: "22/04 10:14", autor: "Superadmin", acao: "Tentativa de cobrança registrada" },
+    ],
+  },
+  {
+    id: "CC-438", venda: "VD-115", corretor: "Marcos Iglesias",
+    esperado: 9_400, recebido: 9_400, status: "Confirmada",
+    imovel: "Apartamento Charitas", vgv: 1_560_000, tipo: "Parceria",
+    comissaoPct: 6, comissaoTotal: 93_600,
+    splits: [
+      { nome: "Marcos Iglesias", valor: 56_160, tipo: "Captador" },
+      { nome: "Beatriz Lemos", valor: 28_080, tipo: "Parceiro" },
+      { nome: "Ubroker", valor: 9_360, tipo: "Fee Ubroker" },
+    ],
+    criadoEm: "05/04", faturadoEm: "12/04", pagoEm: "21/04", diasDesdeFatura: 16,
+    statusOperacional: "—",
+    interacoes: [],
+    auditoria: [
+      { data: "05/04 09:00", autor: "Sistema", acao: "Cobrança criada" },
+      { data: "12/04 11:00", autor: "Sistema", acao: "Fatura enviada" },
+      { data: "21/04 10:00", autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: 0, valorNovo: 9_400 },
+    ],
+  },
+  {
+    id: "CC-437", venda: "VD-114", corretor: "Pedro Verissimo",
+    esperado: 12_400, recebido: 14_800, status: "Divergente",
+    imovel: "Casa Itaipu", vgv: 1_180_000, tipo: "Parceria",
+    comissaoPct: 6, comissaoTotal: 70_800,
+    splits: [
+      { nome: "Pedro Verissimo", valor: 42_480, tipo: "Captador" },
+      { nome: "Aldemar Souza", valor: 21_240, tipo: "Parceiro" },
+      { nome: "Ubroker", valor: 7_080, tipo: "Fee Ubroker" },
+    ],
+    criadoEm: "02/04", faturadoEm: "10/04", pagoEm: "24/04", diasDesdeFatura: 18,
+    statusOperacional: "Promessa de pagamento",
+    interacoes: [
+      { tipo: "Negociação", obs: "Corretor pagou a mais. Investigar origem.", data: "24/04 18:00", autor: "Superadmin" },
+    ],
+    auditoria: [
+      { data: "02/04 09:00", autor: "Sistema", acao: "Cobrança criada" },
+      { data: "10/04 10:00", autor: "Sistema", acao: "Fatura enviada" },
+      { data: "24/04 17:30", autor: "Superadmin", acao: "Recebimento divergente registrado", valorAnterior: 0, valorNovo: 14_800 },
+    ],
+  },
+  {
+    id: "CC-436", venda: "VD-113", corretor: "Tiago Sá",
+    esperado: 4_800, recebido: 0, status: "Pendente",
+    imovel: "Loft Centro Histórico", vgv: 720_000, tipo: "Lead Ubroker",
+    comissaoPct: 6, comissaoTotal: 43_200,
+    splits: [
+      { nome: "Tiago Sá", valor: 38_400, tipo: "Captador" },
+      { nome: "Ubroker", valor: 4_800, tipo: "Fee Ubroker" },
+    ],
+    criadoEm: "20/03", faturadoEm: "28/03", diasDesdeFatura: 31,
+    statusOperacional: "Sem retorno",
+    interacoes: [
+      { tipo: "Mensagem", obs: "Enviado e-mail formal de cobrança.", data: "10/04 09:00", autor: "Superadmin" },
+      { tipo: "Ligação", obs: "Caixa postal.", data: "18/04 14:30", autor: "Superadmin" },
+      { tipo: "Ligação", obs: "Caixa postal novamente.", data: "25/04 10:00", autor: "Superadmin" },
+    ],
+    auditoria: [
+      { data: "20/03 09:00", autor: "Sistema", acao: "Cobrança criada" },
+      { data: "28/03 09:00", autor: "Sistema", acao: "Fatura enviada" },
+      { data: "10/04 09:00", autor: "Superadmin", acao: "Tentativa de cobrança registrada" },
+      { data: "18/04 14:30", autor: "Superadmin", acao: "Tentativa de cobrança registrada" },
+    ],
+  },
+  {
+    id: "CC-435", venda: "VD-112", corretor: "Beatriz Lemos",
+    esperado: 18_400, recebido: 11_200, status: "Parcial",
+    imovel: "Cobertura Vista Mar · Icaraí", vgv: 3_060_000, tipo: "Parceria",
+    comissaoPct: 6, comissaoTotal: 183_600,
+    splits: [
+      { nome: "Beatriz Lemos", valor: 110_160, tipo: "Captador" },
+      { nome: "Denise Molinaro", valor: 55_080, tipo: "Parceiro" },
+      { nome: "Ubroker", valor: 18_360, tipo: "Fee Ubroker" },
+    ],
+    criadoEm: "08/04", faturadoEm: "15/04", pagoEm: "26/04", diasDesdeFatura: 13,
+    statusOperacional: "Promessa de pagamento",
+    interacoes: [
+      { tipo: "Negociação", obs: "Pagou 60%, complemento previsto para 02/05.", data: "26/04 11:00", autor: "Superadmin" },
+    ],
+    auditoria: [
+      { data: "08/04 09:00", autor: "Sistema", acao: "Cobrança criada" },
+      { data: "15/04 10:00", autor: "Sistema", acao: "Fatura enviada" },
+      { data: "26/04 10:50", autor: "Superadmin", acao: "Recebimento parcial registrado", valorAnterior: 0, valorNovo: 11_200 },
+    ],
+  },
+  {
+    id: "CC-434", venda: "VD-111", corretor: "Aldemar Souza",
+    esperado: 6_200, recebido: 6_200, status: "Confirmada",
+    imovel: "Casa Maricá · Itaipuaçu", vgv: 1_032_000, tipo: "Parceria",
+    comissaoPct: 6, comissaoTotal: 61_920,
+    splits: [
+      { nome: "Aldemar Souza", valor: 37_152, tipo: "Captador" },
+      { nome: "Ramon Capone", valor: 18_576, tipo: "Parceiro" },
+      { nome: "Ubroker", valor: 6_192, tipo: "Fee Ubroker" },
+    ],
+    criadoEm: "06/04", faturadoEm: "13/04", pagoEm: "22/04", diasDesdeFatura: 15,
+    statusOperacional: "—",
+    interacoes: [],
+    auditoria: [
+      { data: "06/04 09:00", autor: "Sistema", acao: "Cobrança criada" },
+      { data: "13/04 10:00", autor: "Sistema", acao: "Fatura enviada" },
+      { data: "22/04 09:30", autor: "Superadmin", acao: "Pagamento confirmado", valorAnterior: 0, valorNovo: 6_200 },
+    ],
+  },
 ];
 
 export type Disputa = {

@@ -1,111 +1,83 @@
+# Plano — Conciliação Inteligente (Admin › Financeiro)
 
-# Financeiro V2 — Governança e Controle
+Evolução **aditiva** da aba "Conciliação" em `src/routes/admin.financeiro.tsx`. Nada da estrutura existente (abas, colunas base, KPIs de cobranças, modal de cobrança, identidade visual) será removido ou redesenhado.
 
-Evolução da tela `/admin/financeiro` adicionando camadas de governança, rastreabilidade, risco e exportação **sem alterar** a estrutura base (cards do topo, abas, tabela). Todas as adições são incrementais.
+## 1. Camada de dados (`src/data/admin-mock.ts`)
 
-## 1. Enriquecer mock (`src/data/admin-mock.ts`)
+Expandir `Conciliacao` com campos sem quebrar usos atuais:
 
-Estender o tipo `Cobranca` (não-breaking — campos adicionais opcionais) e popular dados realistas:
+- `vgv: number`, `tipo: "Parceria" | "Lead Ubroker" | "SaaS"`, `imovel: string`
+- `comissaoPct: number`, `comissaoTotal: number`, `splits: { nome; valor; tipo }[]`
+- `criadoEm, faturadoEm, pagoEm?: string`, `diasDesdeFatura: number`
+- `statusOperacional: "Em cobrança" | "Em negociação" | "Promessa de pagamento" | "Sem retorno" | "—"`
+- `interacoes: { tipo: "Ligação"|"Mensagem"|"Negociação"; obs: string; data: string; autor: string }[]`
+- `auditoria: { data; autor; acao; valorAnterior?; valorNovo? }[]` (cobrança criada, fatura enviada, tentativas, ajustes)
 
-- `status` agora inclui `"Contestado"`.
-- Novos campos: `criadoEm`, `faturadoEm`, `pagoEm?`, `vendaId?` (link para `VendaDetalhada`), `diasAtraso?`, `divergencia?: { esperado: number; cobrado: number }`.
-- Nova estrutura `corretorRisco: Record<string, { nivel: "baixo" | "medio" | "alto"; pctAtraso: number; totalAberto: number }>`.
-- Expandir lista de cobranças (12–16 itens) com mistura realista de origens, status, divergências e atrasos para alimentar todas as visualizações.
+Atualizar status do mock para cobrir os 4 estados (Confirmada, Divergente, Pendente, **Parcial**) e popular pelo menos 6–8 linhas com cenários variados (parcial, divergência alta, atraso crítico, etc.).
 
-## 2. Filtros avançados (Camada 1)
+Adicionar tipo `StatusConciliacao = "Confirmada" | "Divergente" | "Pendente" | "Parcial"` e helper `calcularStatusConciliacao(esperado, recebido)`.
 
-Acima da tabela de Cobranças, adicionar barra de filtros colapsável:
+## 2. Tabela Conciliação — colunas adicionais
 
-- **Período**: date-range (Popover + Calendar shadcn, `mode="range"`, `pointer-events-auto`).
-- **Corretor**: Select com busca (Command/Popover) usando lista derivada das cobranças.
-- **Tipo de receita**: chips (Parceria / Lead Ubroker / SaaS).
-- **Status**: chips estendidos (inclui Contestado) — substitui o filtro atual mantendo o mesmo visual.
-- **Estratégicos** (linha secundária recolhível "Filtros avançados"): valor mín/máx, atraso > N dias, "Apenas alto valor (> R$5k)" toggle.
-- Botão "Limpar filtros" + contador "X de Y cobranças".
+Manter ID, Venda, Corretor, Esperado, Recebido, Status. **Adicionar à direita**:
 
-Estado local com `useState` e função `aplicarFiltros(cobrancas)` pura.
+- **Diferença** — `esperado - recebido`. R$ 0 neutro, positivo laranja (em aberto), negativo azul (acima do esperado).
+- **Risco** — Baixo/Médio/Alto combinando dias desde fatura, % divergência e `corretorRisco[corretor]`. Badge colorido com `HoverCard` mostrando os critérios.
+- **Status operacional** — chip discreto (Em cobrança / Negociação / Promessa / Sem retorno).
+- **Ações** — `DropdownMenu` por linha: Confirmar pagamento, Ajustar valor recebido, Marcar como divergente, Registrar contato/cobrança, Ver cobrança completa, Ver contrato da parceria.
 
-## 3. Seletor de período + KPIs dinâmicos (Camada 7)
+Status na coluna existente passa a ser **calculado** e inclui badge "Parcial" (âmbar claro). Linhas com alerta crítico ganham ícone à esquerda do ID:
 
-Acima dos 3 cards principais existentes, adicionar tira com 4 chips: **Hoje · 7 dias · 30 dias · Personalizado**. Recalcula `totalRecebido`, `totalPendente`, `totalAtraso` via filtragem por `pagoEm`/`vencimento`. Cards principais permanecem visualmente idênticos.
+- Recebido < 70% esperado → ⚠️ "Valor muito abaixo"
+- Diferença ≥ R$ 10.000 → 🔴 "Alto impacto financeiro"
+- `diasDesdeFatura > 15` sem pagamento → ⏳ "Atraso crítico"
 
-## 4. Indicadores de saúde financeira (Camada 8)
+Tudo via `Tooltip`, sem alterar largura/altura base das linhas.
 
-Logo abaixo dos 3 cards atuais, grid de 4 mini-cards densos:
+## 3. Cabeçalho da aba — Visão de controle + filtros
 
-- Taxa de inadimplência (%)
-- Ticket médio
-- Tempo médio de pagamento (dias)
-- % receita por origem (mini barra empilhada Parceria / Lead / SaaS)
+Acima da tabela (dentro do `tab === "conciliacao"`), adicionar:
 
-Mesmo estilo visual dos KPIs existentes, mas em variante compacta para não competir com os cards principais.
+- **4 KPIs compactos** (mesmo estilo dos cards atuais): Total conciliado, Total divergente, Total pendente, Valor em risco (divergências + pendentes).
+- **Barra de filtros colapsável**: Status de conciliação, Risco, Corretor (search), Valor mín/máx, "Somente com divergência" (switch). Implementar com `useState` + `useMemo` aplicando aos dados antes da renderização e dos KPIs.
 
-## 5. Coluna "Risco" (Camada 4)
+## 4. Modal de Conciliação
 
-Nova coluna entre `Status` e `Ações`. Bolinha colorida (`bg-emerald-500` / `bg-amber-500` / `bg-red-500`) + label curto. HoverCard (shadcn) com:
+Novo componente `ConciliacaoDetalheModal` (Dialog), aberto ao clicar na linha ou em "Ver cobrança completa". Cinco blocos:
 
-- % de pagamentos em atraso do corretor
-- Total em aberto
-- Histórico curto (últimas 3 cobranças)
+1. **Resumo da venda** — imóvel, VGV, tipo.
+2. **Comissão detalhada** — % total, valor total, splits (Captador / Parceiro / Fee Ubroker).
+3. **Conciliação** — esperado, recebido, diferença, status atual (com badge).
+4. **Ações diretas** — botões: Confirmar pagamento, Ajustar valor (input inline com confirmação), Registrar divergência, Registrar cobrança realizada. Ações que mexem em valor/status pedem confirmação (`AlertDialog`) e disparam `toast` + entrada na auditoria local (state).
+5. **Histórico / Auditoria** — timeline vertical: cobrança criada → fatura enviada → tentativas → pagamento → ajustes. Cada item: data, autor, ação, valor anterior → novo quando aplicável.
 
-## 6. Mini-conciliação visual (Camada 9)
+Abaixo do bloco 5, **CRM de cobrança**: lista de interações + formulário curto (Select tipo, Textarea observação, botão Registrar) que faz `setState` local e adiciona toast.
 
-Ícone à esquerda do `valor`:
+## 5. Governança e segurança
 
-- ✓ verde quando `divergencia` ausente.
-- ⚠ âmbar quando há divergência.
+- Toda ação no modal cria entrada em `auditoria` (state local) com autor "Superadmin", timestamp simulado, valor anterior/novo.
+- Confirmar pagamento e Ajustar valor exigem confirmação via `AlertDialog`.
+- Estado é local (sem backend) — protótipo administrativo apenas.
 
-Tooltip mostra "Esperado X · Cobrado Y · Δ Z".
+## 6. Exportação inteligente
 
-## 7. Coluna "Origem detalhada" + Modal (Camadas 2 e 3)
+Estender `ExportarMenu` (ou criar variante específica da aba) com:
 
-Botão ícone `<FileSearch />` em nova coluna (ou dentro de Ações como item primário "Ver origem"). Abre `Dialog` shadcn com 4 seções:
+- Relatório de divergências (linhas Divergente + Parcial)
+- Relatório de inadimplência de conciliação (Pendente + atraso crítico)
+- Relatório por corretor (conciliação) — agregação esperado/recebido/diferença
+- Histórico completo de auditoria (flatten de todas as entradas)
 
-1. **Venda vinculada**: imóvel, VGV, tipo de operação (consulta `vendasDetalhadas` por `vendaId`; fallback "Cobrança SaaS recorrente" quando não houver venda).
-2. **Comissão**: % total, divisão por participante, % Ubroker, **valor calculado vs valor cobrado** com badge de divergência se aplicável.
-3. **Envolvidos**: lista corretor(es) com avatar.
-4. **Timeline financeira** (Camada 3): linha vertical com nós Criado → Faturado → Vencimento → Pago. Se atrasado, badge vermelho "X dias em atraso" no nó de Vencimento.
+## 7. Restrições respeitadas
 
-## 8. Ações operacionais expandidas (Camada 5)
-
-DropdownMenu na coluna Ações (substitui os 3 ícones soltos por um trigger `<MoreHorizontal />` + mantém o atalho "Marcar como pago" como ícone visível para fluxo rápido):
-
-- ✓ Marcar como pago
-- 📄 Gerar cobrança (toast simulado)
-- ⚠ Marcar como contestado
-- 🔍 Ver origem (abre o modal)
-- ✏ Editar cobrança (toast simulado)
-
-Usar `sonner` (`toast.success`) para feedback simulado — sem mutação real do mock.
-
-## 9. Exportação inteligente (Camada 6)
-
-Adicionar botão "Exportar" no header da seção (não existia ainda). DropdownMenu com 4 opções, todas geram CSV client-side via `Blob` e `URL.createObjectURL`:
-
-- Exportar dados filtrados (CSV)
-- Relatório por corretor (agrupado)
-- Relatório contábil (SaaS vs Comissão)
-- Relatório de inadimplência (apenas Atrasado/Contestado)
-
-## 10. Agrupamento (Camada 10 — preparação)
-
-Adicionar utilitário `agruparCobrancas(cobrancas, por: "corretor" | "origem" | "mes")` em `src/data/admin-mock.ts`, sem UI agora. Comentário `// TODO: usado por views futuras de agrupamento`.
+- Abas Cobranças / Detalhamento / Conciliação **inalteradas**.
+- Colunas base **mantidas** na mesma ordem, novas colunas **adicionadas à direita**.
+- Tipografia, espaçamento, cores e layout preservados.
+- Sem novas dependências; só componentes shadcn já presentes (Dialog, AlertDialog, DropdownMenu, HoverCard, Tooltip, Select, Switch, Textarea, Input, Button, Badge).
 
 ## Arquivos afetados
 
-- **Editar** `src/data/admin-mock.ts` — estender tipo Cobranca, adicionar `corretorRisco`, util de agrupamento, dados ricos.
-- **Editar** `src/routes/admin.financeiro.tsx` — toda a UI nova (filtros, KPIs de saúde, novas colunas, modal, dropdowns, export). Aba "Cobranças" recebe ~80% das mudanças; abas "Vendas" e "Conciliação" permanecem intactas.
+- **Editado** `src/data/admin-mock.ts` — expansão de `Conciliacao`, novo tipo de status, helper, mock enriquecido.
+- **Editado** `src/routes/admin.financeiro.tsx` — KPIs + filtros da aba, colunas extras, alertas, dropdown de ações, novo `ConciliacaoDetalheModal`, CRM de interações, novos itens de export.
 
-## Detalhes técnicos
-
-- shadcn já disponível: `dialog`, `dropdown-menu`, `popover`, `calendar`, `command`, `hover-card`, `tooltip`, `select`, `sonner`. Sem novas deps.
-- Date range: `Calendar mode="range"` com `className="p-3 pointer-events-auto"`.
-- Status "Contestado" → cor `bg-purple-50 text-purple-700`, mantendo o padrão de pílulas existente.
-- CSV: helper local `toCSV(rows: Record<string, unknown>[])` com escape de `"` e separador `;` (compatível com Excel pt-BR).
-- Tipos derivados (`StatusCobranca`) atualizados para incluir `Contestado`.
-- Layout base, classes Tailwind, paleta (`bg-warm`, `bg-surface`, `text-emerald-700` etc.) e estrutura de abas **inalterados**.
-
-## Fora de escopo
-
-- Sem gateway de pagamento, sem persistência, sem mudanças em outras telas admin.
-- Sem alteração nas abas "Detalhamento de vendas" e "Conciliação" além de poderem se beneficiar dos mesmos dados de venda.
+Nenhum arquivo será deletado.
