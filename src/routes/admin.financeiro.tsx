@@ -1415,6 +1415,8 @@ function ConciliacaoDetalheModal({
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Ligação" className="text-xs">Ligação</SelectItem>
+                      <SelectItem value="WhatsApp" className="text-xs">WhatsApp</SelectItem>
+                      <SelectItem value="E-mail" className="text-xs">E-mail</SelectItem>
                       <SelectItem value="Mensagem" className="text-xs">Mensagem</SelectItem>
                       <SelectItem value="Negociação" className="text-xs">Negociação</SelectItem>
                     </SelectContent>
