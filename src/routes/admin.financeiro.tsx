@@ -3,14 +3,21 @@ import { useMemo, useState } from "react";
 import {
   CheckCircle2, Eye, Pencil, MoreHorizontal, AlertTriangle, ShieldCheck,
   FileSearch, Download, FileText, Filter as FilterIcon, X, Calendar as CalendarIcon,
-  Clock, Receipt, AlertCircle,
+  Clock, Receipt, AlertCircle, Phone, MessageSquare, Handshake, FileSignature,
+  TrendingDown, TrendingUp, Activity,
 } from "lucide-react";
 import {
   cobrancas as cobrancasMock,
   vendasDetalhadas,
-  conciliacoes,
+  conciliacoes as conciliacoesMock,
   corretorRisco,
+  calcularStatusConciliacao,
   type Cobranca,
+  type Conciliacao,
+  type ConciliacaoInteracao,
+  type ConciliacaoAuditoria,
+  type StatusConciliacao,
+  type StatusOperacionalCobranca,
   type StatusCobrancaTipo,
   type OrigemCobranca,
 } from "@/data/admin-mock";
@@ -20,6 +27,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -28,12 +39,16 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/comp
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 import type { DateRange } from "react-day-picker";
 
 export const Route = createFileRoute("/admin/financeiro")({
   component: FinanceiroPage,
 });
+
 
 type Tab = "cobrancas" | "vendas" | "conciliacao";
 type StatusFiltro = "Todos" | StatusCobrancaTipo;
