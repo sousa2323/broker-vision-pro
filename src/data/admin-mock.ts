@@ -26,27 +26,69 @@ export const adminBrokers: AdminBroker[] = [
   { id: "U-012", nome: "Beatriz Lemos", creci: "SP-302118", cidade: "São Paulo/SP", plano: "Pro", status: "Ativo", receita: 215_600, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&q=80" },
 ];
 
+export type StatusCobrancaTipo = "Pendente" | "Faturado" | "Pago" | "Atrasado" | "Contestado";
+export type OrigemCobranca = "Parceria" | "Lead Ubroker" | "SaaS";
+
 export type Cobranca = {
   id: string;
   corretor: string;
-  origem: "Parceria" | "Lead Ubroker" | "SaaS";
+  origem: OrigemCobranca;
   valor: number;
-  vencimento: string;
-  status: "Pendente" | "Faturado" | "Pago" | "Atrasado";
+  vencimento: string; // dd/mm
+  status: StatusCobrancaTipo;
+  // Camada V2 — rastreabilidade e auditoria
+  criadoEm: string; // dd/mm
+  faturadoEm?: string; // dd/mm
+  pagoEm?: string; // dd/mm
+  vendaId?: string; // referência a VendaDetalhada
+  diasAtraso?: number;
+  divergencia?: { esperado: number; cobrado: number };
 };
 
 export const cobrancas: Cobranca[] = [
-  { id: "CB-2041", corretor: "Alessandra Freixo", origem: "Parceria", valor: 8_400, vencimento: "28/04", status: "Atrasado" },
-  { id: "CB-2040", corretor: "Aldemar Souza", origem: "Lead Ubroker", valor: 3_200, vencimento: "30/04", status: "Pendente" },
-  { id: "CB-2039", corretor: "Denise Molinaro", origem: "Parceria", valor: 14_600, vencimento: "02/05", status: "Faturado" },
-  { id: "CB-2038", corretor: "Ramon Capone", origem: "SaaS", valor: 120, vencimento: "01/05", status: "Pago" },
-  { id: "CB-2037", corretor: "Pedro Verissimo", origem: "Parceria", valor: 6_800, vencimento: "22/04", status: "Atrasado" },
-  { id: "CB-2036", corretor: "Carla Fontes", origem: "Lead Ubroker", valor: 4_400, vencimento: "05/05", status: "Faturado" },
-  { id: "CB-2035", corretor: "Marcos Iglesias", origem: "Parceria", valor: 9_200, vencimento: "26/04", status: "Pago" },
-  { id: "CB-2034", corretor: "Beatriz Lemos", origem: "SaaS", valor: 240, vencimento: "01/05", status: "Pago" },
-  { id: "CB-2033", corretor: "Joana Maciel", origem: "Lead Ubroker", valor: 2_100, vencimento: "29/04", status: "Pendente" },
-  { id: "CB-2032", corretor: "Tiago Sá", origem: "SaaS", valor: 120, vencimento: "20/04", status: "Atrasado" },
+  { id: "CB-2041", corretor: "Alessandra Freixo", origem: "Parceria", valor: 8_400, vencimento: "28/04", status: "Atrasado", criadoEm: "10/04", faturadoEm: "18/04", diasAtraso: 4, vendaId: "VD-118" },
+  { id: "CB-2040", corretor: "Aldemar Souza", origem: "Lead Ubroker", valor: 3_200, vencimento: "30/04", status: "Pendente", criadoEm: "20/04", faturadoEm: "23/04" },
+  { id: "CB-2039", corretor: "Denise Molinaro", origem: "Parceria", valor: 14_600, vencimento: "02/05", status: "Faturado", criadoEm: "15/04", faturadoEm: "22/04", vendaId: "VD-117", divergencia: { esperado: 14_100, cobrado: 14_600 } },
+  { id: "CB-2038", corretor: "Ramon Capone", origem: "SaaS", valor: 120, vencimento: "01/05", status: "Pago", criadoEm: "25/04", faturadoEm: "26/04", pagoEm: "29/04" },
+  { id: "CB-2037", corretor: "Pedro Verissimo", origem: "Parceria", valor: 6_800, vencimento: "22/04", status: "Atrasado", criadoEm: "01/04", faturadoEm: "10/04", diasAtraso: 10 },
+  { id: "CB-2036", corretor: "Carla Fontes", origem: "Lead Ubroker", valor: 4_400, vencimento: "05/05", status: "Faturado", criadoEm: "20/04", faturadoEm: "27/04" },
+  { id: "CB-2035", corretor: "Marcos Iglesias", origem: "Parceria", valor: 9_200, vencimento: "26/04", status: "Pago", criadoEm: "12/04", faturadoEm: "20/04", pagoEm: "25/04" },
+  { id: "CB-2034", corretor: "Beatriz Lemos", origem: "SaaS", valor: 240, vencimento: "01/05", status: "Pago", criadoEm: "25/04", faturadoEm: "26/04", pagoEm: "30/04" },
+  { id: "CB-2033", corretor: "Joana Maciel", origem: "Lead Ubroker", valor: 2_100, vencimento: "29/04", status: "Pendente", criadoEm: "22/04", faturadoEm: "24/04" },
+  { id: "CB-2032", corretor: "Tiago Sá", origem: "SaaS", valor: 120, vencimento: "20/04", status: "Atrasado", criadoEm: "10/04", faturadoEm: "12/04", diasAtraso: 8 },
+  { id: "CB-2031", corretor: "Pedro Verissimo", origem: "Lead Ubroker", valor: 5_600, vencimento: "18/04", status: "Contestado", criadoEm: "05/04", faturadoEm: "11/04", divergencia: { esperado: 4_200, cobrado: 5_600 } },
+  { id: "CB-2030", corretor: "Alessandra Freixo", origem: "SaaS", valor: 240, vencimento: "10/04", status: "Pago", criadoEm: "01/04", faturadoEm: "03/04", pagoEm: "09/04" },
+  { id: "CB-2029", corretor: "Beatriz Lemos", origem: "Parceria", valor: 18_400, vencimento: "08/05", status: "Faturado", criadoEm: "20/04", faturadoEm: "28/04" },
+  { id: "CB-2028", corretor: "Tiago Sá", origem: "Lead Ubroker", valor: 1_800, vencimento: "12/04", status: "Atrasado", criadoEm: "01/04", faturadoEm: "04/04", diasAtraso: 16 },
+  { id: "CB-2027", corretor: "Marcos Iglesias", origem: "SaaS", valor: 240, vencimento: "01/05", status: "Pago", criadoEm: "24/04", faturadoEm: "25/04", pagoEm: "28/04" },
+  { id: "CB-2026", corretor: "Aldemar Souza", origem: "Parceria", valor: 12_400, vencimento: "06/05", status: "Pendente", criadoEm: "22/04", faturadoEm: "26/04", vendaId: "VD-117" },
 ];
+
+// Risco por corretor (calculado off-line a partir do histórico)
+export const corretorRisco: Record<string, { nivel: "baixo" | "medio" | "alto"; pctAtraso: number; totalAberto: number }> = {
+  "Alessandra Freixo": { nivel: "medio", pctAtraso: 28, totalAberto: 8_400 },
+  "Aldemar Souza": { nivel: "baixo", pctAtraso: 6, totalAberto: 15_600 },
+  "Denise Molinaro": { nivel: "baixo", pctAtraso: 4, totalAberto: 14_600 },
+  "Ramon Capone": { nivel: "baixo", pctAtraso: 0, totalAberto: 0 },
+  "Pedro Verissimo": { nivel: "alto", pctAtraso: 62, totalAberto: 12_400 },
+  "Carla Fontes": { nivel: "baixo", pctAtraso: 12, totalAberto: 4_400 },
+  "Marcos Iglesias": { nivel: "baixo", pctAtraso: 0, totalAberto: 0 },
+  "Beatriz Lemos": { nivel: "baixo", pctAtraso: 8, totalAberto: 18_400 },
+  "Joana Maciel": { nivel: "baixo", pctAtraso: 10, totalAberto: 2_100 },
+  "Tiago Sá": { nivel: "alto", pctAtraso: 71, totalAberto: 1_920 },
+};
+
+// Util para agrupamento (preparação Camada 10 — sem UI no momento)
+export function agruparCobrancas(
+  lista: Cobranca[],
+  por: "corretor" | "origem" | "mes",
+): Record<string, Cobranca[]> {
+  return lista.reduce<Record<string, Cobranca[]>>((acc, c) => {
+    const key = por === "corretor" ? c.corretor : por === "origem" ? c.origem : c.vencimento.split("/")[1] ?? "—";
+    (acc[key] ||= []).push(c);
+    return acc;
+  }, {});
+}
 
 export type VendaDetalhada = {
   id: string;
