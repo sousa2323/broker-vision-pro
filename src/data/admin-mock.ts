@@ -730,14 +730,19 @@ export const performanceCorretores = {
 // ============================================================
 
 export type RedeIndicacaoStatus = "Ativo" | "Teste" | "Inativo";
+export type RedeProduto = "IA" | "Inbox" | "Combo" | "—";
 
 export type RedeIndicacaoItem = {
   id: string;
   nome: string;
+  /** @deprecated nível absoluto legado — a UI calcula nível RELATIVO via getRedeRelativa */
   nivel: 1 | 2 | 3;
   indicador: string;
+  /** id do indicador direto. null = raiz (não foi indicado por ninguém). */
+  indicadorId: string | null;
   indicados: number;
   status: RedeIndicacaoStatus;
+  produto: RedeProduto;
   mrr: number;
   receitaAcumulada: number;
   receitaPaga: number;
@@ -747,24 +752,56 @@ export type RedeIndicacaoItem = {
 };
 
 export const redeIndicacoes: RedeIndicacaoItem[] = [
+  // Raiz da rede
+  { id: "RI-000", nome: "Ramon Capone", nivel: 1, indicador: "—", indicadorId: null, indicados: 4, status: "Ativo", produto: "Combo", mrr: 480, receitaAcumulada: 8_640, receitaPaga: 8_160, receitaPendente: 480, dataEntrada: "01/01/2025", crescimentoPct: 12 },
   // N1 — indicados diretos por Ramon
-  { id: "RI-001", nome: "Joana Maciel", nivel: 1, indicador: "Ramon Capone", indicados: 2, status: "Inativo", mrr: 240, receitaAcumulada: 2_880, receitaPaga: 2_400, receitaPendente: 480, dataEntrada: "12/03/2025", crescimentoPct: -18 },
-  { id: "RI-002", nome: "Pedro Verissimo", nivel: 1, indicador: "Ramon Capone", indicados: 2, status: "Ativo", mrr: 360, receitaAcumulada: 4_320, receitaPaga: 3_960, receitaPendente: 360, dataEntrada: "08/02/2025", crescimentoPct: 22 },
-  { id: "RI-003", nome: "Carla Fontes", nivel: 1, indicador: "Ramon Capone", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 1_440, receitaPaga: 1_320, receitaPendente: 120, dataEntrada: "21/04/2025", crescimentoPct: 8 },
-  { id: "RI-004", nome: "Tiago Sá", nivel: 1, indicador: "Ramon Capone", indicados: 0, status: "Teste", mrr: 120, receitaAcumulada: 360, receitaPaga: 240, receitaPendente: 120, dataEntrada: "02/10/2025", crescimentoPct: 0 },
-  // N2
-  { id: "RI-005", nome: "Lúcia Mota", nivel: 2, indicador: "Joana Maciel", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 1_080, receitaPaga: 960, receitaPendente: 120, dataEntrada: "18/05/2025", crescimentoPct: 12 },
-  { id: "RI-006", nome: "Pedro Inácio", nivel: 2, indicador: "Joana Maciel", indicados: 0, status: "Inativo", mrr: 120, receitaAcumulada: 720, receitaPaga: 720, receitaPendente: 0, dataEntrada: "22/06/2025", crescimentoPct: -25 },
-  { id: "RI-007", nome: "Carla Souza", nivel: 2, indicador: "Pedro Verissimo", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 1_320, receitaPaga: 1_200, receitaPendente: 120, dataEntrada: "10/04/2025", crescimentoPct: 6 },
-  { id: "RI-008", nome: "Bruno Lemos", nivel: 2, indicador: "Pedro Verissimo", indicados: 1, status: "Ativo", mrr: 240, receitaAcumulada: 2_640, receitaPaga: 2_400, receitaPendente: 240, dataEntrada: "14/03/2025", crescimentoPct: 18 },
-  { id: "RI-009", nome: "Diego Prado", nivel: 2, indicador: "Carla Fontes", indicados: 0, status: "Teste", mrr: 0, receitaAcumulada: 0, receitaPaga: 0, receitaPendente: 0, dataEntrada: "12/10/2025", crescimentoPct: 0 },
-  // N3
-  { id: "RI-010", nome: "Tatiana Reis", nivel: 3, indicador: "Bruno Lemos", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 720, receitaPaga: 600, receitaPendente: 120, dataEntrada: "11/07/2025", crescimentoPct: 14 },
-  { id: "RI-011", nome: "Felipe Andrade", nivel: 3, indicador: "Carla Souza", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 480, receitaPaga: 360, receitaPendente: 120, dataEntrada: "20/08/2025", crescimentoPct: 9 },
-  { id: "RI-012", nome: "Marina Lopes", nivel: 3, indicador: "Lúcia Mota", indicados: 0, status: "Ativo", mrr: 120, receitaAcumulada: 600, receitaPaga: 480, receitaPendente: 120, dataEntrada: "05/07/2025", crescimentoPct: 11 },
-  { id: "RI-013", nome: "Otávio Pires", nivel: 3, indicador: "Bruno Lemos", indicados: 0, status: "Inativo", mrr: 0, receitaAcumulada: 240, receitaPaga: 240, receitaPendente: 0, dataEntrada: "02/06/2025", crescimentoPct: -40 },
-  { id: "RI-014", nome: "Nina Bastos", nivel: 3, indicador: "Carla Souza", indicados: 0, status: "Teste", mrr: 0, receitaAcumulada: 0, receitaPaga: 0, receitaPendente: 0, dataEntrada: "18/10/2025", crescimentoPct: 0 },
+  { id: "RI-001", nome: "Joana Maciel", nivel: 1, indicador: "Ramon Capone", indicadorId: "RI-000", indicados: 2, status: "Inativo", produto: "Combo", mrr: 240, receitaAcumulada: 2_880, receitaPaga: 2_400, receitaPendente: 480, dataEntrada: "12/03/2025", crescimentoPct: -18 },
+  { id: "RI-002", nome: "Pedro Verissimo", nivel: 1, indicador: "Ramon Capone", indicadorId: "RI-000", indicados: 2, status: "Ativo", produto: "Combo", mrr: 360, receitaAcumulada: 4_320, receitaPaga: 3_960, receitaPendente: 360, dataEntrada: "08/02/2025", crescimentoPct: 22 },
+  { id: "RI-003", nome: "Carla Fontes", nivel: 1, indicador: "Ramon Capone", indicadorId: "RI-000", indicados: 1, status: "Ativo", produto: "IA", mrr: 120, receitaAcumulada: 1_440, receitaPaga: 1_320, receitaPendente: 120, dataEntrada: "21/04/2025", crescimentoPct: 8 },
+  { id: "RI-004", nome: "Tiago Sá", nivel: 1, indicador: "Ramon Capone", indicadorId: "RI-000", indicados: 0, status: "Teste", produto: "Inbox", mrr: 120, receitaAcumulada: 360, receitaPaga: 240, receitaPendente: 120, dataEntrada: "02/10/2025", crescimentoPct: 0 },
+  // N2 (indicados por N1)
+  { id: "RI-005", nome: "Lúcia Mota", nivel: 2, indicador: "Joana Maciel", indicadorId: "RI-001", indicados: 1, status: "Ativo", produto: "IA", mrr: 120, receitaAcumulada: 1_080, receitaPaga: 960, receitaPendente: 120, dataEntrada: "18/05/2025", crescimentoPct: 12 },
+  { id: "RI-006", nome: "Pedro Inácio", nivel: 2, indicador: "Joana Maciel", indicadorId: "RI-001", indicados: 0, status: "Inativo", produto: "Inbox", mrr: 120, receitaAcumulada: 720, receitaPaga: 720, receitaPendente: 0, dataEntrada: "22/06/2025", crescimentoPct: -25 },
+  { id: "RI-007", nome: "Carla Souza", nivel: 2, indicador: "Pedro Verissimo", indicadorId: "RI-002", indicados: 2, status: "Ativo", produto: "Combo", mrr: 120, receitaAcumulada: 1_320, receitaPaga: 1_200, receitaPendente: 120, dataEntrada: "10/04/2025", crescimentoPct: 6 },
+  { id: "RI-008", nome: "Bruno Lemos", nivel: 2, indicador: "Pedro Verissimo", indicadorId: "RI-002", indicados: 2, status: "Ativo", produto: "Combo", mrr: 240, receitaAcumulada: 2_640, receitaPaga: 2_400, receitaPendente: 240, dataEntrada: "14/03/2025", crescimentoPct: 18 },
+  { id: "RI-009", nome: "Diego Prado", nivel: 2, indicador: "Carla Fontes", indicadorId: "RI-003", indicados: 0, status: "Teste", produto: "IA", mrr: 0, receitaAcumulada: 0, receitaPaga: 0, receitaPendente: 0, dataEntrada: "12/10/2025", crescimentoPct: 0 },
+  // N3 (indicados por N2)
+  { id: "RI-010", nome: "Tatiana Reis", nivel: 3, indicador: "Bruno Lemos", indicadorId: "RI-008", indicados: 0, status: "Ativo", produto: "IA", mrr: 120, receitaAcumulada: 720, receitaPaga: 600, receitaPendente: 120, dataEntrada: "11/07/2025", crescimentoPct: 14 },
+  { id: "RI-011", nome: "Felipe Andrade", nivel: 3, indicador: "Carla Souza", indicadorId: "RI-007", indicados: 0, status: "Ativo", produto: "Inbox", mrr: 120, receitaAcumulada: 480, receitaPaga: 360, receitaPendente: 120, dataEntrada: "20/08/2025", crescimentoPct: 9 },
+  { id: "RI-012", nome: "Marina Lopes", nivel: 3, indicador: "Lúcia Mota", indicadorId: "RI-005", indicados: 0, status: "Ativo", produto: "Combo", mrr: 120, receitaAcumulada: 600, receitaPaga: 480, receitaPendente: 120, dataEntrada: "05/07/2025", crescimentoPct: 11 },
+  { id: "RI-013", nome: "Otávio Pires", nivel: 3, indicador: "Bruno Lemos", indicadorId: "RI-008", indicados: 0, status: "Inativo", produto: "IA", mrr: 0, receitaAcumulada: 240, receitaPaga: 240, receitaPendente: 0, dataEntrada: "02/06/2025", crescimentoPct: -40 },
+  { id: "RI-014", nome: "Nina Bastos", nivel: 3, indicador: "Carla Souza", indicadorId: "RI-007", indicados: 0, status: "Teste", produto: "Inbox", mrr: 0, receitaAcumulada: 0, receitaPaga: 0, receitaPendente: 0, dataEntrada: "18/10/2025", crescimentoPct: 0 },
 ];
+
+// ===== Helpers de grafo (níveis RELATIVOS ao usuário base) =====
+
+export type RedeRelativaEntry = { item: RedeIndicacaoItem; nivelRelativo: number };
+
+/** Filhos diretos (indicados imediatos) de um corretor base. */
+export function getIndicadosDiretos(baseId: string): RedeIndicacaoItem[] {
+  return redeIndicacoes.filter((r) => r.indicadorId === baseId);
+}
+
+/**
+ * BFS a partir de baseId. Retorna apenas DESCENDENTES (não inclui o próprio base),
+ * com o nível relativo (1 = filho direto, 2 = neto, 3 = bisneto, etc.).
+ */
+export function getRedeRelativa(baseId: string): Map<string, RedeRelativaEntry> {
+  const out = new Map<string, RedeRelativaEntry>();
+  const queue: { id: string; nivel: number }[] = [{ id: baseId, nivel: 0 }];
+  const visited = new Set<string>([baseId]);
+  while (queue.length) {
+    const cur = queue.shift()!;
+    const filhos = getIndicadosDiretos(cur.id);
+    for (const f of filhos) {
+      if (visited.has(f.id)) continue;
+      visited.add(f.id);
+      out.set(f.id, { item: f, nivelRelativo: cur.nivel + 1 });
+      queue.push({ id: f.id, nivel: cur.nivel + 1 });
+    }
+  }
+  return out;
+}
 
 export const redeIndicacoesPeriodoAnterior = {
   totalIndicados: 12,
