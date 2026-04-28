@@ -662,3 +662,65 @@ export const despesasMock: Despesa[] = [
   { id: "DP-1009", data: "24/04", categoria: "Administrativo", descricao: "Material de escritório", tipo: "Variável", valor: 680, status: "Pago" },
   { id: "DP-1010", data: "26/04", categoria: "Outros", descricao: "Treinamento equipe comercial", tipo: "Variável", valor: 3_100, status: "A pagar", responsavel: "RH", observacao: "Workshop com consultoria externa" },
 ];
+
+// ============== Camada estratégica do Dashboard ==============
+
+export const adminKpisExtra = {
+  receitaMesAnterior: 540_000,
+  inadimplenciaAtualPct: 8.4,
+  inadimplenciaMesAnteriorPct: 6.1,
+  conversaoMesPct: 14.2,
+  conversaoMesAnteriorPct: 16.0,
+  margemMesAnteriorPct: 28.5,
+};
+
+export type RegiaoDemanda = { regiao: string; leads: number; visitas: number };
+export type TipoImovelBuscado = { label: string; buscas: number };
+export type FaixaPreco = { min: number; max: number; share: number };
+export type ConversaoOrigem = { origem: string; pct: number };
+
+export const inteligenciaMercado = {
+  regioesDemanda: [
+    { regiao: "Niterói · Icaraí", leads: 612, visitas: 184 },
+    { regiao: "São Paulo · Pinheiros", leads: 488, visitas: 142 },
+    { regiao: "Rio · Barra da Tijuca", leads: 402, visitas: 118 },
+    { regiao: "Maricá · Centro", leads: 318, visitas: 92 },
+    { regiao: "Curitiba · Batel", leads: 244, visitas: 68 },
+  ] as RegiaoDemanda[],
+  tiposImovel: [
+    { label: "Apartamento 2 quartos", buscas: 1_842 },
+    { label: "Cobertura", buscas: 1_204 },
+    { label: "Casa", buscas: 980 },
+    { label: "Studio", buscas: 612 },
+    { label: "Sala comercial", buscas: 318 },
+  ] as TipoImovelBuscado[],
+  faixaPrecoDominante: { min: 500_000, max: 1_000_000, share: 38 } as FaixaPreco,
+  faixasPrecoSecundarias: [
+    { min: 1_000_000, max: 2_000_000, share: 27 },
+    { min: 250_000, max: 500_000, share: 19 },
+  ] as FaixaPreco[],
+  conversaoPorOrigem: [
+    { origem: "Indicação", pct: 31 },
+    { origem: "Parceria", pct: 24 },
+    { origem: "Lead Ubroker", pct: 18 },
+  ] as ConversaoOrigem[],
+};
+
+export type CorretorTop = { id: string; nome: string; avatar: string; receita: number; conversaoPct: number };
+export type CorretorBaixa = { id: string; nome: string; avatar: string; motivo: string; severidade: "amber" | "red" };
+
+export const performanceCorretores = {
+  top: [
+    { id: "U-004", nome: "Denise Molinaro", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=128&q=80", receita: 312_400, conversaoPct: 34 },
+    { id: "U-012", nome: "Beatriz Lemos", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&q=80", receita: 215_600, conversaoPct: 29 },
+    { id: "U-002", nome: "Alessandra Freixo", avatar: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=128&q=80", receita: 184_200, conversaoPct: 27 },
+    { id: "U-003", nome: "Aldemar Souza", avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=128&q=80", receita: 142_800, conversaoPct: 24 },
+    { id: "U-001", nome: "Ramon Cardozo Capone", avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=128&q=80", receita: 96_480, conversaoPct: 21 },
+  ] as CorretorTop[],
+  baixaPerformance: [
+    { id: "U-011", nome: "Rafael Couto", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=128&q=80", motivo: "Bloqueado · 32d sem login", severidade: "red" },
+    { id: "U-009", nome: "Carla Souza", avatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=128&q=80", motivo: "Inativa há 21 dias", severidade: "red" },
+    { id: "U-008", nome: "Tiago Sá", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=128&q=80", motivo: "Conversão 4% · 71% atraso", severidade: "amber" },
+    { id: "U-005", nome: "Joana Maciel", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=128&q=80", motivo: "Conversão 6% · poucos leads", severidade: "amber" },
+  ] as CorretorBaixa[],
+};
