@@ -409,7 +409,62 @@ const _conciliacoesBase: Omit<Conciliacao, "slaDias" | "contrato" | "historicoCo
   },
 ];
 
-export type Disputa = {
+// V3 — overrides de governança por id (responsavel, sla, previsão, comprovante, contrato, historicoCorretor)
+const _govOverrides: Record<string, Partial<Conciliacao>> = {
+  "CC-441": {
+    responsavel: { tipo: "admin", nome: "Superadmin" }, slaDias: 3,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 8, tempoMedioPagamentoDias: 9, totalPagoHub: 184_300, totalAberto: 0 },
+    comprovante: { nome: "comprovante-cc441.pdf", tipo: "PDF", referencia: "PIX · BB", enviadoEm: "26/04 11:42" },
+  },
+  "CC-440": {
+    responsavel: { tipo: "operador", nome: "Operador Cobranças" }, slaDias: 3,
+    previsaoPagamento: "30/04",
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 18, tempoMedioPagamentoDias: 12, totalPagoHub: 96_400, totalAberto: 1_800 },
+  },
+  "CC-439": {
+    // não atribuído de propósito — alerta visual
+    slaDias: 5,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 42, tempoMedioPagamentoDias: 22, totalPagoHub: 38_900, totalAberto: 3_420 },
+  },
+  "CC-438": {
+    responsavel: { tipo: "admin", nome: "Superadmin" }, slaDias: 3,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 5, tempoMedioPagamentoDias: 8, totalPagoHub: 142_700, totalAberto: 0 },
+  },
+  "CC-437": {
+    responsavel: { tipo: "operador", nome: "Operador Financeiro" }, slaDias: 3,
+    previsaoPagamento: "29/04",
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 22, tempoMedioPagamentoDias: 14, totalPagoHub: 71_200, totalAberto: 0 },
+  },
+  "CC-436": {
+    responsavel: { tipo: "operador", nome: "Operador Cobranças" }, slaDias: 5,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 55, tempoMedioPagamentoDias: 28, totalPagoHub: 12_400, totalAberto: 4_800 },
+  },
+  "CC-435": {
+    responsavel: { tipo: "operador", nome: "Operador Cobranças" }, slaDias: 3,
+    previsaoPagamento: "02/05",
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 28, tempoMedioPagamentoDias: 16, totalPagoHub: 88_700, totalAberto: 7_200 },
+  },
+  "CC-434": {
+    responsavel: { tipo: "admin", nome: "Superadmin" }, slaDias: 3,
+    contrato: CONTRATO_PADRAO,
+    historicoCorretor: { pagamentosAtrasoPct: 12, tempoMedioPagamentoDias: 11, totalPagoHub: 64_300, totalAberto: 0 },
+  },
+};
+
+export const conciliacoes: Conciliacao[] = _conciliacoesBase.map((c) => ({
+  slaDias: 3,
+  contrato: CONTRATO_PADRAO,
+  historicoCorretor: { pagamentosAtrasoPct: 0, tempoMedioPagamentoDias: 0, totalPagoHub: 0, totalAberto: 0 },
+  ...c,
+  ..._govOverrides[c.id],
+} as Conciliacao));
   id: string;
   partes: [string, string];
   motivo: string;
