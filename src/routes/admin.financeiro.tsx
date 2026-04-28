@@ -1300,15 +1300,20 @@ function ConciliacaoDetalheModal({
             </Section>
 
             <Section title="4 · Ações diretas">
+              {bloqueada && (
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                  <Lock className="h-3.5 w-3.5" /> Conciliação confirmada — edição bloqueada. Use "Reabrir conciliação" no menu da linha para alterar valores.
+                </div>
+              )}
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" className="gap-2" onClick={() => setConfirmarOpen(true)}><CheckCircle2 className="h-4 w-4" /> Confirmar pagamento</Button>
-                <Button size="sm" variant="outline" className="gap-2" onClick={() => { setNovoValor(String(c.recebido)); setAjustarOpen(true); }}><Pencil className="h-4 w-4" /> Ajustar valor</Button>
-                <Button size="sm" variant="outline" className="gap-2" onClick={handleRegistrarDivergencia}><AlertTriangle className="h-4 w-4 text-amber-600" /> Registrar divergência</Button>
-                <Button size="sm" variant="outline" className="gap-2" onClick={handleRegistrarCobranca}><Phone className="h-4 w-4" /> Registrar cobrança realizada</Button>
+                <Button size="sm" className="gap-2" disabled={bloqueada} onClick={() => setConfirmarOpen(true)}><CheckCircle2 className="h-4 w-4" /> Confirmar pagamento</Button>
+                <Button size="sm" variant="outline" className="gap-2" disabled={bloqueada} onClick={() => { setNovoValor(String(c.recebido)); setAjustarOpen(true); }}><Pencil className="h-4 w-4" /> Ajustar valor</Button>
+                <Button size="sm" variant="outline" className="gap-2" disabled={bloqueada} onClick={handleRegistrarDivergencia}><AlertTriangle className="h-4 w-4 text-amber-600" /> Registrar divergência</Button>
+                <Button size="sm" variant="outline" className="gap-2" disabled={bloqueada} onClick={handleRegistrarCobranca}><Phone className="h-4 w-4" /> Registrar cobrança realizada</Button>
               </div>
               <div className="mt-3 flex items-center gap-2 text-xs">
                 <span className="text-muted-foreground">Status operacional:</span>
-                <Select value={opSel === "—" ? c.statusOperacional : opSel} onValueChange={(v) => { const s = v as StatusOperacionalCobranca; setOpSel(s); onUpdate(c.id, { statusOperacional: s }, { data: agora(), autor: "Superadmin", acao: `Status operacional → ${s}` }); }}>
+                <Select value={opSel === "—" ? c.statusOperacional : opSel} onValueChange={(v) => { const s = v as StatusOperacionalCobranca; setOpSel(s); onUpdate(c.id, { statusOperacional: s }, { data: agora(), autor: "Superadmin", acao: `Status operacional → ${s}` }); }} disabled={bloqueada}>
                   <SelectTrigger className="h-7 w-[200px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {(["—", "Em cobrança", "Em negociação", "Promessa de pagamento", "Sem retorno"] as const).map((s) => (
