@@ -1203,6 +1203,8 @@ function ConciliacaoDetalheModal({
   if (!conciliacao) return null;
   const c = conciliacao;
   const dif = c.esperado - c.recebido;
+  const bloqueada = c.status === "Confirmada";
+  const sla = calcularSLA(c);
 
   const handleConfirmarPagamento = () => {
     onUpdate(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, {
