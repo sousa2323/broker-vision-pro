@@ -947,3 +947,323 @@ function baixarCSV(nome: string, rows: Record<string, string | number>[]) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+// ============== Conciliação V2 — helpers, badges, modal, export ==============
+
+function hojeStr() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function agora() {
+  const d = new Date();
+  return `${hojeStr()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function classificarRiscoConc(c: Conciliacao): "baixo" | "medio" | "alto" {
+  const dif = c.esperado - c.recebido;
+  const pctDif = c.esperado > 0 ? Math.abs(dif) / c.esperado : 0;
+  const histRisco = corretorRisco[c.corretor]?.nivel ?? "baixo";
+  let score = 0;
+  if (c.diasDesdeFatura > 20) score += 2;
+  else if (c.diasDesdeFatura > 10) score += 1;
+  if (pctDif >= 0.3) score += 2;
+  else if (pctDif >= 0.1) score += 1;
+  if (histRisco === "alto") score += 2;
+  else if (histRisco === "medio") score += 1;
+  if (score >= 4) return "alto";
+  if (score >= 2) return "medio";
+  return "baixo";
+}
+
+function alertasConc(c: Conciliacao): { icon: React.ReactNode; msg: string }[] {
+  const out: { icon: React.ReactNode; msg: string }[] = [];
+  const dif = c.esperado - c.recebido;
+  if (c.recebido > 0 && c.esperado > 0 && c.recebido / c.esperado < 0.7) {
+    out.push({ icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />, msg: "Valor muito abaixo do esperado (<70%)" });
+  }
+  if (Math.abs(dif) >= 10_000) {
+    out.push({ icon: <AlertCircle className="h-3.5 w-3.5 text-red-600" />, msg: "Alto impacto financeiro (Δ ≥ R$ 10.000)" });
+  }
+  if (c.recebido === 0 && c.diasDesdeFatura > 15) {
+    out.push({ icon: <Clock className="h-3.5 w-3.5 text-red-600" />, msg: "Atraso crítico (> 15 dias sem pagamento)" });
+  }
+  return out;
+}
+
+function ConcStatusBadge({ status }: { status: StatusConciliacao }) {
+  const map: Record<StatusConciliacao, string> = {
+    Confirmada: "bg-emerald-50 text-emerald-700",
+    Parcial: "bg-amber-50 text-amber-800",
+    Divergente: "bg-red-50 text-red-700",
+    Pendente: "bg-amber-50 text-amber-700",
+  };
+  return <span className={cn("rounded-full px-2 py-0.5 text-xs", map[status])}>{status}</span>;
+}
+
+function ExportarConciliacaoMenu({ conciliacoes }: { conciliacoes: Conciliacao[] }) {
+  const exportar = (tipo: "divergencias" | "inadimplencia" | "corretor" | "auditoria") => {
+    let rows: Record<string, string | number>[] = [];
+    let nome = "conciliacao";
+    if (tipo === "divergencias") {
+      rows = conciliacoes.filter((c) => c.status === "Divergente" || c.status === "Parcial")
+        .map((c) => ({ ID: c.id, Venda: c.venda, Corretor: c.corretor, Esperado: c.esperado, Recebido: c.recebido, Diferenca: c.esperado - c.recebido, Status: c.status }));
+      nome = "relatorio-divergencias";
+    } else if (tipo === "inadimplencia") {
+      rows = conciliacoes.filter((c) => c.status === "Pendente" || (c.recebido === 0 && c.diasDesdeFatura > 15))
+        .map((c) => ({ ID: c.id, Corretor: c.corretor, Esperado: c.esperado, DiasDesdeFatura: c.diasDesdeFatura, StatusOperacional: c.statusOperacional }));
+      nome = "relatorio-inadimplencia-conciliacao";
+    } else if (tipo === "corretor") {
+      const grupos: Record<string, { qtd: number; esperado: number; recebido: number; diferenca: number }> = {};
+      conciliacoes.forEach((c) => {
+        const g = (grupos[c.corretor] ||= { qtd: 0, esperado: 0, recebido: 0, diferenca: 0 });
+        g.qtd += 1; g.esperado += c.esperado; g.recebido += c.recebido; g.diferenca += c.esperado - c.recebido;
+      });
+      rows = Object.entries(grupos).map(([k, v]) => ({ Corretor: k, Casos: v.qtd, Esperado: v.esperado, Recebido: v.recebido, Diferenca: v.diferenca }));
+      nome = "relatorio-corretor-conciliacao";
+    } else {
+      conciliacoes.forEach((c) => {
+        c.auditoria.forEach((a) => rows.push({ ID: c.id, Corretor: c.corretor, Data: a.data, Autor: a.autor, Acao: a.acao, ValorAnterior: a.valorAnterior ?? "", ValorNovo: a.valorNovo ?? "" }));
+      });
+      nome = "auditoria-conciliacao";
+    }
+    baixarCSV(nome, rows);
+    toast.success("Relatório exportado", { description: `${rows.length} linha(s) · ${nome}.csv` });
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2"><Download className="h-4 w-4" /> Exportar</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Relatórios de conciliação</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => exportar("divergencias")}><FileText className="mr-2 h-4 w-4" /> Divergências</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportar("inadimplencia")}><FileText className="mr-2 h-4 w-4" /> Inadimplência</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportar("corretor")}><FileText className="mr-2 h-4 w-4" /> Por corretor</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportar("auditoria")}><FileText className="mr-2 h-4 w-4" /> Auditoria completa</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ConciliacaoDetalheModal({
+  conciliacao, onClose, onUpdate, onInteracao,
+}: {
+  conciliacao: Conciliacao | null;
+  onClose: () => void;
+  onUpdate: (id: string, patch: Partial<Conciliacao>, audit?: ConciliacaoAuditoria) => void;
+  onInteracao: (id: string, i: ConciliacaoInteracao) => void;
+}) {
+  const [ajustarOpen, setAjustarOpen] = useState(false);
+  const [confirmarOpen, setConfirmarOpen] = useState(false);
+  const [novoValor, setNovoValor] = useState("");
+  const [intTipo, setIntTipo] = useState<ConciliacaoInteracao["tipo"]>("Ligação");
+  const [intObs, setIntObs] = useState("");
+  const [opSel, setOpSel] = useState<StatusOperacionalCobranca>("—");
+
+  if (!conciliacao) return null;
+  const c = conciliacao;
+  const dif = c.esperado - c.recebido;
+
+  const handleConfirmarPagamento = () => {
+    onUpdate(c.id, { recebido: c.esperado, pagoEm: hojeStr() }, {
+      data: agora(), autor: "Superadmin", acao: "Pagamento confirmado",
+      valorAnterior: c.recebido, valorNovo: c.esperado,
+    });
+    setConfirmarOpen(false);
+    toast.success("Pagamento confirmado", { description: `${c.id} · ${formatBRL(c.esperado)}` });
+  };
+
+  const handleAjustar = () => {
+    const v = parseFloat(novoValor.replace(",", "."));
+    if (Number.isNaN(v) || v < 0) { toast.error("Valor inválido"); return; }
+    onUpdate(c.id, { recebido: v }, {
+      data: agora(), autor: "Superadmin", acao: "Valor recebido ajustado",
+      valorAnterior: c.recebido, valorNovo: v,
+    });
+    setAjustarOpen(false); setNovoValor("");
+    toast.success("Valor ajustado", { description: `${c.id} · ${formatBRL(v)}` });
+  };
+
+  const handleRegistrarDivergencia = () => {
+    onUpdate(c.id, {}, { data: agora(), autor: "Superadmin", acao: "Divergência registrada manualmente" });
+    toast.warning(`${c.id} marcado como divergente`);
+  };
+
+  const handleRegistrarCobranca = () => {
+    onUpdate(c.id, {}, { data: agora(), autor: "Superadmin", acao: "Cobrança realizada registrada" });
+    toast.success("Tentativa de cobrança registrada");
+  };
+
+  const handleInteracao = () => {
+    if (!intObs.trim()) { toast.error("Descreva a interação"); return; }
+    onInteracao(c.id, { tipo: intTipo, obs: intObs.trim(), data: agora(), autor: "Superadmin" });
+    setIntObs("");
+    toast.success("Interação registrada");
+  };
+
+  return (
+    <>
+      <Dialog open={!!conciliacao} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display">
+              <ShieldCheck className="h-5 w-5" /> Conciliação {c.id}
+              <ConcStatusBadge status={c.status} />
+            </DialogTitle>
+            <DialogDescription>{c.corretor} · {c.tipo} · {c.venda}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <Section title="1 · Resumo da venda">
+              <div className="grid gap-2 text-sm sm:grid-cols-3">
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Imóvel</div><div>{c.imovel}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">VGV</div><div className="num">{formatBRL(c.vgv)}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Tipo</div><div>{c.tipo}</div></div>
+              </div>
+            </Section>
+
+            <Section title="2 · Comissão detalhada">
+              <div className="mb-3 grid gap-2 text-sm sm:grid-cols-3">
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">% total</div><div className="num">{c.comissaoPct.toFixed(2)}%</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Comissão total</div><div className="num">{formatBRL(c.comissaoTotal)}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Fee Ubroker</div><div className="num">{formatBRL(c.esperado)}</div></div>
+              </div>
+              <div className="space-y-1.5">
+                {c.splits.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between text-xs">
+                    <span>{s.nome} <span className="text-muted-foreground">· {s.tipo}</span></span>
+                    <span className="num">{formatBRL(s.valor)}</span>
+                  </div>
+                ))}
+              </div>
+            </Section>
+
+            <Section title="3 · Conciliação">
+              <div className="grid gap-2 text-sm sm:grid-cols-4">
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Esperado</div><div className="num">{formatBRL(c.esperado)}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Recebido</div><div className="num">{formatBRL(c.recebido)}</div></div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Diferença</div>
+                  <div className={cn("num font-medium", dif > 0 && "text-amber-700", dif < 0 && "text-blue-700")}>{dif === 0 ? "—" : formatBRL(Math.abs(dif))}</div>
+                </div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Status</div><div><ConcStatusBadge status={c.status} /></div></div>
+              </div>
+              {alertasConc(c).length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {alertasConc(c).map((a, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-800">{a.icon} {a.msg}</div>
+                  ))}
+                </div>
+              )}
+            </Section>
+
+            <Section title="4 · Ações diretas">
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" className="gap-2" onClick={() => setConfirmarOpen(true)}><CheckCircle2 className="h-4 w-4" /> Confirmar pagamento</Button>
+                <Button size="sm" variant="outline" className="gap-2" onClick={() => { setNovoValor(String(c.recebido)); setAjustarOpen(true); }}><Pencil className="h-4 w-4" /> Ajustar valor</Button>
+                <Button size="sm" variant="outline" className="gap-2" onClick={handleRegistrarDivergencia}><AlertTriangle className="h-4 w-4 text-amber-600" /> Registrar divergência</Button>
+                <Button size="sm" variant="outline" className="gap-2" onClick={handleRegistrarCobranca}><Phone className="h-4 w-4" /> Registrar cobrança realizada</Button>
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Status operacional:</span>
+                <Select value={opSel === "—" ? c.statusOperacional : opSel} onValueChange={(v) => { const s = v as StatusOperacionalCobranca; setOpSel(s); onUpdate(c.id, { statusOperacional: s }, { data: agora(), autor: "Superadmin", acao: `Status operacional → ${s}` }); }}>
+                  <SelectTrigger className="h-7 w-[200px] text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(["—", "Em cobrança", "Em negociação", "Promessa de pagamento", "Sem retorno"] as const).map((s) => (
+                      <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </Section>
+
+            <Section title="5 · Histórico / Auditoria">
+              <ol className="space-y-2.5">
+                {c.auditoria.map((a, i) => (
+                  <li key={i} className="flex items-start gap-3 text-xs">
+                    <span className="mt-0.5 grid h-6 w-6 place-items-center rounded-full border border-border bg-card text-muted-foreground"><Activity className="h-3 w-3" /></span>
+                    <div className="flex-1">
+                      <div className="font-medium">{a.acao}</div>
+                      <div className="text-muted-foreground">{a.data} · {a.autor}{a.valorAnterior !== undefined && a.valorNovo !== undefined && ` · ${formatBRL(a.valorAnterior)} → ${formatBRL(a.valorNovo)}`}</div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </Section>
+
+            <Section title="CRM de cobrança · Interações">
+              {c.interacoes.length > 0 ? (
+                <ul className="mb-3 space-y-2">
+                  {c.interacoes.map((it, i) => (
+                    <li key={i} className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs">
+                      <span className="mt-0.5">
+                        {it.tipo === "Ligação" ? <Phone className="h-3.5 w-3.5" /> : it.tipo === "Mensagem" ? <MessageSquare className="h-3.5 w-3.5" /> : <Handshake className="h-3.5 w-3.5" />}
+                      </span>
+                      <div className="flex-1">
+                        <div className="font-medium">{it.tipo} <span className="text-muted-foreground font-normal">· {it.data} · {it.autor}</span></div>
+                        <div className="text-muted-foreground">{it.obs}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="mb-3 text-xs text-muted-foreground">Nenhuma interação registrada.</div>
+              )}
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[140px]">
+                  <div className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">Tipo</div>
+                  <Select value={intTipo} onValueChange={(v) => setIntTipo(v as ConciliacaoInteracao["tipo"])}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Ligação" className="text-xs">Ligação</SelectItem>
+                      <SelectItem value="Mensagem" className="text-xs">Mensagem</SelectItem>
+                      <SelectItem value="Negociação" className="text-xs">Negociação</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-[2] min-w-[240px]">
+                  <div className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">Observação</div>
+                  <Textarea className="min-h-[36px] text-xs" rows={1} value={intObs} onChange={(e) => setIntObs(e.target.value)} placeholder="Resumo da conversa, próximos passos…" />
+                </div>
+                <Button size="sm" onClick={handleInteracao}>Registrar</Button>
+              </div>
+            </Section>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmarOpen} onOpenChange={setConfirmarOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar pagamento integral?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {c.id} · {c.corretor} — registrar recebimento de {formatBRL(c.esperado)}. Esta ação ficará registrada na auditoria.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmarPagamento}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={ajustarOpen} onOpenChange={setAjustarOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ajustar valor recebido</AlertDialogTitle>
+            <AlertDialogDescription>
+              {c.id} · {c.corretor}. Valor anterior: {formatBRL(c.recebido)}. Esperado: {formatBRL(c.esperado)}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input type="number" value={novoValor} onChange={(e) => setNovoValor(e.target.value)} placeholder="Novo valor recebido (R$)" />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAjustar}>Salvar ajuste</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
