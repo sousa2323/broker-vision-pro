@@ -257,7 +257,7 @@ function FinanceiroPage() {
           <h1 className="font-display text-2xl">Financeiro</h1>
           <p className="mt-1 text-sm text-muted-foreground">Cobranças, detalhamento de vendas e conciliação.</p>
         </div>
-        <ExportarMenu cobrancas={cobrancasFiltradas} />
+        <ExportarMenu cobrancas={cobrancasFiltradas} despesas={despesas} receitaTotal={receitaTotal} totalDespesas={totalDespesas} resultadoLiquido={resultadoLiquido} margem={margem} />
       </div>
 
       {/* Camada 7 — período */}
