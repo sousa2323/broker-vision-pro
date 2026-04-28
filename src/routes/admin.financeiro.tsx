@@ -1338,13 +1338,65 @@ function ConciliacaoDetalheModal({
               </ol>
             </Section>
 
+            <Section title="6 · Responsável & SLA">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Responsável</div>
+                  <div className="mt-1.5"><ResponsavelChip c={c} onAtribuir={(r) => onUpdate(c.id, { responsavel: r }, { data: agora(), autor: "Superadmin", acao: c.responsavel ? `Responsável reatribuído para ${r.nome}` : `Responsável atribuído: ${r.nome}` })} /></div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">SLA ({c.slaDias}d)</div>
+                  <div className="mt-1.5">
+                    {bloqueada ? <span className="text-xs text-muted-foreground">Concluída</span> : (
+                      <div className="space-y-1">
+                        <div className={cn("text-xs font-medium", sla.atrasado ? "text-red-700" : "text-foreground")}>
+                          {sla.atrasado ? `Atrasado +${Math.abs(sla.restanteDias)}d` : `Resolver em ${sla.restanteDias}d`}
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface">
+                          <div className={cn("h-full", sla.atrasado ? "bg-red-500" : "bg-emerald-500")} style={{ width: `${sla.atrasado ? 100 : Math.max(10, ((c.slaDias - Math.max(sla.restanteDias, 0)) / c.slaDias) * 100)}%` }} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Previsão de pagamento</div>
+                  <div className="mt-1.5"><PrevisaoChip c={c} onSet={(d) => onUpdate(c.id, { previsaoPagamento: d }, { data: agora(), autor: "Superadmin", acao: `Previsão de pagamento definida: ${d}` })} /></div>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="7 · Performance do corretor">
+              <div className="grid gap-3 sm:grid-cols-4 text-sm">
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Pagamentos em atraso</div><div className={cn("num font-medium", c.historicoCorretor.pagamentosAtrasoPct > 25 ? "text-red-700" : c.historicoCorretor.pagamentosAtrasoPct > 10 ? "text-amber-700" : "text-emerald-700")}>{c.historicoCorretor.pagamentosAtrasoPct}%</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Tempo médio</div><div className="num">{c.historicoCorretor.tempoMedioPagamentoDias}d</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total já pago ao hub</div><div className="num text-emerald-700">{formatBRL(c.historicoCorretor.totalPagoHub)}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Total em aberto</div><div className={cn("num", c.historicoCorretor.totalAberto > 0 ? "text-amber-700" : "text-muted-foreground")}>{formatBRL(c.historicoCorretor.totalAberto)}</div></div>
+              </div>
+            </Section>
+
+            <Section title="8 · Contrato aplicado">
+              <div className="grid gap-2 text-sm sm:grid-cols-3">
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Versão</div><div className="font-medium">{c.contrato.versao}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Vigência</div><div>{c.contrato.data}</div></div>
+                <div><div className="text-[10px] uppercase tracking-widest text-muted-foreground">Regras de comissão</div><div className="text-xs text-muted-foreground">{c.contrato.regras}</div></div>
+              </div>
+              <Button size="sm" variant="ghost" className="mt-2 h-7 gap-1 text-xs" onClick={() => toast.info(`Abrir contrato ${c.contrato.versao}`, { description: "Documento abriria em nova aba (mock)." })}>
+                <FileSignature className="h-3.5 w-3.5" /> Ver contrato completo
+              </Button>
+            </Section>
+
+            <Section title="9 · Comprovante de pagamento">
+              <ComprovanteBlock c={c} bloqueada={bloqueada} onUpdate={onUpdate} />
+            </Section>
+
             <Section title="CRM de cobrança · Interações">
               {c.interacoes.length > 0 ? (
                 <ul className="mb-3 space-y-2">
                   {c.interacoes.map((it, i) => (
                     <li key={i} className="flex items-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-xs">
                       <span className="mt-0.5">
-                        {it.tipo === "Ligação" ? <Phone className="h-3.5 w-3.5" /> : it.tipo === "Mensagem" ? <MessageSquare className="h-3.5 w-3.5" /> : <Handshake className="h-3.5 w-3.5" />}
+                        {iconForInteracao(it.tipo)}
                       </span>
                       <div className="flex-1">
                         <div className="font-medium">{it.tipo} <span className="text-muted-foreground font-normal">· {it.data} · {it.autor}</span></div>
