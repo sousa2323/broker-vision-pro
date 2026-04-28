@@ -465,6 +465,8 @@ export const conciliacoes: Conciliacao[] = _conciliacoesBase.map((c) => ({
   ...c,
   ..._govOverrides[c.id],
 } as Conciliacao));
+
+export type Disputa = {
   id: string;
   partes: [string, string];
   motivo: string;
