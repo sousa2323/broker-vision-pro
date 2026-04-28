@@ -1406,3 +1406,65 @@ function ConciliacaoDetalheModal({
   );
 }
 
+function ResponsavelChip({ c, onAtribuir }: { c: Conciliacao; onAtribuir: (r: ResponsavelCobranca) => void }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        {c.responsavel ? (
+          <button className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2 py-0.5 text-[11px] hover:bg-surface/70">
+            <span className="grid h-4 w-4 place-items-center rounded-full bg-navy text-[8px] font-semibold text-white">{c.responsavel.nome.split(" ").map((p) => p[0]).slice(0, 2).join("")}</span>
+            {c.responsavel.nome}
+          </button>
+        ) : (
+          <button className="inline-flex items-center gap-1 rounded-full border border-dashed border-amber-400 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800 hover:bg-amber-100">
+            <UserPlus className="h-3 w-3" /> Atribuir
+          </button>
+        )}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 p-2 text-xs">
+        <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">{c.responsavel ? "Reatribuir" : "Atribuir responsável"}</div>
+        <div className="space-y-1">
+          {RESPONSAVEIS_DISPONIVEIS.map((r) => (
+            <button
+              key={r.nome}
+              onClick={() => { onAtribuir(r); toast.success(`Responsável: ${r.nome}`); }}
+              className={cn(
+                "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs hover:bg-surface",
+                c.responsavel?.nome === r.nome && "bg-surface font-medium",
+              )}
+            >
+              <span>{r.nome}</span>
+              <span className="text-[10px] text-muted-foreground capitalize">{r.tipo}</span>
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function PrevisaoChip({ c, onSet }: { c: Conciliacao; onSet: (data: string) => void }) {
+  const [valor, setValor] = useState(c.previsaoPagamento ?? "");
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        {c.previsaoPagamento ? (
+          <button className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700 hover:bg-blue-100">
+            {c.previsaoPagamento}
+          </button>
+        ) : (
+          <button className="text-[11px] text-muted-foreground hover:text-foreground">— definir</button>
+        )}
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 p-3">
+        <div className="mb-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">Previsão de pagamento</div>
+        <Input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="DD/MM" className="h-8 text-xs" />
+        <Button
+          size="sm" className="mt-2 w-full"
+          onClick={() => { if (!valor.trim()) { toast.error("Informe a data"); return; } onSet(valor.trim()); toast.success("Previsão registrada"); }}
+        >Salvar</Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
