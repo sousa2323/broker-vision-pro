@@ -73,9 +73,6 @@ const ORIGEM_LIST: OrigemFiltro[] = ["Todas", "Parceria", "Lead Ubroker", "SaaS"
 
 function FinanceiroPage() {
   const [tab, setTab] = useState<Tab>("cobrancas");
-const ORIGEM_LIST: OrigemFiltro[] = ["Todas", "Parceria", "Lead Ubroker", "SaaS"];
-
-function FinanceiroPage() {
   const [tab, setTab] = useState<Tab>("cobrancas");
 
   // Filtros
