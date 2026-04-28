@@ -137,8 +137,19 @@ export type StatusConciliacao = "Confirmada" | "Divergente" | "Pendente" | "Parc
 export type StatusOperacionalCobranca = "Em cobrança" | "Em negociação" | "Promessa de pagamento" | "Sem retorno" | "—";
 
 export type ConciliacaoSplit = { nome: string; valor: number; tipo: "Captador" | "Parceiro" | "Fee Ubroker" };
-export type ConciliacaoInteracao = { tipo: "Ligação" | "Mensagem" | "Negociação"; obs: string; data: string; autor: string };
+export type ConciliacaoInteracaoTipo = "Ligação" | "WhatsApp" | "E-mail" | "Mensagem" | "Negociação";
+export type ConciliacaoInteracao = { tipo: ConciliacaoInteracaoTipo; obs: string; data: string; autor: string };
 export type ConciliacaoAuditoria = { data: string; autor: string; acao: string; valorAnterior?: number; valorNovo?: number };
+
+export type ResponsavelCobranca = { tipo: "admin" | "operador"; nome: string };
+export type ComprovantePagamento = { nome: string; tipo: "PDF" | "Imagem"; referencia?: string; enviadoEm: string };
+export type ContratoAplicado = { versao: string; data: string; regras: string };
+export type HistoricoCorretorFin = {
+  pagamentosAtrasoPct: number;
+  tempoMedioPagamentoDias: number;
+  totalPagoHub: number;
+  totalAberto: number;
+};
 
 export type Conciliacao = {
   id: string;
@@ -162,7 +173,65 @@ export type Conciliacao = {
   statusOperacional: StatusOperacionalCobranca;
   interacoes: ConciliacaoInteracao[];
   auditoria: ConciliacaoAuditoria[];
+  // V3 — governança final
+  responsavel?: ResponsavelCobranca;
+  slaDias: number;
+  previsaoPagamento?: string;
+  comprovante?: ComprovantePagamento;
+  contrato: ContratoAplicado;
+  historicoCorretor: HistoricoCorretorFin;
 };
+
+export const RESPONSAVEIS_DISPONIVEIS: ResponsavelCobranca[] = [
+  { tipo: "admin", nome: "Superadmin" },
+  { tipo: "operador", nome: "Operador Cobranças" },
+  { tipo: "operador", nome: "Operador Financeiro" },
+];
+
+export function calcularSLA(c: Conciliacao): { restanteDias: number; atrasado: boolean } {
+  if (c.status === "Confirmada") return { restanteDias: 0, atrasado: false };
+  // diasDesdeFatura é a referência (dias decorridos desde fatura emitida)
+  const decorridos = c.diasDesdeFatura;
+  const restante = c.slaDias - decorridos;
+  return { restanteDias: restante, atrasado: restante < 0 };
+}
+
+export function calcularPrioridade(c: Conciliacao): number {
+  if (c.status === "Confirmada") return -1;
+  const histRisco = corretorRisco[c.corretor]?.nivel ?? "baixo";
+  const pesoRisco = histRisco === "alto" ? 30 : histRisco === "medio" ? 15 : 0;
+  const valor = Math.max(c.esperado - c.recebido, 0);
+  const sla = calcularSLA(c);
+  const atrasoExtra = sla.atrasado ? Math.abs(sla.restanteDias) * 5 : 0;
+  return valor / 1000 + c.diasDesdeFatura * 2 + atrasoExtra + pesoRisco;
+}
+
+export type AgrupadoCorretor = {
+  corretor: string;
+  casos: number;
+  totalDevido: number;
+  totalRecebido: number;
+  totalAtraso: number;
+  inadimplenciaPct: number;
+};
+
+export function agruparPorCorretor(lista: Conciliacao[]): AgrupadoCorretor[] {
+  const grupos: Record<string, AgrupadoCorretor> = {};
+  for (const c of lista) {
+    const g = (grupos[c.corretor] ||= {
+      corretor: c.corretor, casos: 0, totalDevido: 0, totalRecebido: 0, totalAtraso: 0, inadimplenciaPct: 0,
+    });
+    g.casos += 1;
+    g.totalDevido += c.esperado;
+    g.totalRecebido += c.recebido;
+    const sla = calcularSLA(c);
+    if (sla.atrasado || c.status === "Pendente") g.totalAtraso += Math.max(c.esperado - c.recebido, 0);
+  }
+  return Object.values(grupos).map((g) => ({
+    ...g,
+    inadimplenciaPct: g.totalDevido > 0 ? (g.totalAtraso / g.totalDevido) * 100 : 0,
+  })).sort((a, b) => b.totalAtraso - a.totalAtraso);
+}
 
 export function calcularStatusConciliacao(esperado: number, recebido: number): StatusConciliacao {
   if (recebido === 0) return "Pendente";
