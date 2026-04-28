@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { TrendingUp, AlertTriangle, Users, Building2, Handshake, BadgeDollarSign } from "lucide-react";
+import { TrendingUp, AlertTriangle, Users, Building2, Handshake, BadgeDollarSign, Filter } from "lucide-react";
 import { adminKpis } from "@/data/admin-mock";
 import { formatBRLcompact, formatBRL } from "@/data/mock";
 
