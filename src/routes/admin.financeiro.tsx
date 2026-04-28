@@ -93,6 +93,9 @@ function FinanceiroPage() {
   const [concValMin, setConcValMin] = useState("");
   const [concValMax, setConcValMax] = useState("");
   const [concSomenteDiv, setConcSomenteDiv] = useState(false);
+  const [concAgrupar, setConcAgrupar] = useState(false);
+  const [concReabrir, setConcReabrir] = useState<Conciliacao | null>(null);
+  const [concReabrirJustificativa, setConcReabrirJustificativa] = useState("");
 
   function atualizarConciliacao(id: string, patch: Partial<Conciliacao>, audit?: ConciliacaoAuditoria) {
     setConciliacoes((prev) => prev.map((c) => {
