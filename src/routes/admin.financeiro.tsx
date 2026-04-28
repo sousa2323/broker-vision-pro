@@ -215,6 +215,34 @@ function FinanceiroPage() {
   }));
   const receitaTotalOrigem = receitaPorOrigem.reduce((a, b) => a + b.total, 0) || 1;
 
+  // ===== Resultado / Despesas (cálculos derivados) =====
+  const despesasFiltradas = useMemo(() => {
+    return despesas.filter((d) => {
+      if (despFiltroCat !== "Todas" && d.categoria !== despFiltroCat) return false;
+      if (despFiltroStatus !== "Todos" && d.status !== despFiltroStatus) return false;
+      if (despFiltroTipo !== "Todos" && d.tipo !== despFiltroTipo) return false;
+      if (despBusca && !d.descricao.toLowerCase().includes(despBusca.toLowerCase())) return false;
+      return true;
+    });
+  }, [despesas, despFiltroCat, despFiltroStatus, despFiltroTipo, despBusca]);
+
+  // Receita total reusa os KPIs já calculados (sem duplicar lógica)
+  const receitaTotal = totalRecebido + totalPendente;
+  const totalDespesas = despesas.reduce((a, b) => a + b.valor, 0);
+  const resultadoLiquido = receitaTotal - totalDespesas;
+  const margem = receitaTotal > 0 ? (resultadoLiquido / receitaTotal) * 100 : 0;
+  const margemTone: "green" | "amber" | "red" = margem < 0 ? "red" : margem < 20 ? "amber" : "green";
+
+  // KPIs da aba Despesas
+  const despPagas = despesasFiltradas.filter((d) => d.status === "Pago").reduce((a, b) => a + b.valor, 0);
+  const despAPagar = despesasFiltradas.filter((d) => d.status === "A pagar").reduce((a, b) => a + b.valor, 0);
+  const despPorCategoria = despesasFiltradas.reduce<Record<string, number>>((acc, d) => {
+    acc[d.categoria] = (acc[d.categoria] ?? 0) + d.valor;
+    return acc;
+  }, {});
+  const maiorCategoria = Object.entries(despPorCategoria).sort((a, b) => b[1] - a[1])[0];
+
+
   const limparFiltros = () => {
     setStatus("Todos"); setOrigem("Todas"); setCorretorSel("Todos");
     setValorMin(""); setValorMax(""); setAtrasoMin(""); setApenasAlto(false);
