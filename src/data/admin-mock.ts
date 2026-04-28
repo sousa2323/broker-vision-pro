@@ -615,3 +615,50 @@ export const adminKpis = {
     { mes: "Out", v: 612 },
   ],
 };
+
+// ============== Despesas (visão de resultado) ==============
+
+export type CategoriaDespesa =
+  | "Marketing"
+  | "Tecnologia"
+  | "Operacional"
+  | "Jurídico"
+  | "Administrativo"
+  | "Outros";
+
+export const CATEGORIAS_DESPESA: CategoriaDespesa[] = [
+  "Marketing",
+  "Tecnologia",
+  "Operacional",
+  "Jurídico",
+  "Administrativo",
+  "Outros",
+];
+
+export type TipoDespesa = "Fixo" | "Variável";
+export type StatusDespesa = "Pago" | "A pagar";
+
+export type Despesa = {
+  id: string;
+  data: string; // dd/mm
+  categoria: CategoriaDespesa;
+  descricao: string;
+  tipo: TipoDespesa;
+  valor: number;
+  status: StatusDespesa;
+  observacao?: string;
+  responsavel?: string;
+};
+
+export const despesasMock: Despesa[] = [
+  { id: "DP-1001", data: "03/04", categoria: "Tecnologia", descricao: "Infraestrutura cloud (AWS)", tipo: "Fixo", valor: 4_800, status: "Pago", responsavel: "Financeiro" },
+  { id: "DP-1002", data: "05/04", categoria: "Marketing", descricao: "Mídia paga — Meta Ads", tipo: "Variável", valor: 6_200, status: "Pago", responsavel: "Marketing" },
+  { id: "DP-1003", data: "08/04", categoria: "Administrativo", descricao: "Folha de pagamento (parcial)", tipo: "Fixo", valor: 18_400, status: "Pago", responsavel: "RH" },
+  { id: "DP-1004", data: "10/04", categoria: "Jurídico", descricao: "Honorários advocatícios", tipo: "Fixo", valor: 3_500, status: "Pago", responsavel: "Jurídico" },
+  { id: "DP-1005", data: "14/04", categoria: "Operacional", descricao: "Aluguel sede + condomínio", tipo: "Fixo", valor: 7_200, status: "Pago", responsavel: "Financeiro" },
+  { id: "DP-1006", data: "18/04", categoria: "Marketing", descricao: "Produção de conteúdo institucional", tipo: "Variável", valor: 2_900, status: "A pagar", responsavel: "Marketing", observacao: "Vence em 28/04" },
+  { id: "DP-1007", data: "20/04", categoria: "Tecnologia", descricao: "SaaS — CRM e ferramentas", tipo: "Fixo", valor: 1_850, status: "Pago", responsavel: "TI" },
+  { id: "DP-1008", data: "22/04", categoria: "Operacional", descricao: "Logística e deslocamentos", tipo: "Variável", valor: 1_240, status: "A pagar", responsavel: "Operações" },
+  { id: "DP-1009", data: "24/04", categoria: "Administrativo", descricao: "Material de escritório", tipo: "Variável", valor: 680, status: "Pago" },
+  { id: "DP-1010", data: "26/04", categoria: "Outros", descricao: "Treinamento equipe comercial", tipo: "Variável", valor: 3_100, status: "A pagar", responsavel: "RH", observacao: "Workshop com consultoria externa" },
+];

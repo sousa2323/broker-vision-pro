@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   CheckCircle2, Eye, Pencil, MoreHorizontal, AlertTriangle, ShieldCheck,
   FileSearch, Download, FileText, Filter as FilterIcon, X, Calendar as CalendarIcon,
   Clock, Receipt, AlertCircle, Phone, MessageSquare, Handshake, FileSignature,
   Activity, Users, UserPlus, RotateCcw, Lock, Upload, Mail, Smartphone, Paperclip,
-  Timer, BarChart3,
+  Timer, BarChart3, Plus, Trash2, Wallet, TrendingUp, TrendingDown,
 } from "lucide-react";
 import {
   cobrancas as cobrancasMock,
@@ -17,6 +17,8 @@ import {
   calcularPrioridade,
   agruparPorCorretor,
   RESPONSAVEIS_DISPONIVEIS,
+  CATEGORIAS_DESPESA,
+  despesasMock,
   type Conciliacao,
   type ConciliacaoInteracao,
   type ConciliacaoAuditoria,
@@ -27,6 +29,10 @@ import {
   type Cobranca,
   type ResponsavelCobranca,
   type ComprovantePagamento,
+  type Despesa,
+  type CategoriaDespesa,
+  type TipoDespesa,
+  type StatusDespesa,
 } from "@/data/admin-mock";
 import { formatBRL } from "@/data/mock";
 import { cn } from "@/lib/utils";
@@ -57,7 +63,7 @@ export const Route = createFileRoute("/admin/financeiro")({
 });
 
 
-type Tab = "cobrancas" | "vendas" | "conciliacao";
+type Tab = "cobrancas" | "vendas" | "conciliacao" | "despesas";
 type StatusFiltro = "Todos" | StatusCobrancaTipo;
 type OrigemFiltro = "Todas" | OrigemCobranca;
 type PeriodoQuick = "hoje" | "7d" | "30d" | "custom";
@@ -81,6 +87,16 @@ function FinanceiroPage() {
   const [range, setRange] = useState<DateRange | undefined>();
 
   const [cobrancaDetalhe, setCobrancaDetalhe] = useState<Cobranca | null>(null);
+
+  // ===== Despesas (visão de resultado) — state local =====
+  const [despesas, setDespesas] = useState<Despesa[]>(despesasMock);
+  const [despesaModalOpen, setDespesaModalOpen] = useState(false);
+  const [despesaEdit, setDespesaEdit] = useState<Despesa | null>(null);
+  const [despesaExcluir, setDespesaExcluir] = useState<Despesa | null>(null);
+  const [despFiltroCat, setDespFiltroCat] = useState<"Todas" | CategoriaDespesa>("Todas");
+  const [despFiltroStatus, setDespFiltroStatus] = useState<"Todos" | StatusDespesa>("Todos");
+  const [despFiltroTipo, setDespFiltroTipo] = useState<"Todos" | TipoDespesa>("Todos");
+  const [despBusca, setDespBusca] = useState("");
 
   // ===== Conciliação V2 (state local — sem backend) =====
   const [conciliacoes, setConciliacoes] = useState<Conciliacao[]>(() =>
@@ -199,6 +215,34 @@ function FinanceiroPage() {
   }));
   const receitaTotalOrigem = receitaPorOrigem.reduce((a, b) => a + b.total, 0) || 1;
 
+  // ===== Resultado / Despesas (cálculos derivados) =====
+  const despesasFiltradas = useMemo(() => {
+    return despesas.filter((d) => {
+      if (despFiltroCat !== "Todas" && d.categoria !== despFiltroCat) return false;
+      if (despFiltroStatus !== "Todos" && d.status !== despFiltroStatus) return false;
+      if (despFiltroTipo !== "Todos" && d.tipo !== despFiltroTipo) return false;
+      if (despBusca && !d.descricao.toLowerCase().includes(despBusca.toLowerCase())) return false;
+      return true;
+    });
+  }, [despesas, despFiltroCat, despFiltroStatus, despFiltroTipo, despBusca]);
+
+  // Receita total reusa os KPIs já calculados (sem duplicar lógica)
+  const receitaTotal = totalRecebido + totalPendente;
+  const totalDespesas = despesas.reduce((a, b) => a + b.valor, 0);
+  const resultadoLiquido = receitaTotal - totalDespesas;
+  const margem = receitaTotal > 0 ? (resultadoLiquido / receitaTotal) * 100 : 0;
+  const margemTone: "green" | "amber" | "red" = margem < 0 ? "red" : margem < 20 ? "amber" : "green";
+
+  // KPIs da aba Despesas
+  const despPagas = despesasFiltradas.filter((d) => d.status === "Pago").reduce((a, b) => a + b.valor, 0);
+  const despAPagar = despesasFiltradas.filter((d) => d.status === "A pagar").reduce((a, b) => a + b.valor, 0);
+  const despPorCategoria = despesasFiltradas.reduce<Record<string, number>>((acc, d) => {
+    acc[d.categoria] = (acc[d.categoria] ?? 0) + d.valor;
+    return acc;
+  }, {});
+  const maiorCategoria = Object.entries(despPorCategoria).sort((a, b) => b[1] - a[1])[0];
+
+
   const limparFiltros = () => {
     setStatus("Todos"); setOrigem("Todas"); setCorretorSel("Todos");
     setValorMin(""); setValorMax(""); setAtrasoMin(""); setApenasAlto(false);
@@ -213,7 +257,7 @@ function FinanceiroPage() {
           <h1 className="font-display text-2xl">Financeiro</h1>
           <p className="mt-1 text-sm text-muted-foreground">Cobranças, detalhamento de vendas e conciliação.</p>
         </div>
-        <ExportarMenu cobrancas={cobrancasFiltradas} />
+        <ExportarMenu cobrancas={cobrancasFiltradas} despesas={despesas} receitaTotal={receitaTotal} totalDespesas={totalDespesas} resultadoLiquido={resultadoLiquido} margem={margem} />
       </div>
 
       {/* Camada 7 — período */}
@@ -253,7 +297,90 @@ function FinanceiroPage() {
         <KPI label="Em atraso" value={formatBRL(totalAtraso)} tone="red" />
       </section>
 
-      {/* Camada 8 — saúde financeira */}
+      {/* Resultado do período (Receita × Despesas × Margem) */}
+      {(resultadoLiquido < 0 || (totalDespesas / (receitaTotal || 1)) > 0.7) && (
+        <div className="space-y-2">
+          {resultadoLiquido < 0 && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <span className="font-semibold">Resultado negativo no período.</span>{" "}
+                Despesas excedem a receita em {formatBRL(Math.abs(resultadoLiquido))}.
+              </div>
+            </div>
+          )}
+          {resultadoLiquido >= 0 && (totalDespesas / (receitaTotal || 1)) > 0.7 && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <span className="font-semibold">Despesas elevadas.</span>{" "}
+                Representam {((totalDespesas / (receitaTotal || 1)) * 100).toFixed(0)}% da receita do período.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <span>Receita total</span>
+            <Wallet className="h-3.5 w-3.5 text-emerald-700" />
+          </div>
+          <div className="mt-2 num font-display text-2xl text-emerald-700">{formatBRL(receitaTotal)}</div>
+          <div className="mt-1 text-[11px] text-muted-foreground">Recebido + a receber</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <span>Despesas totais</span>
+            <TrendingDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <div className="mt-2 num font-display text-2xl">{formatBRL(totalDespesas)}</div>
+          <div className="mt-1 text-[11px] text-muted-foreground">{despesas.length} lançamento(s)</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <span>Resultado líquido</span>
+            {resultadoLiquido >= 0
+              ? <TrendingUp className="h-3.5 w-3.5 text-emerald-700" />
+              : <TrendingDown className="h-3.5 w-3.5 text-red-700" />}
+          </div>
+          <div className={cn(
+            "mt-2 num font-display text-2xl",
+            resultadoLiquido >= 0 ? "text-emerald-700" : "text-red-700",
+          )}>{formatBRL(resultadoLiquido)}</div>
+          <div className="mt-1 text-[11px] text-muted-foreground">Receita − despesas</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <span>Margem</span>
+            <span className={cn(
+              "h-2 w-2 rounded-full",
+              margemTone === "green" && "bg-emerald-500",
+              margemTone === "amber" && "bg-amber-500",
+              margemTone === "red" && "bg-red-500",
+            )} />
+          </div>
+          <div className={cn(
+            "mt-2 num font-display text-2xl",
+            margemTone === "green" && "text-emerald-700",
+            margemTone === "amber" && "text-amber-700",
+            margemTone === "red" && "text-red-700",
+          )}>{margem.toFixed(1)}%</div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
+            <div
+              className={cn(
+                "h-full transition-all",
+                margemTone === "green" && "bg-emerald-500",
+                margemTone === "amber" && "bg-amber-500",
+                margemTone === "red" && "bg-red-500",
+              )}
+              style={{ width: `${Math.max(0, Math.min(100, margem))}%` }}
+            />
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-3 md:grid-cols-4">
         <MiniKPI label="Inadimplência" value={`${taxaInad.toFixed(1)}%`} hint={`${inadimplentes} de ${totalCount} cobranças`} tone={taxaInad > 25 ? "red" : taxaInad > 10 ? "amber" : "green"} />
         <MiniKPI label="Ticket médio" value={formatBRL(ticketMedio)} hint="Por cobrança no período" />
@@ -294,6 +421,7 @@ function FinanceiroPage() {
         <TabBtn active={tab === "cobrancas"} onClick={() => setTab("cobrancas")}>Cobranças</TabBtn>
         <TabBtn active={tab === "vendas"} onClick={() => setTab("vendas")}>Detalhamento de vendas</TabBtn>
         <TabBtn active={tab === "conciliacao"} onClick={() => setTab("conciliacao")}>Conciliação</TabBtn>
+        <TabBtn active={tab === "despesas"} onClick={() => setTab("despesas")}>Despesas</TabBtn>
       </div>
 
       {tab === "cobrancas" && (
@@ -829,6 +957,139 @@ function FinanceiroPage() {
         </div>
       )}
 
+      {tab === "despesas" && (
+        <div className="space-y-4">
+          {/* KPIs da aba */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <MiniKPI label="Total no período" value={formatBRL(despesasFiltradas.reduce((a, b) => a + b.valor, 0))} hint={`${despesasFiltradas.length} lançamento(s)`} />
+            <MiniKPI label="Pagas" value={formatBRL(despPagas)} tone="green" hint={`${despesasFiltradas.filter((d) => d.status === "Pago").length} item(ns)`} />
+            <MiniKPI label="A pagar" value={formatBRL(despAPagar)} tone="amber" hint={`${despesasFiltradas.filter((d) => d.status === "A pagar").length} pendente(s)`} />
+            <MiniKPI label="Maior categoria" value={maiorCategoria ? maiorCategoria[0] : "—"} hint={maiorCategoria ? formatBRL(maiorCategoria[1]) : "Sem despesas"} />
+          </div>
+
+          {/* Filtros + nova despesa */}
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-3">
+            <FilterIcon className="h-4 w-4 text-muted-foreground" />
+            <Select value={despFiltroCat} onValueChange={(v) => setDespFiltroCat(v as typeof despFiltroCat)}>
+              <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todas" className="text-xs">Todas as categorias</SelectItem>
+                {CATEGORIAS_DESPESA.map((c) => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={despFiltroStatus} onValueChange={(v) => setDespFiltroStatus(v as typeof despFiltroStatus)}>
+              <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos" className="text-xs">Todos status</SelectItem>
+                <SelectItem value="Pago" className="text-xs">Pago</SelectItem>
+                <SelectItem value="A pagar" className="text-xs">A pagar</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={despFiltroTipo} onValueChange={(v) => setDespFiltroTipo(v as typeof despFiltroTipo)}>
+              <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Todos" className="text-xs">Todos tipos</SelectItem>
+                <SelectItem value="Fixo" className="text-xs">Fixo</SelectItem>
+                <SelectItem value="Variável" className="text-xs">Variável</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              className="h-8 w-[200px] text-xs"
+              placeholder="Buscar descrição…"
+              value={despBusca}
+              onChange={(e) => setDespBusca(e.target.value)}
+            />
+            <div className="ml-auto">
+              <Button
+                size="sm"
+                className="h-8 gap-2"
+                onClick={() => { setDespesaEdit(null); setDespesaModalOpen(true); }}
+              >
+                <Plus className="h-4 w-4" /> Nova despesa
+              </Button>
+            </div>
+          </div>
+
+          {/* Tabela */}
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead className="bg-surface text-[10px] uppercase tracking-widest text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 text-left">ID</th>
+                  <th className="px-4 py-3 text-left">Data</th>
+                  <th className="px-4 py-3 text-left">Categoria</th>
+                  <th className="px-4 py-3 text-left">Descrição</th>
+                  <th className="px-4 py-3 text-left">Tipo</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {despesasFiltradas.length === 0 && (
+                  <tr><td colSpan={8} className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma despesa encontrada com os filtros atuais.</td></tr>
+                )}
+                {despesasFiltradas.map((d) => (
+                  <tr key={d.id} className="hover:bg-surface/50">
+                    <td className="px-4 py-3 font-mono text-xs">{d.id}</td>
+                    <td className="px-4 py-3">{d.data}</td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-surface px-2 py-0.5 text-xs">{d.categoria}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div>{d.descricao}</div>
+                      {d.responsavel && <div className="text-[11px] text-muted-foreground">Responsável: {d.responsavel}</div>}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <span className={cn(
+                        "rounded-full px-2 py-0.5",
+                        d.tipo === "Fixo" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700",
+                      )}>{d.tipo}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right num font-medium">{formatBRL(d.valor)}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn(
+                        "rounded-full px-2 py-0.5 text-xs",
+                        d.status === "Pago" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+                      )}>{d.status}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => { setDespesaEdit(d); setDespesaModalOpen(true); }}>
+                            <Pencil className="mr-2 h-4 w-4" /> Editar
+                          </DropdownMenuItem>
+                          {d.status === "A pagar" && (
+                            <DropdownMenuItem onClick={() => {
+                              setDespesas((arr) => arr.map((x) => x.id === d.id ? { ...x, status: "Pago" } : x));
+                              toast.success("Despesa marcada como paga", { description: `${d.id} · ${formatBRL(d.valor)}` });
+                            }}>
+                              <CheckCircle2 className="mr-2 h-4 w-4" /> Marcar como paga
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-700 focus:text-red-700"
+                            onClick={() => setDespesaExcluir(d)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <CobrancaDetalheModal cobranca={cobrancaDetalhe} onClose={() => setCobrancaDetalhe(null)} />
       <ConciliacaoDetalheModal
         conciliacao={concDetalhe}
@@ -837,14 +1098,76 @@ function FinanceiroPage() {
         onInteracao={adicionarInteracao}
       />
 
+      <DespesaModal
+        open={despesaModalOpen}
+        despesa={despesaEdit}
+        onClose={() => { setDespesaModalOpen(false); setDespesaEdit(null); }}
+        onSave={(d) => {
+          setDespesas((arr) => {
+            const exists = arr.some((x) => x.id === d.id);
+            return exists ? arr.map((x) => x.id === d.id ? d : x) : [d, ...arr];
+          });
+          toast.success(despesaEdit ? "Despesa atualizada" : "Despesa criada", { description: `${d.descricao} · ${formatBRL(d.valor)}` });
+          setDespesaModalOpen(false); setDespesaEdit(null);
+        }}
+      />
+
+      <AlertDialog open={!!despesaExcluir} onOpenChange={(o) => { if (!o) setDespesaExcluir(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir despesa {despesaExcluir?.id}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove o lançamento e recalcula o resultado do período. Não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (despesaExcluir) {
+                  setDespesas((arr) => arr.filter((x) => x.id !== despesaExcluir.id));
+                  toast.success("Despesa excluída", { description: despesaExcluir.id });
+                }
+                setDespesaExcluir(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
 
 // ============== Subcomponentes ==============
 
-function ExportarMenu({ cobrancas }: { cobrancas: Cobranca[] }) {
-  const exportar = (tipo: "filtrados" | "corretor" | "contabil" | "inadimplencia") => {
+function ExportarMenu({
+  cobrancas,
+  despesas,
+  receitaTotal,
+  totalDespesas,
+  resultadoLiquido,
+  margem,
+}: {
+  cobrancas: Cobranca[];
+  despesas: Despesa[];
+  receitaTotal: number;
+  totalDespesas: number;
+  resultadoLiquido: number;
+  margem: number;
+}) {
+  const exportar = (
+    tipo:
+      | "filtrados"
+      | "corretor"
+      | "contabil"
+      | "inadimplencia"
+      | "despesas"
+      | "resultado"
+      | "consolidado",
+  ) => {
     let rows: Record<string, string | number>[] = [];
     let nome = "cobrancas";
     if (tipo === "filtrados") {
@@ -864,10 +1187,37 @@ function ExportarMenu({ cobrancas }: { cobrancas: Cobranca[] }) {
       const com = cobrancas.filter((c) => c.origem !== "SaaS").reduce((a, b) => a + b.valor, 0);
       rows = [{ Categoria: "SaaS (recorrente)", Valor: saas }, { Categoria: "Comissão (parceria/lead)", Valor: com }, { Categoria: "Total", Valor: saas + com }];
       nome = "relatorio-contabil";
-    } else {
+    } else if (tipo === "inadimplencia") {
       rows = cobrancas.filter((c) => c.status === "Atrasado" || c.status === "Contestado")
         .map((c) => ({ ID: c.id, Corretor: c.corretor, Valor: c.valor, Vencimento: c.vencimento, DiasAtraso: c.diasAtraso ?? 0, Status: c.status }));
       nome = "relatorio-inadimplencia";
+    } else if (tipo === "despesas") {
+      rows = despesas.map((d) => ({
+        ID: d.id, Data: d.data, Categoria: d.categoria, Descrição: d.descricao,
+        Tipo: d.tipo, Valor: d.valor, Status: d.status, Responsável: d.responsavel ?? "",
+        Observação: d.observacao ?? "",
+      }));
+      nome = "relatorio-despesas";
+    } else if (tipo === "resultado") {
+      rows = [
+        { Indicador: "Receita total", Valor: receitaTotal },
+        { Indicador: "Despesas totais", Valor: totalDespesas },
+        { Indicador: "Resultado líquido", Valor: resultadoLiquido },
+        { Indicador: "Margem (%)", Valor: Number(margem.toFixed(2)) },
+      ];
+      nome = "relatorio-resultado";
+    } else {
+      // consolidado
+      const porCat: Record<string, number> = {};
+      despesas.forEach((d) => { porCat[d.categoria] = (porCat[d.categoria] ?? 0) + d.valor; });
+      rows = [
+        { Bloco: "Receita", Item: "Receita total", Valor: receitaTotal },
+        { Bloco: "Despesas", Item: "Total", Valor: totalDespesas },
+        ...Object.entries(porCat).map(([k, v]) => ({ Bloco: "Despesas", Item: k, Valor: v })),
+        { Bloco: "Resultado", Item: "Líquido", Valor: resultadoLiquido },
+        { Bloco: "Resultado", Item: "Margem (%)", Valor: Number(margem.toFixed(2)) },
+      ];
+      nome = "financeiro-consolidado";
     }
     baixarCSV(nome, rows);
     toast.success("Relatório exportado", { description: `${rows.length} linha(s) · ${nome}.csv` });
@@ -880,8 +1230,8 @@ function ExportarMenu({ cobrancas }: { cobrancas: Cobranca[] }) {
           <Download className="h-4 w-4" /> Exportar
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Exportação inteligente</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-72">
+        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Cobranças</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => exportar("filtrados")}>
           <FileText className="mr-2 h-4 w-4" /> Dados filtrados (CSV)
         </DropdownMenuItem>
@@ -894,10 +1244,166 @@ function ExportarMenu({ cobrancas }: { cobrancas: Cobranca[] }) {
         <DropdownMenuItem onClick={() => exportar("inadimplencia")}>
           <FileText className="mr-2 h-4 w-4" /> Relatório de inadimplência
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Resultado & despesas</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => exportar("despesas")}>
+          <FileText className="mr-2 h-4 w-4" /> Relatório de despesas
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportar("resultado")}>
+          <FileText className="mr-2 h-4 w-4" /> Relatório de resultado (receita × despesas)
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => exportar("consolidado")}>
+          <FileText className="mr-2 h-4 w-4" /> Relatório financeiro consolidado
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
+
+function DespesaModal({
+  open,
+  despesa,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  despesa: Despesa | null;
+  onClose: () => void;
+  onSave: (d: Despesa) => void;
+}) {
+  const [data, setData] = useState("");
+  const [categoria, setCategoria] = useState<CategoriaDespesa>("Operacional");
+  const [descricao, setDescricao] = useState("");
+  const [valor, setValor] = useState<string>("");
+  const [tipo, setTipo] = useState<TipoDespesa>("Variável");
+  const [statusD, setStatusD] = useState<StatusDespesa>("A pagar");
+  const [observacao, setObservacao] = useState("");
+  const [responsavel, setResponsavel] = useState("");
+
+  // Sincroniza ao abrir
+  React.useEffect(() => {
+    if (!open) return;
+    if (despesa) {
+      setData(despesa.data);
+      setCategoria(despesa.categoria);
+      setDescricao(despesa.descricao);
+      setValor(String(despesa.valor));
+      setTipo(despesa.tipo);
+      setStatusD(despesa.status);
+      setObservacao(despesa.observacao ?? "");
+      setResponsavel(despesa.responsavel ?? "");
+    } else {
+      const hoje = new Date();
+      const dd = String(hoje.getDate()).padStart(2, "0");
+      const mm = String(hoje.getMonth() + 1).padStart(2, "0");
+      setData(`${dd}/${mm}`);
+      setCategoria("Operacional");
+      setDescricao("");
+      setValor("");
+      setTipo("Variável");
+      setStatusD("A pagar");
+      setObservacao("");
+      setResponsavel("");
+    }
+  }, [open, despesa]);
+
+  const submit = () => {
+    if (!data.trim() || !descricao.trim() || !valor.trim()) {
+      toast.error("Preencha data, descrição e valor");
+      return;
+    }
+    const v = parseFloat(valor.replace(",", "."));
+    if (Number.isNaN(v) || v <= 0) {
+      toast.error("Valor inválido");
+      return;
+    }
+    const novo: Despesa = {
+      id: despesa?.id ?? `DP-${Math.floor(Math.random() * 9000 + 1000)}`,
+      data: data.trim(),
+      categoria,
+      descricao: descricao.trim(),
+      tipo,
+      valor: v,
+      status: statusD,
+      observacao: observacao.trim() || undefined,
+      responsavel: responsavel.trim() || undefined,
+    };
+    onSave(novo);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 font-display">
+            <Wallet className="h-5 w-5" /> {despesa ? "Editar despesa" : "Nova despesa"}
+          </DialogTitle>
+          <DialogDescription>
+            {despesa ? `Atualize os dados da despesa ${despesa.id}.` : "Lançamentos impactam automaticamente o resultado do período."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Data (dd/mm) *</label>
+            <Input value={data} onChange={(e) => setData(e.target.value)} placeholder="28/04" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Valor (R$) *</label>
+            <Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Categoria *</label>
+            <Select value={categoria} onValueChange={(v) => setCategoria(v as CategoriaDespesa)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CATEGORIAS_DESPESA.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Tipo *</label>
+            <Select value={tipo} onValueChange={(v) => setTipo(v as TipoDespesa)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Fixo">Fixo</SelectItem>
+                <SelectItem value="Variável">Variável</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Descrição *</label>
+            <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Mídia paga — Meta Ads" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Status *</label>
+            <Select value={statusD} onValueChange={(v) => setStatusD(v as StatusDespesa)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="A pagar">A pagar</SelectItem>
+                <SelectItem value="Pago">Pago</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Responsável</label>
+            <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} placeholder="Opcional" />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Observação</label>
+            <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Opcional" className="min-h-[60px]" />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={submit}>{despesa ? "Salvar alterações" : "Criar despesa"}</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 function CobrancaDetalheModal({ cobranca, onClose }: { cobranca: Cobranca | null; onClose: () => void }) {
   const venda = cobranca?.vendaId ? vendasDetalhadas.find((v) => v.id === cobranca.vendaId) : undefined;

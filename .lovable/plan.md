@@ -1,112 +1,99 @@
-## Plano — Conciliação Final (Governança, Cobrança Ativa e Auditoria)
+## Plano — Financeiro Admin: Resultado + Despesas (aditivo)
 
-Evolução **estritamente aditiva** sobre a aba "Conciliação" em `src/routes/admin.financeiro.tsx`. Layout, abas, identidade visual, colunas atuais (ID, Venda, Corretor, Esperado, Recebido, Diferença, Risco, Operacional, Status, Ações) e modal existente são preservados. Tudo abaixo é adicionado dentro das estruturas já presentes.
+Atualização **estritamente aditiva** sobre `src/routes/admin.financeiro.tsx`. Nada de existente é renomeado, removido ou reordenado. Sem nova rota, sem novo arquivo de página.
 
 ---
 
 ### 1. Camada de dados (`src/data/admin-mock.ts`)
 
-Expandir `Conciliacao` (sem remover campos):
+Adicionar (sem tocar nos tipos existentes):
 
-- `responsavel?: { tipo: "admin" | "operador"; nome: string }` — pode ficar indefinido (não atribuído).
-- `slaDias: number` — janela de resolução (default 3 para Pendente/Divergente/Parcial).
-- `slaIniciadoEm?: string` — começa quando entra em status não-Confirmada.
-- `previsaoPagamento?: string` — definido manualmente pelo admin.
-- `comprovante?: { nome: string; tipo: "PDF" | "Imagem"; referencia?: string; enviadoEm: string }`.
-- `contrato: { versao: string; data: string; regras: string }` — bloco de vínculo contratual.
-- `historicoCorretor: { pagamentosAtrasoPct: number; tempoMedioPagamentoDias: number; totalPagoHub: number; totalAberto: number }`.
-- Expandir `ConciliacaoInteracao.tipo` para `"Ligação" | "WhatsApp" | "E-mail" | "Mensagem" | "Negociação"` (manter retrocompatível).
-- `bloqueada?: boolean` — derivado de `status === "Confirmada"` (helper).
+- Tipo `Despesa`:
+  ```
+  { id, data, categoria: CategoriaDespesa, descricao, tipo: "Fixo"|"Variável",
+    valor, status: "Pago"|"A pagar", observacao?, responsavel? }
+  ```
+- `CATEGORIAS_DESPESA = ["Marketing","Tecnologia","Operacional","Jurídico","Administrativo","Outros"]`.
+- Mock `despesasMock`: ~10 itens distribuídos no mês corrente, mistura de Pago/A pagar, fixas e variáveis, valores coerentes com a receita atual para gerar margem ~15-30%.
 
-Helpers novos:
-- `calcularPrioridade(c)` → score = `(valor / 1000) + (atraso × 5) + (risco peso)`. Usado para ordenação default.
-- `calcularSLA(c)` → `{ restanteDias, atrasado: boolean }`.
-- `agruparPorCorretor(lista)` → `{ corretor, totalDevido, totalRecebido, totalAtraso, inadimplenciaPct }[]`.
+### 2. Bloco "Resultado do período" (logo abaixo dos 3 KPIs principais)
 
-Popular os 8 mocks com responsáveis variados (alguns "não atribuído"), SLAs estourados em 2 linhas, previsões em 2, 1 com comprovante anexo, contrato v1.2 padrão, e historicoCorretor coerente com o risco.
+Inserido entre as linhas 254 e 256 da página (após `KPI Recebido/A receber/Em atraso`, antes do bloco "saúde financeira"). Quatro cards na mesma estética do `KPI`/`MiniKPI` atual:
 
----
+1. **Receita total** — reusa `totalRecebido + totalPendente` já calculados (não recalcula receita). Verde.
+2. **Despesas totais** — soma de `despesas` no período filtrado (respeita `range` quando definido). Tom neutro.
+3. **Resultado líquido** — `receita - despesas`. Verde se ≥ 0, vermelho se < 0.
+4. **Margem** — `resultado / receita`. Badge: verde > 20%, âmbar 0-20%, vermelho < 0%.
 
-### 2. Tabela — colunas e ordenação
+Filtro de período já existente (`range`) também filtra as despesas — sem novos controles.
 
-Mantém todas as colunas atuais. **Adicionar ao final** (antes de Ações):
+### 3. Faixa de alertas (opcional, topo do bloco Resultado)
 
-- **Responsável** — chip com nome ou botão ghost "Atribuir"; clique abre `Popover` com `Select` (Superadmin / Operador Cobranças / Operador Financeiro) + botão "Reatribuir" se já houver.
-- **SLA** — badge: "Resolver em Xd" (neutro), "Atrasado +Yd" (vermelho) quando estourado. Confirmadas: "—".
-- **Previsão** — data ou "—"; clique abre `Popover` com input de data.
+Renderizada apenas quando aplicável:
+- Resultado negativo no período → alerta vermelho.
+- Despesas > 70% da receita → alerta âmbar.
 
-Ordenação default da tabela passa a usar `calcularPrioridade` desc (Confirmadas vão para o final). Cabeçalhos ganham toggle de ordenação por clique (Esperado / Diferença / SLA / Prioridade).
+Componente leve (div com `Alert` shadcn já presente no projeto).
 
-Botão **"Agrupar por corretor"** acima da tabela (toggle). Quando ativo, substitui a tabela por uma tabela agregada: Corretor · Total devido · Total recebido · Total em atraso · Inadimplência % · botão "Ver itens" (volta ao modo lista filtrado por aquele corretor).
+### 4. Nova aba "Despesas"
 
----
+Adicionada **ao final** das abas existentes em `admin.financeiro.tsx` linha 296:
 
-### 3. Bloqueio de edição (status Confirmada)
+```
+Cobranças | Detalhamento de vendas | Conciliação | Despesas
+```
 
-- Linha confirmada: dropdown de Ações mostra apenas "Ver detalhes" + **"Reabrir conciliação"**.
-- "Reabrir conciliação" abre `AlertDialog` com `Textarea` obrigatória de justificativa. Ao confirmar: status volta a Pendente/Parcial conforme valores, entrada de auditoria registrada com a justificativa, toast.
-- No modal, todos os inputs/botões de edição ficam `disabled` quando `bloqueada`, com tooltip "Conciliação confirmada — reabra para editar".
+Estado: `tab === "despesas"`. Não altera as outras três abas.
 
----
+Conteúdo da aba:
 
-### 4. Modal `ConciliacaoDetalheModal` — novos blocos
+**Filtros simples** (mesma estética dos filtros atuais): categoria (multi), status (Pago / A pagar), tipo (Fixo / Variável), busca por descrição.
 
-Mantém os 5 blocos existentes. Adiciona, na ordem:
+**Mini-KPIs** (linha de 4): Total no período · Pagas · A pagar · Maior categoria.
 
-6. **Responsável & SLA** — chip do responsável com "Reatribuir", SLA visual (barra simples mostrando dias restantes/atraso), data prevista de pagamento (input editável com confirmação).
-7. **Performance do corretor** — 4 mini-stats: % pagamentos em atraso, tempo médio de pagamento, total já pago ao hub, total em aberto. Lidos de `historicoCorretor`.
-8. **Contrato aplicado** — versão, data de vigência, resumo das regras de comissão (ex: "6% comissão · 60/30/10 captador/parceiro/fee").
-9. **Comprovante de pagamento** — área de upload (input file + campo "Referência (PIX/TED/banco)"). Se já existe, mostra "comprovante.pdf · enviado em DD/MM" + botão substituir/remover. Estado local (sem backend real); registra no log.
-10. **Alertas inteligentes** — lista compacta de alertas auto-detectados para esta linha: valor < 70% esperado, atraso > SLA, divergência ≥ R$ 10k, sem retorno > 7 dias. Cada alerta com ícone e cor.
+**Tabela** com colunas: ID · Data · Categoria · Descrição · Tipo · Valor · Status · Ações.
 
-Bloco 4 (Ações diretas) reforçado:
-- **Confirmar pagamento** e **Ajustar valor** continuam exigindo `AlertDialog`.
-- **Marcar divergente** ganha campo de motivo opcional.
-- **Definir previsão de pagamento** com date input.
-- **Atribuir/Reatribuir responsável** inline.
+**Ações por linha** (`DropdownMenu`): Editar · Marcar como paga (se "A pagar") · Excluir (com `AlertDialog` de confirmação).
 
-CRM de cobrança (bloco já existente) ganha tipos novos no `Select`: Ligação · WhatsApp · E-mail · Mensagem · Negociação. Data preenchida automaticamente.
+**Botão "Nova despesa"** acima da tabela.
 
----
+### 5. Modal de despesa (criar/editar)
 
-### 5. Auditoria reforçada
+`Dialog` shadcn novo, definido no mesmo arquivo (componente local `DespesaModal`). Campos:
 
-Toda ação registrada em `auditoria` com `{ data, autor, acao, valorAnterior?, valorNovo? }` — agora cobrindo:
+Obrigatórios: Data (input date) · Categoria (Select com `CATEGORIAS_DESPESA`) · Descrição (Input) · Valor (Input number, máscara BRL) · Tipo (RadioGroup Fixo/Variável) · Status (RadioGroup Pago/A pagar).
 
-- atribuição/reatribuição de responsável
-- definição/alteração de previsão de pagamento
-- upload/remoção de comprovante
-- reabertura de conciliação (com justificativa concatenada em `acao`)
-- mudança de status operacional
-- confirmação, ajuste, divergência
+Opcionais: Observação (Textarea) · Responsável (Input).
 
----
+Validação simples client-side; toast de sucesso ao salvar; estado local em `useState<Despesa[]>(despesasMock)`.
 
-### 6. Exportação
+### 6. Integração automática
 
-Estender `ExportarMenu` da aba com:
+Toda criação/edição/exclusão/marcar-paga atualiza o mesmo array `despesas` em estado local da página. Os 4 cards de Resultado e o alerta recalculam via `useMemo` a partir desse array. Sem persistência (protótipo).
 
-- Relatório de divergências (já planejado; manter)
-- Relatório por corretor (agregado de `agruparPorCorretor`)
-- Relatório de inadimplência (Pendente + SLA estourado)
-- Histórico completo de auditoria (flatten de todas as entradas, com responsável)
+### 7. Exportação
 
----
+Estender `ExportarMenu` com 3 itens novos ao final do dropdown (sem mexer nos atuais):
 
-### 7. Restrições respeitadas
+- Relatório de despesas (CSV: id, data, categoria, descrição, tipo, valor, status, responsável).
+- Relatório de resultado (CSV: período, receita, despesas, resultado, margem%).
+- Relatório financeiro consolidado (CSV unificando KPIs + despesas agrupadas por categoria).
 
-- Nenhuma coluna existente removida; novas colunas vão ao final.
-- Nenhum bloco do modal removido; novos blocos vão após os atuais.
-- Identidade visual, abas, navegação, KPIs, filtros, modal de Cobrança preservados.
-- Todas as alterações sensíveis (valor, status, reabertura) protegidas por `AlertDialog`.
-- Estado local (sem backend) — protótipo administrativo.
+`ExportarMenu` recebe nova prop opcional `despesas`.
+
+### 8. Restrições respeitadas
+
+- Nenhuma rota nova. Nenhum arquivo novo. Apenas edição de 2 arquivos.
+- KPIs, abas existentes, lógica de cobranças/vendas/conciliação **intactos**.
+- Receita não é duplicada — reusa `totalRecebido + totalPendente`.
+- Identidade visual mantida (componentes `KPI`, `MiniKPI`, `TabBtn`, cores `green/red/amber/navy`).
 - Sem novas dependências.
 
 ---
 
 ### Arquivos afetados
 
-- **Editado** `src/data/admin-mock.ts` — expansão de `Conciliacao` (responsável, SLA, previsão, comprovante, contrato, historicoCorretor, tipos extras de interação), helpers `calcularPrioridade`, `calcularSLA`, `agruparPorCorretor`; mocks enriquecidos.
-- **Editado** `src/routes/admin.financeiro.tsx` — colunas Responsável / SLA / Previsão, ordenação por prioridade, toggle "Agrupar por corretor" + tabela agregada, bloqueio de edição em Confirmadas + reabertura com justificativa, novos blocos no modal (Responsável & SLA, Performance do corretor, Contrato, Comprovante, Alertas), CRM com novos tipos, novos itens de export.
+- **Editado** `src/data/admin-mock.ts` — tipo `Despesa`, `CATEGORIAS_DESPESA`, `despesasMock`.
+- **Editado** `src/routes/admin.financeiro.tsx` — bloco "Resultado do período" abaixo dos KPIs principais, alertas opcionais, nova aba "Despesas" ao final, componente local `DespesaModal`, helpers de cálculo (`totalDespesas`, `resultadoLiquido`, `margem`), 3 novos exports em `ExportarMenu`.
 
-Nenhum arquivo deletado.
+Nenhum arquivo deletado. Nenhuma rota alterada.
