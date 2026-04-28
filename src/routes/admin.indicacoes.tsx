@@ -349,8 +349,10 @@ function GlobalView({
     return a;
   }, [todosCorretores]);
   const produtoAgg = useMemo(() => {
-    const a = { IA: 0, Inbox: 0, Combo: 0 };
-    for (const r of todosCorretores) a[r.produto]++;
+    const a: Record<"IA" | "Inbox" | "Combo", number> = { IA: 0, Inbox: 0, Combo: 0 };
+    for (const r of todosCorretores) {
+      if (r.produto === "IA" || r.produto === "Inbox" || r.produto === "Combo") a[r.produto]++;
+    }
     return a;
   }, [todosCorretores]);
 
