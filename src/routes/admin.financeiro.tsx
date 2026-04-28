@@ -125,7 +125,7 @@ function FinanceiroPage() {
   );
 
   const concFiltradas = useMemo(() => {
-    return conciliacoes.filter((c) => {
+    const lista = conciliacoes.filter((c) => {
       if (concStatusFiltro !== "Todos" && c.status !== concStatusFiltro) return false;
       if (concCorretor !== "Todos" && c.corretor !== concCorretor) return false;
       const min = parseFloat(concValMin); const max = parseFloat(concValMax);
@@ -136,7 +136,11 @@ function FinanceiroPage() {
       if (concRiscoFiltro !== "Todos" && classificarRiscoConc(c) !== concRiscoFiltro) return false;
       return true;
     });
+    // Ordenação default: prioridade desc (Confirmadas vão para o final)
+    return lista.slice().sort((a, b) => calcularPrioridade(b) - calcularPrioridade(a));
   }, [conciliacoes, concStatusFiltro, concCorretor, concValMin, concValMax, concSomenteDiv, concRiscoFiltro]);
+
+  const concAgrupado = useMemo(() => agruparPorCorretor(concFiltradas), [concFiltradas]);
 
   const concKpis = useMemo(() => {
     const conciliado = concFiltradas.filter((c) => c.status === "Confirmada").reduce((a, b) => a + b.recebido, 0);
