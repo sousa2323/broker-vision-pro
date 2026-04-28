@@ -1284,5 +1284,9 @@ function ConciliacaoDetalheModal({
       </AlertDialog>
     </>
   );
-}
+  }
 
+  function adicionarInteracao(id: string, interacao: ConciliacaoInteracao) {
+    setConciliacoes((prev) => prev.map((c) => c.id === id ? { ...c, interacoes: [...c.interacoes, interacao] } : c));
+    setConcDetalhe((cur) => cur && cur.id === id ? { ...cur, interacoes: [...cur.interacoes, interacao] } : cur);
+  }
