@@ -88,6 +88,16 @@ function FinanceiroPage() {
 
   const [cobrancaDetalhe, setCobrancaDetalhe] = useState<Cobranca | null>(null);
 
+  // ===== Despesas (visão de resultado) — state local =====
+  const [despesas, setDespesas] = useState<Despesa[]>(despesasMock);
+  const [despesaModalOpen, setDespesaModalOpen] = useState(false);
+  const [despesaEdit, setDespesaEdit] = useState<Despesa | null>(null);
+  const [despesaExcluir, setDespesaExcluir] = useState<Despesa | null>(null);
+  const [despFiltroCat, setDespFiltroCat] = useState<"Todas" | CategoriaDespesa>("Todas");
+  const [despFiltroStatus, setDespFiltroStatus] = useState<"Todos" | StatusDespesa>("Todos");
+  const [despFiltroTipo, setDespFiltroTipo] = useState<"Todos" | TipoDespesa>("Todos");
+  const [despBusca, setDespBusca] = useState("");
+
   // ===== Conciliação V2 (state local — sem backend) =====
   const [conciliacoes, setConciliacoes] = useState<Conciliacao[]>(() =>
     conciliacoesMock.map((c) => ({ ...c, status: calcularStatusConciliacao(c.esperado, c.recebido) })),
