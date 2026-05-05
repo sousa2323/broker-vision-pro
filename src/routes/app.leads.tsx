@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Calendar, ClipboardCheck, Filter, Flame, MessageCircle, Phone, Plus, Search, Send, Snowflake, Wallet, Zap } from "lucide-react";
+import { Calendar, ClipboardCheck, Filter, MessageCircle, Phone, Plus, Search, Send, Wallet } from "lucide-react";
 import { leads, type Lead, type LeadOrigin, type LeadStatus, formatBRL } from "@/data/mock";
 import { cn } from "@/lib/utils";
 
@@ -26,12 +26,6 @@ function getPrioridade(status: LeadStatus): Prioridade {
   return "neutro";
 }
 
-const prioridadeMeta: Record<Prioridade, { label: string; chip: string; icon: React.ReactNode }> = {
-  quente: { label: "Quente", chip: "bg-red-50 text-red-700 border border-red-100", icon: <Flame className="h-3 w-3" /> },
-  morno: { label: "Morno", chip: "bg-amber-50 text-amber-800 border border-amber-100", icon: <Zap className="h-3 w-3" /> },
-  frio: { label: "Frio", chip: "bg-sky-50 text-sky-700 border border-sky-100", icon: <Snowflake className="h-3 w-3" /> },
-  neutro: { label: "—", chip: "bg-slate-100 text-slate-600 border border-slate-200", icon: null },
-};
 
 const COMISSAO_RATE = 0.03;
 function getComissao(orcamento: number) {
@@ -93,6 +87,56 @@ function getUrgencia(l: Lead): Urgencia {
 function getUrgenciaRank(u: Urgencia) {
   return u === "atrasado" ? 0 : u === "hoje" ? 1 : 2;
 }
+type Nivel = "alta" | "media" | "baixa";
+function getNivel(
+  l: Lead,
+  ctx: { topComissao: number; medianaComissao: number }
+): Nivel {
+  if (!isAtivo(l)) return "baixa";
+  const prio = getPrioridade(l.status);
+  const urg = getUrgencia(l);
+  const com = getComissao(l.orcamento);
+  const acaoPendente = l.status !== "Fechado" && l.status !== "Perdido";
+  if (urg === "atrasado") return "alta";
+  if (prio === "quente" && urg === "hoje") return "alta";
+  if (com >= ctx.topComissao && acaoPendente) return "alta";
+  if (urg === "hoje") return "media";
+  if (prio === "morno" && com >= ctx.medianaComissao) return "media";
+  if (prio === "frio") return "baixa";
+  return "baixa";
+}
+function getNivelMeta(n: Nivel) {
+  if (n === "alta") return {
+    label: "Alta prioridade",
+    emoji: "🔴",
+    chip: "bg-red-50 text-red-700 border border-red-100",
+    border: "border-l-red-500",
+  };
+  if (n === "media") return {
+    label: "Média prioridade",
+    emoji: "🟡",
+    chip: "bg-amber-50 text-amber-800 border border-amber-100",
+    border: "border-l-amber-400",
+  };
+  return {
+    label: "Baixa prioridade",
+    emoji: "⚪",
+    chip: "bg-slate-50 text-slate-600 border border-slate-200",
+    border: "border-l-transparent",
+  };
+}
+function getNivelRank(n: Nivel) {
+  return n === "alta" ? 0 : n === "media" ? 1 : 2;
+}
+function getReforco(l: Lead): string | null {
+  if (!isAtivo(l)) return null;
+  if (isAtrasado(l)) return `Sem resposta há ${l.ultimaInteracao}`;
+  if (l.status === "Visita" && isHoje(l)) return "Visita hoje — ainda não confirmada";
+  if (l.status === "Proposta") return "Proposta enviada — sem retorno";
+  if (getPrioridade(l.status) === "quente" && !isHoje(l)) return "Lead quente sem contato";
+  return null;
+}
+
 function getUrgenciaMeta(u: Urgencia, l: Lead) {
   if (u === "atrasado") return {
     label: `Atrasado há ${l.ultimaInteracao}`,
@@ -123,6 +167,11 @@ function LeadsPage() {
   const semContato = leads.filter((l) => l.status === "Novo").length;
   const visitasHoje = Math.max(1, leads.filter((l) => l.status === "Visita" && isHoje(l)).length);
 
+  const comissoesAtivas = leads.filter(isAtivo).map((l) => getComissao(l.orcamento)).sort((a, b) => b - a);
+  const topComissao = comissoesAtivas[Math.max(0, Math.floor(comissoesAtivas.length * 0.2) - 1)] ?? Infinity;
+  const medianaComissao = comissoesAtivas[Math.floor(comissoesAtivas.length / 2)] ?? 0;
+  const nivelCtx = { topComissao, medianaComissao };
+
   const leadsFiltrados = leads
     .filter((l) => {
       switch (filtroRapido) {
@@ -140,8 +189,8 @@ function LeadsPage() {
       const aAtivo = isAtivo(a) ? 0 : 1;
       const bAtivo = isAtivo(b) ? 0 : 1;
       if (aAtivo !== bAtivo) return aAtivo - bAtivo;
-      const ra = getUrgenciaRank(getUrgencia(a));
-      const rb = getUrgenciaRank(getUrgencia(b));
+      const ra = getNivelRank(getNivel(a, nivelCtx));
+      const rb = getNivelRank(getNivel(b, nivelCtx));
       if (ra !== rb) return ra - rb;
       return getComissao(b.orcamento) - getComissao(a.orcamento);
     });
@@ -153,9 +202,12 @@ function LeadsPage() {
     { label: "Visitas hoje", value: visitasHoje, sub: "Atendimentos confirmados para hoje.", accent: false },
   ];
 
-  const selectedPrio = getPrioridade(selected.status);
   const selectedAcao = getProximaAcao(selected);
   const selectedUrg = getUrgencia(selected);
+  const selectedNivel = getNivel(selected, nivelCtx);
+  const selectedNivelMeta = getNivelMeta(selectedNivel);
+  const selectedReforco = getReforco(selected);
+  const selectedPrio = getPrioridade(selected.status);
   const selectedComissao = getComissao(selected.orcamento);
   const primeiroNome = selected.nome.split(" ")[0];
   const subtextoUrg =
@@ -236,20 +288,21 @@ function LeadsPage() {
               </thead>
               <tbody>
                 {leadsFiltrados.map((l) => {
-                  const prio = getPrioridade(l.status);
-                  const meta = prioridadeMeta[prio];
                   const acao = getProximaAcao(l);
                   const urg = getUrgencia(l);
                   const urgMeta = getUrgenciaMeta(urg, l);
                   const qualificada = isOrigemQualificada(l.origem);
                   const comissao = getComissao(l.orcamento);
+                  const nivel = getNivel(l, nivelCtx);
+                  const nivelMeta = getNivelMeta(nivel);
+                  const reforco = getReforco(l);
                   return (
                     <tr
                       key={l.id}
                       onClick={() => setSelected(l)}
                       className={cn(
                         "cursor-pointer border-b border-l-4 border-border transition hover:bg-surface",
-                        urgMeta.border,
+                        nivelMeta.border,
                         selected.id === l.id && "bg-surface"
                       )}
                     >
@@ -261,12 +314,10 @@ function LeadsPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="truncate font-medium">{l.nome}</span>
-                              {prio !== "neutro" && (
-                                <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium", meta.chip)}>
-                                  {meta.icon}
-                                  {meta.label}
-                                </span>
-                              )}
+                              <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium", nivelMeta.chip)}>
+                                <span aria-hidden>{nivelMeta.emoji}</span>
+                                {nivelMeta.label}
+                              </span>
                             </div>
                             <div className="text-[10px] text-muted-foreground/70">{l.id}</div>
                           </div>
@@ -283,17 +334,22 @@ function LeadsPage() {
                         {acao.tipo === "nenhum" ? (
                           <span className="text-xs text-muted-foreground">—</span>
                         ) : (
-                          <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
-                            <span className={cn(
-                              "grid h-6 w-6 place-items-center rounded-md",
-                              acao.tipo === "whatsapp" ? "bg-emerald-50 text-emerald-700"
-                                : acao.tipo === "ligar" ? "bg-navy/10 text-navy"
-                                : acao.tipo === "visita" ? "bg-orange-50 text-orange-700"
-                                : "bg-violet-50 text-violet-700"
-                            )}>
-                              {acao.icon}
-                            </span>
-                            {acao.label}
+                          <div>
+                            <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+                              <span className={cn(
+                                "grid h-6 w-6 place-items-center rounded-md",
+                                acao.tipo === "whatsapp" ? "bg-emerald-50 text-emerald-700"
+                                  : acao.tipo === "ligar" ? "bg-navy/10 text-navy"
+                                  : acao.tipo === "visita" ? "bg-orange-50 text-orange-700"
+                                  : "bg-violet-50 text-violet-700"
+                              )}>
+                                {acao.icon}
+                              </span>
+                              {acao.label}
+                            </div>
+                            {nivel === "alta" && reforco && (
+                              <div className="mt-1 text-[11px] font-medium text-red-600">⚠️ {reforco}</div>
+                            )}
                           </div>
                         )}
                       </td>
@@ -328,12 +384,10 @@ function LeadsPage() {
             <div>
               <div className="text-[10px] text-muted-foreground/70">{selected.id}</div>
               <div className="font-display text-2xl">{selected.nome}</div>
-              {selectedPrio !== "neutro" && (
-                <span className={cn("mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", prioridadeMeta[selectedPrio].chip)}>
-                  {prioridadeMeta[selectedPrio].icon}
-                  {prioridadeMeta[selectedPrio].label}
-                </span>
-              )}
+              <span className={cn("mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", selectedNivelMeta.chip)}>
+                <span aria-hidden>{selectedNivelMeta.emoji}</span>
+                {selectedNivelMeta.label}
+              </span>
             </div>
             <span className={cn("rounded-full px-2.5 py-0.5 text-xs", statusColor[selected.status])}>{selected.status}</span>
           </div>
@@ -355,6 +409,14 @@ function LeadsPage() {
               </div>
             )}
             <div className="mt-1 text-xs text-muted-foreground">{subtextoUrg}</div>
+            {selectedNivel === "alta" && selectedReforco && (
+              <div className="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700">
+                ⚠️ {selectedReforco}
+              </div>
+            )}
+            {selectedNivel === "alta" && selectedPrio === "quente" && (
+              <div className="mt-1 text-xs font-medium text-red-700">⚠️ Lead quente em risco de esfriar</div>
+            )}
           </div>
 
           {/* CTAs principais */}

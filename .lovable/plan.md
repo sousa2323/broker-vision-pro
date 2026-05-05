@@ -1,104 +1,94 @@
+## Etapa 3 — Prioridade inteligente + sensação de perda
 
-# Etapa 2 — Leads orientados a ação + gatilho financeiro
+Arquivo único editado: `src/routes/app.leads.tsx`. Sem mudanças em mock, sidebar, rotas, cards do topo, chips de filtro, colunas existentes ou lógica financeira.
 
-Arquivo único editado: `src/routes/app.leads.tsx`. Sem mudanças em mock, sidebar, rotas, cards do topo ou chips de filtro rápido (Etapa 1 preservada).
+### 1. Novo tipo `Nivel` (alta/media/baixa) + helpers
 
-## 1. Helpers locais (no topo do componente)
+Adicionar logo após os helpers existentes (`getUrgencia`, etc.):
 
-Adicionar funções puras dentro do arquivo:
+- `getNivel(l: Lead): "alta" | "media" | "baixa"` — regra puramente visual:
+  - **alta**: `isAtrasado(l)` OU (`getPrioridade === "quente"` e `getUrgencia === "hoje"`) OU (top‑20% de comissão entre leads ativos com ação pendente).
+  - **media**: ação para hoje (`getUrgencia === "hoje"`) OU (`getPrioridade === "morno"` com comissão acima da mediana).
+  - **baixa**: `getPrioridade === "frio"` ou sem urgência.
+- `getNivelMeta(n)` → `{ label, dot, chip, border }`:
+  - alta → `🔴 Alta prioridade`, chip `bg-red-50 text-red-700 border-red-100`, border esquerda `border-l-red-500`.
+  - media → `🟡 Média prioridade`, chip `bg-amber-50 text-amber-800 border-amber-100`, `border-l-amber-400`.
+  - baixa → `⚪ Baixa prioridade`, chip `bg-slate-50 text-slate-600 border-slate-200`, `border-l-transparent`.
+- `getNivelRank(n)` → 0/1/2.
+- `getReforco(l): string | null` — microtexto de tensão para alta prioridade:
+  - atrasado → `"Sem resposta há ${ultimaInteracao}"`
+  - status Visita + hoje → `"Visita hoje — ainda não confirmada"`
+  - status Proposta → `"Proposta enviada — sem retorno"`
+  - quente sem `isHoje` → `"Lead quente sem contato"`
+  - default → `null`
 
-- `getProximaAcao(lead)` — derivada do `status`:
-  - Novo → "Ligar agora"
-  - Qualificado → "Enviar WhatsApp"
-  - Visita → "Confirmar visita hoje"
-  - Proposta → "Fazer follow-up"
-  - Fechado/Perdido → "—"
-- `getUrgencia(lead)` → `"atrasado" | "hoje" | "futuro"`:
-  - atrasado: `isAtrasado(l)` (já existe)
-  - hoje: `isHoje(l)` ou status Visita/Proposta
-  - futuro: demais ativos
-- `getUrgenciaMeta(u)` → `{ dot, label, chip }`:
-  - atrasado → vermelho (`bg-red-50 text-red-700 border-red-100`), label "Atrasado"
-  - hoje → âmbar suave (`bg-amber-50 text-amber-800 border-amber-100`), label "Fazer hoje"
-  - futuro → cinza neutro, label "Futuro"
-- `getUrgenciaRank(u)` → 0/1/2 para ordenação.
+Limiar de comissão (top‑20%): calculado uma vez dentro do componente a partir de `leads` ativos:
+```ts
+const comissoesAtivas = leads.filter(isAtivo).map(l => getComissao(l.orcamento)).sort((a,b)=>b-a);
+const topComissao = comissoesAtivas[Math.floor(comissoesAtivas.length * 0.2)] ?? Infinity;
+const medianaComissao = comissoesAtivas[Math.floor(comissoesAtivas.length / 2)] ?? 0;
+```
+Passados para `getNivel` como segundo argumento (assinatura `getNivel(l, { topComissao, medianaComissao })`).
 
-## 2. Ordenação automática
+### 2. Ordenação atualizada
 
-Substituir `leadsFiltrados` por uma versão ordenada:
+Substituir o sort atual por:
+```
+1. ativos antes de inativos (mantido)
+2. nível: alta → media → baixa
+3. maior comissão primeiro
+```
+(Remover o tiebreaker por urgência — nível já reflete urgência.)
+
+### 3. Linha do lead — badge de prioridade
+
+Na coluna **Lead**, abaixo (ou ao lado) do nome adicionar um badge discreto com `getNivelMeta`:
 
 ```
-.sort((a,b) => {
-  const ra = getUrgenciaRank(getUrgencia(a));
-  const rb = getUrgenciaRank(getUrgencia(b));
-  if (ra !== rb) return ra - rb;            // atrasado → hoje → futuro
-  return getComissao(b.orcamento) - getComissao(a.orcamento); // maior comissão
-})
+🔴 Alta prioridade
 ```
 
-Inativos (Fechado/Perdido) descem ao final.
+Estilo: `inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium` + `chip` do nível. Substituir o badge "Quente/Morno/Frio" atual por este badge de nível (mantém apenas 1 badge por linha, conforme Etapa 2). A bolinha colorida emoji entra como prefixo textual.
 
-## 3. Nova estrutura da tabela
+A `border-l-4` da `<tr>` passa a usar `getNivelMeta(...).border` em vez de `urgMeta.border`, reforçando prioridade visualmente.
 
-Reescrever `<thead>` e `<tbody>` com colunas, nesta ordem:
+### 4. Microtexto de reforço emocional
 
-1. **Lead** — avatar + nome + 1 badge de temperatura (Quente/Morno/Frio). ID em `text-[10px] text-muted-foreground/70`. Sem outros chips.
-2. **Potencial** —
-   - Linha 1: `💰 R$ 36.000` em `text-base font-semibold text-emerald-700` (ícone `Wallet` ou emoji).
-   - Linha 2: `Imóvel: R$ 1.200.000` em `text-xs text-muted-foreground`.
-3. **Próxima ação** (coluna mais proeminente) —
-   - Texto em `text-sm font-medium text-foreground`.
-   - Ícone à esquerda dependente do tipo (`Phone`, `MessageCircle`, `Calendar`, `Send`).
-4. **Prazo** —
-   - Pill com bolinha colorida: `🔴 Atrasado há {l.ultimaInteracao}` / `🟡 Fazer hoje` / `⚪ Futuro`.
-   - Usa `getUrgenciaMeta` para classes.
-5. **Status** — badge atual (`statusColor`).
-6. **Origem** — texto simples; selo "qualificada" reduzido para badge minúsculo somente quando aplicável.
+Na coluna **Próxima ação**, abaixo do label, quando `getReforco(l)` retornar string e o nível for `alta`:
 
-Remover da linha:
-- chip de prioridade duplicado (mantido apenas em "Lead")
-- detalhe verboso de origem qualificada (vira badge inline pequeno)
-- borda colorida à esquerda fica baseada em urgência (não mais em prioridade) para reforçar urgência.
+```tsx
+<div className="mt-1 text-[11px] font-medium text-red-600">⚠️ {reforco}</div>
+```
 
-## 4. Barra superior da tabela
+Não alterar o restante da célula. Para outros níveis, nada extra (mantém limpeza).
 
-Manter Buscar + Filtros como hoje. Sem novos elementos.
+### 5. Painel lateral — bloco de risco
 
-## 5. Painel lateral (`<aside>`)
+Dentro do card "Potencial" do `<aside>`, abaixo do `subtextoUrg`, adicionar quando `selectedNivel === "alta"`:
 
-Reorganizar para hierarquia "oportunidade + ação":
+```tsx
+{reforcoSelected && (
+  <div className="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700">
+    ⚠️ {reforcoSelected}
+  </div>
+)}
+{selectedNivel === "alta" && getPrioridade(selected.status) === "quente" && (
+  <div className="mt-1 text-xs font-medium text-red-700">⚠️ Lead quente em risco de esfriar</div>
+)}
+```
 
-1. **Bloco topo destacado** (substitui "Potencial de negócio" como primeiro card) —
-   - Card `border-emerald-200 bg-emerald-50/50 p-4`:
-     - `💰 Potencial: R$ {comissao}` (text-2xl font-semibold text-emerald-700)
-     - `➡️ {proximaAcao} {primeiroNome}` (text-sm font-medium)
-     - Subtexto: derivado da urgência — "Lead sem resposta há {ultimaInteracao}" se atrasado, "Ação prevista para hoje" se hoje, "Sem prazo imediato" caso contrário.
-2. **3 botões principais** (logo abaixo, `grid-cols-3`):
-   - Ligar (`Phone`) → `bg-navy text-navy-foreground`
-   - WhatsApp (`MessageCircle`) → `bg-emerald-600 text-white`
-   - Registrar interação (`ClipboardCheck`) → `border border-border`
-   - Remove o botão atual "Mover para pipeline".
-3. **Dados complementares** (cards menores, ordem):
-   - Resumo rápido (tipo, região, valor do imóvel) — mantido, mas valor do imóvel passa a viver aqui (não mais duplicado em "Potencial de negócio").
-   - Origem (mantido, compacto).
-   - Interesse (mantido).
-   - Histórico (mantido).
-4. Remover o card duplicado "Potencial de negócio" (substituído pelo bloco topo).
+Header do aside: trocar o badge "Quente/Morno/Frio" pelo badge de nível (mesma regra da tabela, 1 badge só).
 
-Header do aside (nome, status, contatos) permanece, mas com badge de temperatura único.
+### 6. Restrições respeitadas
 
-## 6. Restrições respeitadas
+- Nada de novas colunas, modais, drawers, rotas.
+- Cards do topo, chips de filtro rápido, sidebar, mock e lógica financeira intactos.
+- Nenhuma mudança em outros arquivos.
 
-- Sem novas telas, modais, drawers ou rotas.
-- Sem alterações em sidebar, mock, cards do topo, chips de filtro.
-- Sem IA, sem cadência, sem WhatsApp simulado.
-- Dados financeiros mantidos (apenas reorganizados visualmente).
+### Critérios de aceite mapeados
 
-## Critérios de aceite mapeados
-
-- Comissão é o elemento de maior peso visual em cada linha (verde + bold + maior).
-- Coluna "Próxima ação" presente, com ícone e verbo claro.
-- Pill de urgência com cor vermelho/âmbar/neutro conforme regra.
-- Lista ordenada por urgência → comissão.
-- Apenas 1 badge de temperatura por linha; ID discreto; menos ruído.
-- Aside começa por "Potencial + ação" e tem 3 CTAs (Ligar / WhatsApp / Registrar).
+- Cada linha exibe um badge claro 🔴/🟡/⚪ + borda esquerda colorida correspondente.
+- Leads de alta prioridade aparecem primeiro e têm microtexto vermelho de tensão ("Sem resposta há…", "Visita hoje — ainda não confirmada", etc.).
+- Painel lateral reforça risco para leads críticos com bloco de alerta vermelho.
+- Diferença visual imediata entre alta vs. baixa prioridade; baixa prioridade fica neutra/cinza.
+- Ordenação: alta → média → baixa → maior comissão.
