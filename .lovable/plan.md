@@ -1,75 +1,104 @@
 
-# Plano — Etapa 1: Reorganizar tela Leads do corretor
+# Etapa 2 — Leads orientados a ação + gatilho financeiro
 
-Apenas reorganizar a primeira camada de `src/routes/app.leads.tsx`. Sem novos arquivos, sem modal, sem drawer, sem mudar mock, sem mexer em outras telas.
+Arquivo único editado: `src/routes/app.leads.tsx`. Sem mudanças em mock, sidebar, rotas, cards do topo ou chips de filtro rápido (Etapa 1 preservada).
 
-## Arquivo único editado
+## 1. Helpers locais (no topo do componente)
 
-`src/routes/app.leads.tsx`
+Adicionar funções puras dentro do arquivo:
 
-## 1. Cabeçalho
+- `getProximaAcao(lead)` — derivada do `status`:
+  - Novo → "Ligar agora"
+  - Qualificado → "Enviar WhatsApp"
+  - Visita → "Confirmar visita hoje"
+  - Proposta → "Fazer follow-up"
+  - Fechado/Perdido → "—"
+- `getUrgencia(lead)` → `"atrasado" | "hoje" | "futuro"`:
+  - atrasado: `isAtrasado(l)` (já existe)
+  - hoje: `isHoje(l)` ou status Visita/Proposta
+  - futuro: demais ativos
+- `getUrgenciaMeta(u)` → `{ dot, label, chip }`:
+  - atrasado → vermelho (`bg-red-50 text-red-700 border-red-100`), label "Atrasado"
+  - hoje → âmbar suave (`bg-amber-50 text-amber-800 border-amber-100`), label "Fazer hoje"
+  - futuro → cinza neutro, label "Futuro"
+- `getUrgenciaRank(u)` → 0/1/2 para ordenação.
 
-Acima do grid principal (hoje começa direto na `<section>` da tabela), adicionar bloco de header:
+## 2. Ordenação automática
 
-- Título `Leads` (font-display, 2xl).
-- Subtítulo: "Sua central diária de execução comercial. Priorize contatos, acompanhe atrasos e avance oportunidades."
-- À direita do título: botão `+ Novo lead` (mesmo estilo do botão atual `bg-navy`).
-- O campo de busca atual ("Buscar lead") permanece onde está, dentro do card da lista. O `+ Novo lead` que hoje vive ali é movido para o header — evita duplicação.
+Substituir `leadsFiltrados` por uma versão ordenada:
 
-## 2. Bloco "Execução de hoje" (4 cards)
+```
+.sort((a,b) => {
+  const ra = getUrgenciaRank(getUrgencia(a));
+  const rb = getUrgenciaRank(getUrgencia(b));
+  if (ra !== rb) return ra - rb;            // atrasado → hoje → futuro
+  return getComissao(b.orcamento) - getComissao(a.orcamento); // maior comissão
+})
+```
 
-Logo abaixo do header, grid de 4 cards compactos (`grid-cols-2 lg:grid-cols-4`, padding reduzido, ~80px de altura):
+Inativos (Fechado/Perdido) descem ao final.
 
-1. **A fazer hoje** — número + "Ligações, WhatsApp e follow-ups previstos."
-2. **Atrasados** — número + "Leads com ação fora do prazo." (destaque moderado: borda/ícone vermelho suave, ex.: `border-red-200 bg-red-50/40`)
-3. **Sem contato** — número + "Novos leads ainda sem primeira abordagem."
-4. **Visitas hoje** — número + "Atendimentos confirmados para hoje."
+## 3. Nova estrutura da tabela
 
-### Como derivar os números (sem mexer no mock)
+Reescrever `<thead>` e `<tbody>` com colunas, nesta ordem:
 
-Cálculos in-file usando `leads` existente, para que os valores não fiquem hardcoded:
+1. **Lead** — avatar + nome + 1 badge de temperatura (Quente/Morno/Frio). ID em `text-[10px] text-muted-foreground/70`. Sem outros chips.
+2. **Potencial** —
+   - Linha 1: `💰 R$ 36.000` em `text-base font-semibold text-emerald-700` (ícone `Wallet` ou emoji).
+   - Linha 2: `Imóvel: R$ 1.200.000` em `text-xs text-muted-foreground`.
+3. **Próxima ação** (coluna mais proeminente) —
+   - Texto em `text-sm font-medium text-foreground`.
+   - Ícone à esquerda dependente do tipo (`Phone`, `MessageCircle`, `Calendar`, `Send`).
+4. **Prazo** —
+   - Pill com bolinha colorida: `🔴 Atrasado há {l.ultimaInteracao}` / `🟡 Fazer hoje` / `⚪ Futuro`.
+   - Usa `getUrgenciaMeta` para classes.
+5. **Status** — badge atual (`statusColor`).
+6. **Origem** — texto simples; selo "qualificada" reduzido para badge minúsculo somente quando aplicável.
 
-- `aFazerHoje`: leads com `status` em ["Novo","Qualificado","Visita","Proposta"] e `ultimaInteracao` contendo "hoje" OU sem interação recente — fórmula simples: `min(6, ativos)`.
-- `atrasados`: leads cuja `ultimaInteracao` contém "dias" ou "semana" e status ativo.
-- `semContato`: leads com `status === "Novo"`.
-- `visitasHoje`: leads com `status === "Visita"` e `ultimaInteracao` contendo "hoje", fallback 1.
+Remover da linha:
+- chip de prioridade duplicado (mantido apenas em "Lead")
+- detalhe verboso de origem qualificada (vira badge inline pequeno)
+- borda colorida à esquerda fica baseada em urgência (não mais em prioridade) para reforçar urgência.
 
-Helpers locais no componente (sem novo arquivo). Sem VGV, sem comissão, sem financeiro.
+## 4. Barra superior da tabela
 
-## 3. Filtros rápidos (chips)
+Manter Buscar + Filtros como hoje. Sem novos elementos.
 
-Barra abaixo dos cards, antes da `<section>` da tabela:
+## 5. Painel lateral (`<aside>`)
 
-Chips: `Todos · Hoje · Atrasados · Sem contato · Quentes · Visitas · Proposta`
+Reorganizar para hierarquia "oportunidade + ação":
 
-- Estado local `filtroRapido` (default `"Todos"`).
-- Estilo idêntico aos chips de `admin.leads.tsx` (rounded-full, border, ativo = `bg-foreground text-background`).
-- Aplicar `.filter()` em cima de `leads` antes de renderizar a tabela:
-  - Todos → tudo
-  - Hoje → `ultimaInteracao.includes("hoje")`
-  - Atrasados → contém "dias"/"semana"
-  - Sem contato → `status === "Novo"`
-  - Quentes → `getPrioridade(status) === "quente"`
-  - Visitas → `status === "Visita"`
-  - Proposta → `status === "Proposta"`
+1. **Bloco topo destacado** (substitui "Potencial de negócio" como primeiro card) —
+   - Card `border-emerald-200 bg-emerald-50/50 p-4`:
+     - `💰 Potencial: R$ {comissao}` (text-2xl font-semibold text-emerald-700)
+     - `➡️ {proximaAcao} {primeiroNome}` (text-sm font-medium)
+     - Subtexto: derivado da urgência — "Lead sem resposta há {ultimaInteracao}" se atrasado, "Ação prevista para hoje" se hoje, "Sem prazo imediato" caso contrário.
+2. **3 botões principais** (logo abaixo, `grid-cols-3`):
+   - Ligar (`Phone`) → `bg-navy text-navy-foreground`
+   - WhatsApp (`MessageCircle`) → `bg-emerald-600 text-white`
+   - Registrar interação (`ClipboardCheck`) → `border border-border`
+   - Remove o botão atual "Mover para pipeline".
+3. **Dados complementares** (cards menores, ordem):
+   - Resumo rápido (tipo, região, valor do imóvel) — mantido, mas valor do imóvel passa a viver aqui (não mais duplicado em "Potencial de negócio").
+   - Origem (mantido, compacto).
+   - Interesse (mantido).
+   - Histórico (mantido).
+4. Remover o card duplicado "Potencial de negócio" (substituído pelo bloco topo).
 
-## 4. Lista de leads
+Header do aside (nome, status, contatos) permanece, mas com badge de temperatura único.
 
-Mantida exatamente como está (mesmas colunas, mesmo visual, mesmo painel lateral à direita). Apenas:
+## 6. Restrições respeitadas
 
-- Trocar `leads.map` por `leadsFiltrados.map`.
-- Remover o botão `+ Novo lead` da barra interna (movido para o header) — manter apenas Buscar e Filtros.
-- Painel lateral fixo já existe na tela original; mantido como hoje (o prompt diz "se já existir, manter fechado por padrão" — aqui ele é parte estrutural do layout, então fica como está sem novas adições).
+- Sem novas telas, modais, drawers ou rotas.
+- Sem alterações em sidebar, mock, cards do topo, chips de filtro.
+- Sem IA, sem cadência, sem WhatsApp simulado.
+- Dados financeiros mantidos (apenas reorganizados visualmente).
 
-## 5. Layout / responsividade
+## Critérios de aceite mapeados
 
-- Header + cards + chips ficam fora do grid `lg:grid-cols-[1fr_400px]`, ocupando largura total no topo.
-- Grid atual da lista + aside permanece inalterado abaixo.
-- Cards em `grid-cols-2 lg:grid-cols-4` para caber confortável no viewport 1189px.
-
-## Restrições respeitadas
-
-- Sem novos arquivos, sem novas rotas, sem mexer em sidebar, mock, banco, ou outras telas.
-- Sem VGV, comissão, jurídico, drawer, modal, abas, scripts, cadência, WhatsApp simulado.
-- Sem novo painel lateral.
-- Identidade visual (Tailwind/shadcn já no arquivo) preservada.
+- Comissão é o elemento de maior peso visual em cada linha (verde + bold + maior).
+- Coluna "Próxima ação" presente, com ícone e verbo claro.
+- Pill de urgência com cor vermelho/âmbar/neutro conforme regra.
+- Lista ordenada por urgência → comissão.
+- Apenas 1 badge de temperatura por linha; ID discreto; menos ruído.
+- Aside começa por "Potencial + ação" e tem 3 CTAs (Ligar / WhatsApp / Registrar).
