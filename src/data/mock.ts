@@ -36,6 +36,83 @@ export const salesEvolution = [
 export type LeadStatus = "Novo" | "Qualificado" | "Visita" | "Proposta" | "Fechado" | "Perdido";
 export type LeadOrigin = "Instagram" | "WhatsApp" | "Marketplace" | "Indicação" | "Outro";
 
+export type LeadEtapa =
+  | "Novo"
+  | "Tentativa de contato"
+  | "Contatado"
+  | "Qualificado"
+  | "Atendimento"
+  | "Visita"
+  | "Proposta"
+  | "Venda"
+  | "Perdido";
+
+export type LeadTemperatura = "quente" | "morno" | "frio";
+export type LeadOrigemComercial = "manual" | "plataforma" | "ia" | "parceria";
+export type ProximaAcaoTipo =
+  | "ligar"
+  | "whatsapp"
+  | "follow-up"
+  | "confirmar-visita"
+  | "enviar-imoveis"
+  | "registrar-feedback"
+  | "reativar"
+  | "marcar-perdido";
+
+export interface ProximaAcao {
+  tipo: ProximaAcaoTipo;
+  label: string;
+  prazo: string;
+  status: "hoje" | "atrasado" | "proximo" | "concluido";
+  motivo?: string;
+}
+
+export interface CadenciaItem {
+  dia: number;
+  titulo: string;
+  status: "pendente" | "concluido" | "atrasado";
+}
+
+export interface VisitaLead {
+  data: string;
+  status: string;
+  imovel: string;
+  feedback?: string;
+}
+
+export interface Qualificacao {
+  perfil?: string;
+  tipoImovel?: string;
+  regiao?: string;
+  orcamento?: number;
+  capacidade?: string;
+  prazo?: string;
+  motivacao?: string;
+  objecoes?: string;
+  observacoes?: string;
+}
+
+export interface VinculoComercial {
+  origemComercial: LeadOrigemComercial;
+  feeAplicavel?: boolean;
+  contratoId?: string;
+  parceiro?: string;
+  resumoVinculo?: string;
+}
+
+export interface LeadOps {
+  etapa: LeadEtapa;
+  temperatura: LeadTemperatura;
+  proximaAcao: ProximaAcao;
+  cadencia: CadenciaItem[];
+  visitas?: VisitaLead[];
+  qualificacao?: Qualificacao;
+  vinculo: VinculoComercial;
+  ultimoCanal?: "WhatsApp" | "Instagram" | "Ligação" | "Email" | "IA" | "Marketplace";
+  ultimoResumo?: string;
+  alertas?: string[];
+}
+
 export interface Lead {
   id: string;
   nome: string;
@@ -48,6 +125,347 @@ export interface Lead {
   ultimaInteracao: string;
   orcamento: number;
   historico: { data: string; tipo: string; texto: string }[];
+}
+
+export const leadOps: Record<string, LeadOps> = {
+  "L-1042": {
+    etapa: "Qualificado",
+    temperatura: "morno",
+    proximaAcao: {
+      tipo: "ligar",
+      label: "Ligar para João agora",
+      prazo: "Atrasado há 2h",
+      status: "atrasado",
+      motivo: "Dia 2 da cadência. Lead qualificado e sem retorno desde manhã.",
+    },
+    cadencia: [
+      { dia: 1, titulo: "Ligação inicial", status: "concluido" },
+      { dia: 1, titulo: "WhatsApp de apresentação", status: "concluido" },
+      { dia: 2, titulo: "Follow-up por ligação", status: "atrasado" },
+      { dia: 2, titulo: "Envio de imóveis compatíveis", status: "pendente" },
+      { dia: 3, titulo: "Prova social + nova tentativa", status: "pendente" },
+    ],
+    visitas: [{ data: "Sáb, 10h", status: "Confirmada", imovel: "Cobertura Edifício Marine — Icaraí" }],
+    qualificacao: {
+      perfil: "Casado, 3 filhos, home office",
+      tipoImovel: "Casa com área externa",
+      regiao: "Icaraí / Santa Rosa",
+      orcamento: 1_000_000,
+      capacidade: "Entrada 30% + financiamento",
+      prazo: "60 a 90 dias",
+      motivacao: "Filhos em escola próxima",
+      objecoes: "Receio de obras antes da mudança",
+    },
+    vinculo: {
+      origemComercial: "manual",
+      feeAplicavel: false,
+      resumoVinculo: "Lead cadastrado manualmente após contato direto via Instagram.",
+    },
+    ultimoCanal: "WhatsApp",
+    ultimoResumo: "Pediu fotos da varanda do imóvel em Icaraí.",
+    alertas: ["Cadência atrasada", "Sem retorno há 2h"],
+  },
+  "L-1041": {
+    etapa: "Visita",
+    temperatura: "quente",
+    proximaAcao: {
+      tipo: "confirmar-visita",
+      label: "Confirmar visita de hoje 15h",
+      prazo: "Hoje, 14h",
+      status: "hoje",
+      motivo: "Visita marcada à cobertura Marine. Confirmar 1h antes.",
+    },
+    cadencia: [
+      { dia: 1, titulo: "WhatsApp inicial", status: "concluido" },
+      { dia: 1, titulo: "Envio de dossiê", status: "concluido" },
+      { dia: 2, titulo: "Confirmação da visita", status: "pendente" },
+      { dia: 3, titulo: "Pós-visita + feedback", status: "pendente" },
+    ],
+    visitas: [{ data: "Hoje, 15h", status: "Confirmada", imovel: "Cobertura Marine — Icaraí" }],
+    qualificacao: {
+      perfil: "Solteira, 34, mudando do ABC",
+      tipoImovel: "Cobertura duplex 2 suítes",
+      regiao: "Icaraí / Santa Rosa",
+      orcamento: 1_600_000,
+      capacidade: "À vista parcial + financiamento",
+      prazo: "30 dias",
+      motivacao: "Vista mar e varanda gourmet",
+    },
+    vinculo: {
+      origemComercial: "plataforma",
+      feeAplicavel: true,
+      resumoVinculo: "Lead recebido via WhatsApp Business da Ubroker. Fee de plataforma de 10% sobre comissão.",
+    },
+    ultimoCanal: "WhatsApp",
+    ultimoResumo: "Confirmou visita à cobertura do Edifício Marine.",
+    alertas: ["Visita hoje 15h", "Lead quente"],
+  },
+  "L-1040": {
+    etapa: "Proposta",
+    temperatura: "quente",
+    proximaAcao: {
+      tipo: "follow-up",
+      label: "Follow-up da proposta enviada",
+      prazo: "Hoje, 17h",
+      status: "hoje",
+      motivo: "Proposta R$ 1.150.000 enviada ontem. Sem retorno até agora.",
+    },
+    cadencia: [
+      { dia: 1, titulo: "Visita realizada", status: "concluido" },
+      { dia: 2, titulo: "Segunda visita com a filha", status: "concluido" },
+      { dia: 3, titulo: "Envio de proposta", status: "concluido" },
+      { dia: 4, titulo: "Follow-up da proposta", status: "pendente" },
+    ],
+    visitas: [
+      { data: "Ontem, 10h", status: "Realizada", imovel: "Casa térrea Itaipu", feedback: "Família muito interessada" },
+    ],
+    qualificacao: {
+      perfil: "Casal aposentado",
+      tipoImovel: "Casa térrea condomínio fechado",
+      regiao: "Itaipu",
+      orcamento: 1_200_000,
+      capacidade: "À vista (vendendo apto Flamengo)",
+      prazo: "45 dias",
+      motivacao: "Tranquilidade e segurança",
+    },
+    vinculo: {
+      origemComercial: "parceria",
+      feeAplicavel: true,
+      contratoId: "PRC-2310",
+      parceiro: "Aldemar Souza · Homesphere",
+      resumoVinculo: "Indicação qualificada via parceria Homesphere. Repasse 25% sobre comissão líquida.",
+    },
+    ultimoCanal: "Email",
+    ultimoResumo: "Proposta enviada: R$ 1.150.000 com financiamento Caixa.",
+    alertas: ["Proposta sem retorno há 18h"],
+  },
+  "L-1039": {
+    etapa: "Novo",
+    temperatura: "quente",
+    proximaAcao: {
+      tipo: "ligar",
+      label: "Primeiro contato — ligar agora",
+      prazo: "Hoje, 11h",
+      status: "hoje",
+      motivo: "Lead novo do marketplace há 4h. SLA de primeiro contato: 6h.",
+    },
+    cadencia: [
+      { dia: 1, titulo: "Ligação inicial", status: "pendente" },
+      { dia: 1, titulo: "WhatsApp de apresentação", status: "pendente" },
+      { dia: 2, titulo: "Envio de opções", status: "pendente" },
+    ],
+    qualificacao: {
+      perfil: "CTO de startup, mudando para o Rio",
+      tipoImovel: "Apartamento alto padrão",
+      regiao: "Icaraí",
+      orcamento: 1_400_000,
+      prazo: "60 dias",
+      motivacao: "Mudança de cidade",
+    },
+    vinculo: {
+      origemComercial: "plataforma",
+      feeAplicavel: true,
+      resumoVinculo: "Lead capturado via portal Ubroker Marketplace. Fee de 10%.",
+    },
+    ultimoCanal: "Marketplace",
+    ultimoResumo: "Lead capturado via portal. Ainda sem contato.",
+    alertas: ["Sem primeiro contato há 4h"],
+  },
+  "L-1038": {
+    etapa: "Qualificado",
+    temperatura: "morno",
+    proximaAcao: {
+      tipo: "enviar-imoveis",
+      label: "Enviar 3 opções no Ingá",
+      prazo: "Hoje, 16h",
+      status: "hoje",
+      motivo: "Cliente pediu prédios anos 60. Selecionar e enviar dossiê.",
+    },
+    cadencia: [
+      { dia: 1, titulo: "Ligação inicial", status: "concluido" },
+      { dia: 2, titulo: "Envio de imóveis compatíveis", status: "pendente" },
+      { dia: 3, titulo: "Agendar visita", status: "pendente" },
+    ],
+    qualificacao: {
+      perfil: "Arquiteta, 41 anos",
+      tipoImovel: "Apartamento para reformar",
+      regiao: "Ingá",
+      orcamento: 950_000,
+      motivacao: "Charme arquitetônico",
+    },
+    vinculo: {
+      origemComercial: "manual",
+      feeAplicavel: false,
+      resumoVinculo: "Lead conhecido em evento Casa Cor 2025.",
+    },
+    ultimoCanal: "Ligação",
+    ultimoResumo: "Conversa de 22min sobre prédios dos anos 60 no Ingá.",
+  },
+  "L-1037": {
+    etapa: "Novo",
+    temperatura: "morno",
+    proximaAcao: {
+      tipo: "whatsapp",
+      label: "Responder DM com rentabilidade",
+      prazo: "Atrasado há 6h",
+      status: "atrasado",
+      motivo: "Pediu rentabilidade média da região e ainda não recebeu retorno.",
+    },
+    cadencia: [
+      { dia: 1, titulo: "Resposta inicial via Instagram", status: "atrasado" },
+      { dia: 1, titulo: "Envio de planilha de rentabilidade", status: "pendente" },
+    ],
+    qualificacao: {
+      perfil: "Investidor",
+      tipoImovel: "2 unidades para temporada",
+      regiao: "Itacoatiara",
+      orcamento: 1_200_000,
+      motivacao: "Rentabilidade",
+    },
+    vinculo: {
+      origemComercial: "ia",
+      feeAplicavel: true,
+      resumoVinculo: "Lead recebido e qualificado pela IA Assistente da Ubroker.",
+    },
+    ultimoCanal: "Instagram",
+    ultimoResumo: "Pediu rentabilidade média da região.",
+    alertas: ["Sem resposta há 6h", "Lead qualificado pela IA"],
+  },
+  "L-1036": {
+    etapa: "Qualificado",
+    temperatura: "quente",
+    proximaAcao: {
+      tipo: "ligar",
+      label: "Ligar e propor visita ao Ed. Vista Bay",
+      prazo: "Hoje, 13h",
+      status: "hoje",
+      motivo: "IA qualificou com score 79. Cliente sinalizou urgência (escola).",
+    },
+    cadencia: [
+      { dia: 1, titulo: "Ligação de qualificação", status: "pendente" },
+      { dia: 2, titulo: "Envio de 3 apartamentos", status: "pendente" },
+    ],
+    qualificacao: {
+      perfil: "Médica, 38, divorciada, 2 filhos",
+      tipoImovel: "Apto 3 quartos",
+      regiao: "São Francisco",
+      orcamento: 1_100_000,
+      prazo: "Antes do início do ano letivo",
+    },
+    vinculo: {
+      origemComercial: "ia",
+      feeAplicavel: true,
+      resumoVinculo: "Qualificação automática IA Assistente. Score 79.",
+    },
+    ultimoCanal: "IA",
+    ultimoResumo: "Lead qualificado pela assistente. Score 79.",
+    alertas: ["Lead qualificado pela IA"],
+  },
+  "L-1035": {
+    etapa: "Visita",
+    temperatura: "morno",
+    proximaAcao: {
+      tipo: "confirmar-visita",
+      label: "Confirmar visita amanhã 14h",
+      prazo: "Amanhã",
+      status: "proximo",
+      motivo: "Visita à sala 1208 do Centro Empresarial Niterói.",
+    },
+    cadencia: [
+      { dia: 1, titulo: "Ligação inicial", status: "concluido" },
+      { dia: 2, titulo: "Agendamento de visita", status: "concluido" },
+      { dia: 3, titulo: "Confirmação 24h antes", status: "pendente" },
+    ],
+    visitas: [{ data: "Amanhã, 14h", status: "Agendada", imovel: "Sala 1208 — CE Niterói" }],
+    vinculo: {
+      origemComercial: "manual",
+      feeAplicavel: false,
+      resumoVinculo: "Indicação direta de cliente antiga (Sra. Marlene).",
+    },
+    ultimoCanal: "Ligação",
+    ultimoResumo: "Visita à sala 1208 marcada para amanhã 14h.",
+  },
+  "L-1034": {
+    etapa: "Novo",
+    temperatura: "frio",
+    proximaAcao: {
+      tipo: "whatsapp",
+      label: "Apresentação inicial via WhatsApp",
+      prazo: "Hoje, 18h",
+      status: "hoje",
+      motivo: "Lead novo do marketplace, primeiro imóvel. Tom consultivo.",
+    },
+    cadencia: [
+      { dia: 1, titulo: "WhatsApp de apresentação", status: "pendente" },
+      { dia: 2, titulo: "Envio de guia primeiro imóvel", status: "pendente" },
+    ],
+    qualificacao: {
+      perfil: "Recém-casada, sem filhos",
+      tipoImovel: "1 ou 2 quartos",
+      regiao: "Santa Rosa / Vital Brazil",
+      orcamento: 550_000,
+      prazo: "6 meses",
+      motivacao: "Sair do aluguel",
+    },
+    vinculo: {
+      origemComercial: "plataforma",
+      feeAplicavel: true,
+      resumoVinculo: "Lead capturado via Ubroker Marketplace.",
+    },
+    ultimoCanal: "Marketplace",
+    ultimoResumo: "Lead novo capturado.",
+    alertas: ["Sem primeiro contato há 8h"],
+  },
+  "L-1033": {
+    etapa: "Proposta",
+    temperatura: "quente",
+    proximaAcao: {
+      tipo: "follow-up",
+      label: "Responder contraproposta",
+      prazo: "Atrasado há 1d",
+      status: "atrasado",
+      motivo: "Casal aguarda resposta da contraproposta R$ 1.420.000.",
+    },
+    cadencia: [
+      { dia: 1, titulo: "Visitas (2)", status: "concluido" },
+      { dia: 2, titulo: "Envio de proposta", status: "concluido" },
+      { dia: 3, titulo: "Negociação contraproposta", status: "atrasado" },
+    ],
+    qualificacao: {
+      perfil: "Casal jovem com bebê",
+      tipoImovel: "Apto 3 quartos com lazer",
+      regiao: "Charitas",
+      orcamento: 1_500_000,
+      prazo: "Imediato",
+    },
+    vinculo: {
+      origemComercial: "manual",
+      feeAplicavel: false,
+      resumoVinculo: "Lead direto via WhatsApp.",
+    },
+    ultimoCanal: "WhatsApp",
+    ultimoResumo: "Contraproposta: R$ 1.420.000 + 36x.",
+    alertas: ["Proposta sem retorno há 2 dias"],
+  },
+};
+
+export const COMISSAO_RATE = 0.03;
+
+export function getLeadOps(id: string): LeadOps {
+  if (leadOps[id]) return leadOps[id];
+  // Fallback derivado para leads sem ops detalhada
+  return {
+    etapa: "Novo",
+    temperatura: "frio",
+    proximaAcao: {
+      tipo: "follow-up",
+      label: "Definir próxima ação",
+      prazo: "Sem prazo",
+      status: "proximo",
+    },
+    cadencia: [{ dia: 1, titulo: "Definir cadência inicial", status: "pendente" }],
+    vinculo: { origemComercial: "manual" },
+  };
 }
 
 export const leads: Lead[] = [
