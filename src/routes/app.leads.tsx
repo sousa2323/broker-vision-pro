@@ -93,6 +93,56 @@ function getUrgencia(l: Lead): Urgencia {
 function getUrgenciaRank(u: Urgencia) {
   return u === "atrasado" ? 0 : u === "hoje" ? 1 : 2;
 }
+type Nivel = "alta" | "media" | "baixa";
+function getNivel(
+  l: Lead,
+  ctx: { topComissao: number; medianaComissao: number }
+): Nivel {
+  if (!isAtivo(l)) return "baixa";
+  const prio = getPrioridade(l.status);
+  const urg = getUrgencia(l);
+  const com = getComissao(l.orcamento);
+  const acaoPendente = l.status !== "Fechado" && l.status !== "Perdido";
+  if (urg === "atrasado") return "alta";
+  if (prio === "quente" && urg === "hoje") return "alta";
+  if (com >= ctx.topComissao && acaoPendente) return "alta";
+  if (urg === "hoje") return "media";
+  if (prio === "morno" && com >= ctx.medianaComissao) return "media";
+  if (prio === "frio") return "baixa";
+  return "baixa";
+}
+function getNivelMeta(n: Nivel) {
+  if (n === "alta") return {
+    label: "Alta prioridade",
+    emoji: "🔴",
+    chip: "bg-red-50 text-red-700 border border-red-100",
+    border: "border-l-red-500",
+  };
+  if (n === "media") return {
+    label: "Média prioridade",
+    emoji: "🟡",
+    chip: "bg-amber-50 text-amber-800 border border-amber-100",
+    border: "border-l-amber-400",
+  };
+  return {
+    label: "Baixa prioridade",
+    emoji: "⚪",
+    chip: "bg-slate-50 text-slate-600 border border-slate-200",
+    border: "border-l-transparent",
+  };
+}
+function getNivelRank(n: Nivel) {
+  return n === "alta" ? 0 : n === "media" ? 1 : 2;
+}
+function getReforco(l: Lead): string | null {
+  if (!isAtivo(l)) return null;
+  if (isAtrasado(l)) return `Sem resposta há ${l.ultimaInteracao}`;
+  if (l.status === "Visita" && isHoje(l)) return "Visita hoje — ainda não confirmada";
+  if (l.status === "Proposta") return "Proposta enviada — sem retorno";
+  if (getPrioridade(l.status) === "quente" && !isHoje(l)) return "Lead quente sem contato";
+  return null;
+}
+
 function getUrgenciaMeta(u: Urgencia, l: Lead) {
   if (u === "atrasado") return {
     label: `Atrasado há ${l.ultimaInteracao}`,
