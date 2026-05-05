@@ -390,12 +390,10 @@ function LeadsPage() {
             <div>
               <div className="text-[10px] text-muted-foreground/70">{selected.id}</div>
               <div className="font-display text-2xl">{selected.nome}</div>
-              {selectedPrio !== "neutro" && (
-                <span className={cn("mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", prioridadeMeta[selectedPrio].chip)}>
-                  {prioridadeMeta[selectedPrio].icon}
-                  {prioridadeMeta[selectedPrio].label}
-                </span>
-              )}
+              <span className={cn("mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", selectedNivelMeta.chip)}>
+                <span aria-hidden>{selectedNivelMeta.emoji}</span>
+                {selectedNivelMeta.label}
+              </span>
             </div>
             <span className={cn("rounded-full px-2.5 py-0.5 text-xs", statusColor[selected.status])}>{selected.status}</span>
           </div>
