@@ -415,6 +415,14 @@ function LeadsPage() {
               </div>
             )}
             <div className="mt-1 text-xs text-muted-foreground">{subtextoUrg}</div>
+            {selectedNivel === "alta" && selectedReforco && (
+              <div className="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700">
+                ⚠️ {selectedReforco}
+              </div>
+            )}
+            {selectedNivel === "alta" && selectedPrio === "quente" && (
+              <div className="mt-1 text-xs font-medium text-red-700">⚠️ Lead quente em risco de esfriar</div>
+            )}
           </div>
 
           {/* CTAs principais */}
