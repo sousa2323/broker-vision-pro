@@ -1,176 +1,133 @@
+# Plano — Indicações Admin: Visão Geral primeiro, rede de corretor sob demanda
 
-# Plano — Tela Leads do Corretor: Central de Execução Comercial Guiada
+Refatorar a tela `/admin/indicacoes` para abrir como **painel global da rede Ubroker** e só mudar para o **modo "rede do corretor"** quando o admin selecionar um. Sem nova rota, sem nova tela, sem mudar identidade visual.
 
-Refatorar **apenas** `src/routes/app.leads.tsx`, mantendo identidade visual, sidebar e demais telas intactas. A tela passa a operar em três níveis: visão rápida (cards + filtros), visão operacional (lista priorizada) e visão profunda (painel lateral + modal "Operação do Lead").
-
-Arquivos editados:
-- `src/routes/app.leads.tsx` — reescrita da tela.
-- `src/data/mock.ts` — extensão do tipo `Lead` com campos operacionais (próxima ação, cadência, badges, vínculos). Mantém leads existentes e adiciona campos opcionais para não quebrar outras telas (`/app/pipeline`, `/admin/leads` que reusam `leads`).
-
-Sem novas rotas, sem novos pacotes (já temos shadcn `dialog`, `tabs`, `badge`, `button`, `tooltip`, `dropdown-menu`, `sheet`, lucide-react).
+Arquivo único editado: `src/routes/admin.indicacoes.tsx`
+(`src/data/admin-mock.ts` já tem tudo que precisamos: `redeIndicacoes`, `getIndicadosDiretos`, `getRedeRelativa`, `redeRepassesMock`, períodos anteriores.)
 
 ---
 
-## 1. Extensão do mock (`src/data/mock.ts`)
+## 1. Dois modos da tela
 
-Adicionar campos opcionais ao `Lead` para não impactar `admin.leads.tsx` e `app.pipeline.tsx`:
+Substituir `baseId` (que hoje começa em `"RI-000"` — Ramon) por:
 
-```ts
-type LeadEtapa = "Novo" | "Tentativa de contato" | "Contatado" | "Qualificado"
-              | "Atendimento" | "Visita" | "Proposta" | "Venda" | "Perdido";
-type LeadTemperatura = "quente" | "morno" | "frio";
-type LeadOrigemComercial = "manual" | "plataforma" | "ia" | "parceria";
-type ProximaAcaoTipo = "ligar" | "whatsapp" | "follow-up" | "confirmar-visita"
-                    | "enviar-imoveis" | "registrar-feedback" | "reativar" | "marcar-perdido";
+- `mode: "global" | "broker"` — começa em `"global"`.
+- `baseId: string | null` — `null` no modo global; preenchido só no modo broker.
 
-interface ProximaAcao {
-  tipo: ProximaAcaoTipo;
-  label: string;            // "Ligar para João agora"
-  prazo: string;            // "Hoje, 14h" | "Atrasado há 2h" | "Amanhã" | "Sem prazo"
-  status: "hoje" | "atrasado" | "proximo" | "concluido";
-  motivo?: string;          // "Dia 2 da cadência. Sem interação há 2h."
-}
+Toda a renderização passa a ramificar por `mode`. Trocar para `"broker"` acontece apenas via:
+- Botão "Buscar corretor" no header (abre Dialog de busca).
+- Ação "Ver rede" na tabela de indicadores.
+- Botão "Ver corretor" em alertas/insights.
 
-interface CadenciaItem { dia: number; titulo: string; status: "pendente"|"concluido"|"atrasado"; }
-interface Visita { data: string; status: string; imovel: string; feedback?: string; }
-interface Qualificacao {
-  perfil?: string; tipoImovel?: string; regiao?: string; orcamento?: number;
-  capacidade?: string; prazo?: string; motivacao?: string; objecoes?: string; observacoes?: string;
-}
-interface VinculoComercial {
-  origemComercial: LeadOrigemComercial;
-  feeAplicavel?: boolean;
-  contratoId?: string;
-  parceiro?: string;
-  resumoVinculo?: string;
-}
+Voltar para `"global"`: botão "← Voltar para visão geral" visível só no modo broker.
 
-interface Lead {
-  // …existentes
-  etapa?: LeadEtapa;
-  temperatura?: LeadTemperatura;
-  proximaAcao?: ProximaAcao;
-  cadencia?: CadenciaItem[];
-  visitas?: Visita[];
-  qualificacao?: Qualificacao;
-  vinculo?: VinculoComercial;
-  ultimoCanal?: "WhatsApp"|"Instagram"|"Ligação"|"Email"|"IA";
-  ultimoResumo?: string;
-}
-```
+## 2. Header
 
-Preencher todos os 6 leads existentes com esses campos coerentes (alguns atrasados, alguns quentes, 2 com visita hoje, 3 sem primeiro contato, etc.) para os KPIs do topo baterem com o cenário real.
+**Modo global:**
+- Título: "Visão geral da rede Ubroker"
+- Subtexto: "Consolidado de indicações, recorrência e repasses da rede."
+- Botão primário: "Buscar corretor" (ícone Search) → abre Dialog com Input de busca por nome/agência sobre `redeIndicacoes` (exclui `RI-000`). Selecionar → `setMode("broker")` + `setBaseId(id)`.
+- Dropdown "Exportar" (ver §7).
 
-Adicionar 4 leads novos: Roberto e Lúcia Tavares, Ana Beatriz Souza, Marcelo Pinheiro, Renata Couto, com origens variadas e cenários cobrindo: parceria com contrato vinculado, lead via IA com fee, lead manual, marketplace. Total ≥ 10 leads.
+**Modo broker:**
+- Botão "← Voltar para visão geral" (ghost) acima do título.
+- Título: "Visualizando rede de: {nome}"
+- Subtexto: "Indicador direto: {pai} · Entrada: {data}" (ou "Raiz da rede" se Ramon).
+- Botões: "Trocar corretor" (reabre o Dialog de busca) + "Exportar" (ver §7).
 
-Exportar `LeadEtapa`, `LeadTemperatura`, `ProximaAcao`, etc. para uso na tela.
+## 3. KPIs do topo
 
-## 2. Estrutura da tela (`src/routes/app.leads.tsx`)
+**Modo global** — 5 cards baseados em `redeIndicacoes` inteiro (excluindo `RI-000` da contagem):
+1. Total de corretores na rede
+2. MRR total de indicações (soma de `mrr`)
+3. Receita paga no período (soma de `valorPago`)
+4. Receita pendente (soma de `valorPendente`)
+5. Crescimento da rede — % comparado ao mock `redeIndicacoesPeriodoAnterior` (variação no número de corretores ativos)
 
-Layout em uma única coluna principal com painel lateral sticky à direita (mantém grid `lg:grid-cols-[1fr_400px]` atual).
+Sem destaque de N1/N2/N3 nesses cards.
 
-Ordem vertical da coluna principal:
-1. Header (título + subtítulo operacional novo).
-2. Bloco "Execução de hoje" — 5 cards compactos.
-3. Barra de filtros rápidos (chips) + busca + Filtros + Novo lead.
-4. Lista priorizada de leads (tabela atual reorganizada).
+**Modo broker** — manter os 4 cards atuais (Total de indicados, MRR N1, N2, N3 — relativos ao base, com `pctBadge`), exatamente como hoje.
 
-### Header
+## 4. Distribuição da rede
 
-```
-Leads
-Sua central diária de execução comercial.
-Veja o que fazer, quando fazer e quais oportunidades priorizar.
-```
+**Modo global** — substituir o bloco "Distribuição N1/N2/N3 (relativa)" por **3 sub-blocos lado a lado** (grid responsivo):
 
-### Bloco "Execução de hoje" (5 cards)
+a) **Receita por nível global** — barras horizontais para N1/N2/N3 calculadas via `getRedeRelativa(ROOT_ID)` (Ramon como raiz absoluta da Ubroker). Mostra valor + %.
 
-Grid responsivo `grid-cols-2 md:grid-cols-5`, altura compacta (~88px), cada card = número grande + label + subtexto pequeno + ícone discreto. Card "Atrasadas" com borda/accent vermelho suave; "Visitas hoje" com accent azul; "Quentes" com accent âmbar.
+b) **Status da rede** — 3 contadores com mini-barras: Ativos / Em teste / Inativos. Source: agregação por `status` em `redeIndicacoes`.
 
-Valores derivados em `useMemo` a partir dos leads:
-- Ações para hoje = leads com `proximaAcao.status === "hoje"`.
-- Atrasadas = `status === "atrasado"`.
-- Sem contato = `etapa === "Novo"` ou `"Tentativa de contato"` sem interação.
-- Visitas hoje = `visitas` com data == hoje.
-- VGV quentes = soma `orcamento` dos `temperatura === "quente"`.
+c) **Produtos contratados** — 3 contadores: IA Assistente / Inbox / Combo. Source: agregação por campo `produto` (já existe no mock).
 
-### Filtros rápidos
+**Modo broker** — manter o bloco atual de Distribuição N1/N2/N3 relativa ao base.
 
-Chips horizontais (scroll-x em mobile): Todos, Hoje, Atrasados, Sem contato, Quentes, Visitas, Proposta, Perdidos. Estado `filtroRapido`. Combina com busca por nome/id.
+## 5. Tabela principal
 
-Botão "Filtros" abre `Sheet` lateral com filtros avançados (origem, temperatura, etapa, região, tipo, faixa de orçamento, tempo sem interação, status da cadência). Implementação simples com selects/checkboxes — apenas afeta a lista atual.
+**Modo global** — listar **apenas indicadores** (corretores que têm pelo menos 1 indicado direto) ordenados por MRR gerado desc.
 
-### Lista priorizada
+Source: `redeIndicacoes.filter(r => getIndicadosDiretos(r.id).length > 0)`.
 
-Manter a tabela existente, com colunas novas:
+Colunas:
+- Corretor (avatar + nome + agência)
+- Indicados diretos (count via `getIndicadosDiretos(id).length`)
+- Rede total (count via `getRedeRelativa(id).size`)
+- MRR gerado — soma de MRR de toda sub-rede
+- Receita acumulada — soma `receitaAcumulada` da sub-rede
+- Receita paga — soma `valorPago` da sub-rede
+- Receita pendente — soma `valorPendente` da sub-rede
+- Status (do próprio corretor)
+- Ações (dropdown):
+  - "Ver rede" → entra no modo broker
+  - "Ver detalhes" → abre Dialog atual (financial/repasses)
+  - "Exportar relatório do corretor" → CSV individual
 
-| Lead | Origem | Potencial | Etapa | Próxima ação | Prazo/SLA | Última interação |
+Filtros: busca + status + faixa de MRR gerado. Paginação 10/pág (mantida).
 
-- **Lead**: avatar + nome + ID + badge temperatura + barra colorida lateral de prioridade (vermelho/laranja/azul/verde/cinza, derivada via helper `getPrioridadeColor(lead)`).
-- **Origem**: rótulo + badge comercial discreto (Meu lead / Lead da Plataforma / Lead via IA / Lead de Parceria) — mapeado de `vinculo.origemComercial`. "Outro" mantém detalhe.
-- **Potencial**: orçamento + comissão estimada (3%).
-- **Etapa**: badge neutra com nome da etapa.
-- **Próxima ação**: ícone do canal (Phone/MessageCircle/Calendar) + label da ação + sub-badge de status (Hoje / Atrasado / Próximo / Concluído).
-- **Prazo/SLA**: texto, com vermelho se atrasado.
-- **Última interação**: canal · data + tooltip com `ultimoResumo`.
+**Modo broker** — manter a tabela atual de descendentes (rede relativa do base), filtros e ações como hoje.
 
-Ordenação por prioridade operacional via score (atrasados > quentes > sem 1º contato > visita hoje > proposta > mornos > frios).
+## 6. Árvore / Grafo
 
-Alertas contextuais discretos abaixo do nome (texto pequeno, ex. "Lead sem contato há 4h", "Cadência atrasada", "Visita hoje 15h", "Lead qualificado pela IA") — derivados do estado.
+**Modo global** — remover render da árvore lazy. Substituir por um Card compacto:
+- Texto: "Visualize o grafo navegável da rede a partir de qualquer corretor."
+- Botão único "Abrir grafo da rede" → entra no modo broker com `baseId = ROOT_ID` (Ramon).
 
-Clique na linha = seleciona o lead e atualiza o painel lateral. Linha tem ação extra "Ver operação completa" via menu ou clique no botão na coluna de ações (adicionar ícone discreto à direita da última coluna ou no rodapé do painel).
+**Modo broker** — manter o `LazyNode` atual (1 nível por vez, expandir sob demanda), inalterado.
 
-## 3. Painel lateral
+## 7. Exportação (dropdown)
 
-Reorganizar a hierarquia (mantém o card sticky atual, mesma largura):
+**Modo global:**
+- "Consolidado da rede" — CSV de todos `redeIndicacoes` (id, nome, indicador, status, produto, mrr, acumulado, pago, pendente, data).
+- "Relatório financeiro global" — agregados por status + totais.
+- "Pendências de repasse" — todos com `valorPendente > 0`.
 
-1. **Header do lead**: nome, ID, temperatura, etapa, e-mail, telefone.
-2. **Card destacado "Próxima ação recomendada"** (com fundo levemente acentuado em `brand/5`):
-   - Título da ação (ex. "Ligar para João agora")
-   - Subtexto com motivo/contexto da cadência.
-   - 3 botões primários: Ligar, WhatsApp, Registrar interação (placeholders, abrem `toast` via sonner).
-3. **Ações rápidas**: linha de botões compactos — Registrar interação, Agendar visita, Avançar etapa, Marcar como perdido, **Ver operação completa**.
-4. **Resumo rápido** (atual): tipo, região, orçamento, comissão estimada.
-5. **Origem** (atual, com badge "qualificada" preservada).
-6. **Interesse** (texto curto).
-7. **Regras vinculadas** (novo, discreto): origem comercial, fee aplicável (sim/não), contrato vinculado (id), corretor parceiro, resumo do vínculo. Renderizar apenas as linhas presentes.
-8. **Histórico** resumido (mantém últimos 3, link "Ver tudo" abre o modal na aba Histórico).
+**Modo broker** (mantém atual):
+- "Rede completa de {nome}"
+- "Receita por nível (relativo)"
+- "Repasses do corretor"
 
-## 4. Modal "Operação do Lead"
+Cabeçalho de contexto em todos os CSVs (já implementado via param `context` em `downloadCSV`).
 
-`Dialog` em tamanho largo (`max-w-4xl`) com `Tabs` (shadcn) — abas: Execução · Cadência · Interações · WhatsApp · Visitas · Qualificação · Scripts · Histórico. Aberto via "Ver operação completa".
+## 8. Insights e Alertas
 
-- **Execução** (aba default): próxima ação destacada, lista de tarefas de hoje, lista de atrasadas, etapa atual com botão "Avançar etapa" (ciclando o enum), botão "Registrar interação" (toast).
-- **Cadência**: lista da `cadencia` agrupada por dia, cada item com ícone/cor por status.
-- **Interações**: timeline (reaproveita `historico` + `ultimoCanal/ultimoResumo`).
-- **WhatsApp**: bloco simulado — última mensagem recebida, sugestão de mensagem (texto fixo por etapa), botão "Enviar mensagem sugerida" (toast).
-- **Visitas**: cards das `visitas` (data, status, imóvel, feedback).
-- **Qualificação**: lista de campos do `qualificacao` em `dl`.
-- **Scripts**: 4 scripts fixos (Primeiro contato, Reativação, Confirmação de visita, Pós-visita, Proposta) renderizados em cards copiáveis.
-- **Histórico**: timeline completa do `historico`.
+**Modo global** — recalcular sobre a rede inteira:
+- Insights: top 3 indicadores por MRR gerado, corretores inativos com receita acumulada > R$ 1k, concentração (top 3 / MRR total).
+- Alertas: mesmas regras atuais, mas avaliando `redeIndicacoes` completo. Botão "Ver corretor" entra no modo broker.
 
-Estado: `const [opOpen, setOpOpen] = useState(false); const [opTab, setOpTab] = useState("execucao");`.
+**Modo broker** — manter lógica atual (relativa ao base).
 
-## 5. Helpers / utilitários (no próprio arquivo da rota)
+## 9. Detalhes técnicos
 
-```ts
-function getPrioridadeScore(l: Lead): number   // pra ordenação
-function getPrioridadeColor(l: Lead): string   // borda lateral
-function getBadgeComercial(l: Lead): { label: string; tone: string } | null
-function getProximaAcaoIcon(tipo: ProximaAcaoTipo): ReactNode
-function matchFiltroRapido(l: Lead, f: FiltroRapido): boolean
-```
+- Estado novo: `const [mode, setMode] = useState<"global"|"broker">("global"); const [baseId, setBaseId] = useState<string|null>(null);`
+- `baseUser = mode === "broker" && baseId ? redeIndicacoes.find(r => r.id === baseId) : null`
+- Memos globais novos: `globalKPIs`, `nivelGlobal` (via `getRedeRelativa(ROOT_ID)`), `statusAgg`, `produtoAgg`, `indicadoresList` (com sub-rede agregada por id, calculado uma vez).
+- Memos atuais (rede relativa, KPIs por nível, etc.) só rodam quando `mode === "broker"`.
+- O Dialog de busca de corretor é reutilizado para "Buscar corretor" (global) e "Trocar corretor" (broker) — mesmo componente interno, controlado por `searchOpen`.
+- Ação "Ver rede" e "Voltar para visão geral" fazem `window.scrollTo({top:0})` para feedback.
+- Toast (sonner já disponível) ao entrar/sair do modo broker: "Visualizando rede de {nome}" / "Voltando à visão geral".
 
-## 6. Compatibilidade com outras telas
+## 10. Restrições respeitadas
 
-- `admin.leads.tsx` e `app.pipeline.tsx` consomem `leads` mas só leem `id/nome/origem/status/orcamento/historico/ultimaInteracao`. Os novos campos são todos opcionais → zero impacto.
-- Os 4 leads adicionais entram naturalmente em `/admin/leads` e em `/app/pipeline` (status mapeia para colunas existentes).
-
-## 7. Aceite
-
-- Tela abre mostrando os 5 cards de execução do dia + filtros rápidos + lista priorizada.
-- Cada linha exibe próxima ação, prazo (com destaque para atrasados), badge de temperatura, badge comercial e barra lateral de prioridade.
-- Painel lateral começa pela próxima ação recomendada, depois ações rápidas, depois detalhes do lead e por último regras vinculadas.
-- "Ver operação completa" abre modal com 8 abas funcionais (apenas dados estáticos / toasts).
-- Sidebar, identidade visual, demais rotas e tela Pipeline permanecem intactas.
-
+- Mesma rota, mesmo arquivo, mesma identidade visual (Tailwind/shadcn).
+- Lógica de rede dinâmica e níveis relativos preservada (modo broker).
+- Árvore continua lazy; no modo global ela nem renderiza.
+- Sem nova dependência.
+- `admin-mock.ts` intocado.
