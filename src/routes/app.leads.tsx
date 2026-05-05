@@ -294,20 +294,21 @@ function LeadsPage() {
               </thead>
               <tbody>
                 {leadsFiltrados.map((l) => {
-                  const prio = getPrioridade(l.status);
-                  const meta = prioridadeMeta[prio];
                   const acao = getProximaAcao(l);
                   const urg = getUrgencia(l);
                   const urgMeta = getUrgenciaMeta(urg, l);
                   const qualificada = isOrigemQualificada(l.origem);
                   const comissao = getComissao(l.orcamento);
+                  const nivel = getNivel(l, nivelCtx);
+                  const nivelMeta = getNivelMeta(nivel);
+                  const reforco = getReforco(l);
                   return (
                     <tr
                       key={l.id}
                       onClick={() => setSelected(l)}
                       className={cn(
                         "cursor-pointer border-b border-l-4 border-border transition hover:bg-surface",
-                        urgMeta.border,
+                        nivelMeta.border,
                         selected.id === l.id && "bg-surface"
                       )}
                     >
@@ -319,12 +320,10 @@ function LeadsPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="truncate font-medium">{l.nome}</span>
-                              {prio !== "neutro" && (
-                                <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium", meta.chip)}>
-                                  {meta.icon}
-                                  {meta.label}
-                                </span>
-                              )}
+                              <span className={cn("inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium", nivelMeta.chip)}>
+                                <span aria-hidden>{nivelMeta.emoji}</span>
+                                {nivelMeta.label}
+                              </span>
                             </div>
                             <div className="text-[10px] text-muted-foreground/70">{l.id}</div>
                           </div>
@@ -341,17 +340,22 @@ function LeadsPage() {
                         {acao.tipo === "nenhum" ? (
                           <span className="text-xs text-muted-foreground">—</span>
                         ) : (
-                          <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
-                            <span className={cn(
-                              "grid h-6 w-6 place-items-center rounded-md",
-                              acao.tipo === "whatsapp" ? "bg-emerald-50 text-emerald-700"
-                                : acao.tipo === "ligar" ? "bg-navy/10 text-navy"
-                                : acao.tipo === "visita" ? "bg-orange-50 text-orange-700"
-                                : "bg-violet-50 text-violet-700"
-                            )}>
-                              {acao.icon}
-                            </span>
-                            {acao.label}
+                          <div>
+                            <div className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
+                              <span className={cn(
+                                "grid h-6 w-6 place-items-center rounded-md",
+                                acao.tipo === "whatsapp" ? "bg-emerald-50 text-emerald-700"
+                                  : acao.tipo === "ligar" ? "bg-navy/10 text-navy"
+                                  : acao.tipo === "visita" ? "bg-orange-50 text-orange-700"
+                                  : "bg-violet-50 text-violet-700"
+                              )}>
+                                {acao.icon}
+                              </span>
+                              {acao.label}
+                            </div>
+                            {nivel === "alta" && reforco && (
+                              <div className="mt-1 text-[11px] font-medium text-red-600">⚠️ {reforco}</div>
+                            )}
                           </div>
                         )}
                       </td>
