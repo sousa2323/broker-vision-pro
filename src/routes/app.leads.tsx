@@ -201,7 +201,7 @@ function LeadsPage() {
               </tr>
             </thead>
             <tbody>
-              {leads.map((l) => {
+              {leadsFiltrados.map((l) => {
                 const prio = getPrioridade(l.status);
                 const meta = prioridadeMeta[prio];
                 const qualificada = isOrigemQualificada(l.origem);
@@ -360,6 +360,7 @@ function LeadsPage() {
           <button className="rounded-md border border-border px-3 py-2 text-sm">Mover para pipeline</button>
         </div>
       </aside>
+      </div>
     </div>
   );
 }
