@@ -26,12 +26,6 @@ function getPrioridade(status: LeadStatus): Prioridade {
   return "neutro";
 }
 
-const prioridadeMeta: Record<Prioridade, { label: string; chip: string; icon: React.ReactNode }> = {
-  quente: { label: "Quente", chip: "bg-red-50 text-red-700 border border-red-100", icon: <Flame className="h-3 w-3" /> },
-  morno: { label: "Morno", chip: "bg-amber-50 text-amber-800 border border-amber-100", icon: <Zap className="h-3 w-3" /> },
-  frio: { label: "Frio", chip: "bg-sky-50 text-sky-700 border border-sky-100", icon: <Snowflake className="h-3 w-3" /> },
-  neutro: { label: "—", chip: "bg-slate-100 text-slate-600 border border-slate-200", icon: null },
-};
 
 const COMISSAO_RATE = 0.03;
 function getComissao(orcamento: number) {
