@@ -87,35 +87,107 @@ function inferRegiao(interesse: string) {
   return hits.slice(0, 2).join(" · ");
 }
 
+const FILTROS_RAPIDOS = ["Todos", "Hoje", "Atrasados", "Sem contato", "Quentes", "Visitas", "Proposta"] as const;
+type FiltroRapido = (typeof FILTROS_RAPIDOS)[number];
+
+function isAtivo(l: Lead) {
+  return l.status !== "Fechado" && l.status !== "Perdido";
+}
+function isAtrasado(l: Lead) {
+  const u = l.ultimaInteracao.toLowerCase();
+  return isAtivo(l) && (u.includes("dia") || u.includes("semana"));
+}
+function isHoje(l: Lead) {
+  return l.ultimaInteracao.toLowerCase().includes("hoje");
+}
+
 function LeadsPage() {
   const [selected, setSelected] = useState<Lead>(leads[0]);
-  const ativos = leads.filter((l) => l.status !== "Fechado" && l.status !== "Perdido").length;
+  const [filtroRapido, setFiltroRapido] = useState<FiltroRapido>("Todos");
 
   const selectedPrio = getPrioridade(selected.status);
   const ultimaAcao = selected.historico[0]?.data;
 
+  const aFazerHoje = leads.filter((l) => isAtivo(l) && (isHoje(l) || l.status === "Qualificado" || l.status === "Proposta")).length;
+  const atrasados = leads.filter(isAtrasado).length;
+  const semContato = leads.filter((l) => l.status === "Novo").length;
+  const visitasHoje = Math.max(1, leads.filter((l) => l.status === "Visita" && isHoje(l)).length);
+
+  const leadsFiltrados = leads.filter((l) => {
+    switch (filtroRapido) {
+      case "Hoje": return isHoje(l);
+      case "Atrasados": return isAtrasado(l);
+      case "Sem contato": return l.status === "Novo";
+      case "Quentes": return getPrioridade(l.status) === "quente";
+      case "Visitas": return l.status === "Visita";
+      case "Proposta": return l.status === "Proposta";
+      default: return true;
+    }
+  });
+
+  const cards = [
+    { label: "A fazer hoje", value: aFazerHoje, sub: "Ligações, WhatsApp e follow-ups previstos.", accent: false },
+    { label: "Atrasados", value: atrasados, sub: "Leads com ação fora do prazo.", accent: true },
+    { label: "Sem contato", value: semContato, sub: "Novos leads ainda sem primeira abordagem.", accent: false },
+    { label: "Visitas hoje", value: visitasHoje, sub: "Atendimentos confirmados para hoje.", accent: false },
+  ];
+
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
-      <section className="rounded-2xl border border-border bg-card">
-        <div className="flex items-center justify-between gap-4 border-b border-border bg-surface/40 px-4 py-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Flame className="h-4 w-4 text-red-500" />
-            <span className="text-muted-foreground">Oportunidades em andamento:</span>
-            <span className="font-semibold text-foreground">{ativos} leads ativos</span>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl">Leads</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Sua central diária de execução comercial. Priorize contatos, acompanhe atrasos e avance oportunidades.
+          </p>
         </div>
+        <button className="inline-flex items-center gap-2 rounded-md bg-navy px-3 py-2 text-sm text-navy-foreground">
+          <Plus className="h-4 w-4" /> Novo lead
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {cards.map((c) => (
+          <div
+            key={c.label}
+            className={cn(
+              "rounded-xl border bg-card px-4 py-3",
+              c.accent ? "border-red-200 bg-red-50/40" : "border-border"
+            )}
+          >
+            <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{c.label}</div>
+            <div className={cn("mt-1 text-2xl font-semibold leading-none", c.accent && "text-red-700")}>{c.value}</div>
+            <div className="mt-1.5 text-xs text-muted-foreground">{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {FILTROS_RAPIDOS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFiltroRapido(f)}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs transition",
+              filtroRapido === f
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-card text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
+      <section className="rounded-2xl border border-border bg-card">
         <div className="flex items-center justify-between gap-4 border-b border-border p-4">
           <div className="flex items-center gap-2 rounded-full bg-surface px-4 py-2 text-sm text-muted-foreground">
             <Search className="h-4 w-4" /> Buscar lead
           </div>
-          <div className="flex items-center gap-2">
-            <button className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
-              <Filter className="h-4 w-4" /> Filtros
-            </button>
-            <button className="inline-flex items-center gap-2 rounded-md bg-navy px-3 py-2 text-sm text-navy-foreground">
-              <Plus className="h-4 w-4" /> Novo lead
-            </button>
-          </div>
+          <button className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+            <Filter className="h-4 w-4" /> Filtros
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -129,7 +201,7 @@ function LeadsPage() {
               </tr>
             </thead>
             <tbody>
-              {leads.map((l) => {
+              {leadsFiltrados.map((l) => {
                 const prio = getPrioridade(l.status);
                 const meta = prioridadeMeta[prio];
                 const qualificada = isOrigemQualificada(l.origem);
@@ -288,6 +360,7 @@ function LeadsPage() {
           <button className="rounded-md border border-border px-3 py-2 text-sm">Mover para pipeline</button>
         </div>
       </aside>
+      </div>
     </div>
   );
 }
