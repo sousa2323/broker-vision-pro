@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Calendar, ClipboardCheck, Filter, Flame, MessageCircle, Phone, Plus, Search, Send, Snowflake, Wallet, Zap } from "lucide-react";
+import { Calendar, ClipboardCheck, Filter, MessageCircle, Phone, Plus, Search, Send, Wallet } from "lucide-react";
 import { leads, type Lead, type LeadOrigin, type LeadStatus, formatBRL } from "@/data/mock";
 import { cn } from "@/lib/utils";
 
