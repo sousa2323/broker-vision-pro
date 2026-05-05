@@ -173,6 +173,11 @@ function LeadsPage() {
   const semContato = leads.filter((l) => l.status === "Novo").length;
   const visitasHoje = Math.max(1, leads.filter((l) => l.status === "Visita" && isHoje(l)).length);
 
+  const comissoesAtivas = leads.filter(isAtivo).map((l) => getComissao(l.orcamento)).sort((a, b) => b - a);
+  const topComissao = comissoesAtivas[Math.max(0, Math.floor(comissoesAtivas.length * 0.2) - 1)] ?? Infinity;
+  const medianaComissao = comissoesAtivas[Math.floor(comissoesAtivas.length / 2)] ?? 0;
+  const nivelCtx = { topComissao, medianaComissao };
+
   const leadsFiltrados = leads
     .filter((l) => {
       switch (filtroRapido) {
@@ -190,8 +195,8 @@ function LeadsPage() {
       const aAtivo = isAtivo(a) ? 0 : 1;
       const bAtivo = isAtivo(b) ? 0 : 1;
       if (aAtivo !== bAtivo) return aAtivo - bAtivo;
-      const ra = getUrgenciaRank(getUrgencia(a));
-      const rb = getUrgenciaRank(getUrgencia(b));
+      const ra = getNivelRank(getNivel(a, nivelCtx));
+      const rb = getNivelRank(getNivel(b, nivelCtx));
       if (ra !== rb) return ra - rb;
       return getComissao(b.orcamento) - getComissao(a.orcamento);
     });
@@ -203,9 +208,12 @@ function LeadsPage() {
     { label: "Visitas hoje", value: visitasHoje, sub: "Atendimentos confirmados para hoje.", accent: false },
   ];
 
-  const selectedPrio = getPrioridade(selected.status);
   const selectedAcao = getProximaAcao(selected);
   const selectedUrg = getUrgencia(selected);
+  const selectedNivel = getNivel(selected, nivelCtx);
+  const selectedNivelMeta = getNivelMeta(selectedNivel);
+  const selectedReforco = getReforco(selected);
+  const selectedPrio = getPrioridade(selected.status);
   const selectedComissao = getComissao(selected.orcamento);
   const primeiroNome = selected.nome.split(" ")[0];
   const subtextoUrg =
