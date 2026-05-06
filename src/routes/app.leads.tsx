@@ -170,13 +170,161 @@ function getCadenciaPlano(l: Lead): CadenciaItem[] {
   ];
 }
 
-const SCRIPTS = [
-  { titulo: "Primeiro contato", texto: "Oi {nome}, aqui é o Ramon da Ubroker. Vi seu interesse em {tipo} em {regiao}. Posso te ligar rapidinho pra entender o que você procura?" },
-  { titulo: "Reativação", texto: "Oi {nome}, tudo bem? Apareceram opções novas que combinam com o que conversamos. Quer dar uma olhada?" },
-  { titulo: "Confirmação de visita", texto: "{nome}, só confirmando nossa visita amanhã. Posso te enviar a localização?" },
-  { titulo: "Pós-visita", texto: "E aí {nome}, o que achou do imóvel? Quero te ajudar a decidir com calma." },
-  { titulo: "Proposta", texto: "{nome}, preparei a proposta. Posso te enviar os detalhes agora?" },
+const SCRIPTS_LIB = [
+  { categoria: "Primeiro contato", titulo: "Apresentação inicial", objetivo: "Quebrar o gelo e marcar conversa", texto: "Oi {nome}, aqui é o Ramon da Ubroker. Vi seu interesse em {tipo} em {regiao}. Posso te ligar rapidinho pra entender o que você procura?" },
+  { categoria: "Reativação", titulo: "Lead frio retorno", objetivo: "Trazer de volta lead sem resposta", texto: "Oi {nome}, tudo bem? Apareceram opções novas que combinam com o que conversamos. Quer dar uma olhada?" },
+  { categoria: "Follow-up", titulo: "Follow-up D2", objetivo: "Manter cadência e mostrar interesse", texto: "{nome}, separei mais 2 imóveis dentro do seu perfil. Quer que eu envie agora?" },
+  { categoria: "Confirmação de visita", titulo: "Confirmação 24h antes", objetivo: "Reduzir no-show", texto: "{nome}, só confirmando nossa visita amanhã. Posso te enviar a localização?" },
+  { categoria: "Pós-visita", titulo: "Feedback pós-visita", objetivo: "Capturar percepção e avançar etapa", texto: "E aí {nome}, o que achou do imóvel? Quero te ajudar a decidir com calma." },
+  { categoria: "Proposta", titulo: "Envio de proposta", objetivo: "Apresentar condições e fechar", texto: "{nome}, preparei a proposta. Posso te enviar os detalhes agora?" },
 ];
+
+const MOTIVOS_PERDA = [
+  "Sem retorno",
+  "Sem perfil",
+  "Comprou outro imóvel",
+  "Sem crédito",
+  "Momento errado",
+  "Valor acima",
+  "Não gostou da região",
+  "Outro",
+];
+
+const TIPOS_INTERACAO = ["Ligação", "WhatsApp", "Reunião", "Visita", "Observação", "Follow-up"] as const;
+
+const TEMPLATES_WA = [
+  { titulo: "Apresentação", texto: "Oi {nome}, sou da Ubroker. Vi seu interesse em {tipo} em {regiao}." },
+  { titulo: "Confirmação visita", texto: "{nome}, confirmando nossa visita. Posso te mandar a localização?" },
+  { titulo: "Follow-up", texto: "{nome}, alguma dúvida sobre o imóvel? Posso te ligar 5 min?" },
+  { titulo: "Pós-visita", texto: "{nome}, o que achou do imóvel? Posso preparar uma proposta?" },
+];
+
+function hashCode(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function getScoreLead(l: Lead) {
+  const base = 60 + (hashCode(l.id) % 30);
+  const bonus = l.status === "Proposta" ? 10 : l.status === "Visita" ? 7 : l.status === "Qualificado" ? 4 : 0;
+  return Math.min(98, base + bonus);
+}
+function getChanceConversao(l: Lead) {
+  const s = getScoreLead(l);
+  return Math.min(95, Math.round(s * 0.85));
+}
+function getEstagioDecisao(l: Lead) {
+  if (l.status === "Proposta" || l.status === "Visita") return "Alto";
+  if (l.status === "Qualificado") return "Médio";
+  return "Baixo";
+}
+function getTempoMedioResp(l: Lead) {
+  return ["8min", "14min", "22min", "31min", "47min"][hashCode(l.id) % 5];
+}
+
+type StatusOp = { icon: string; label: string; tone: "neutral" | "warn" | "danger" | "good" };
+function getStatusOperacional(l: Lead): StatusOp[] {
+  const out: StatusOp[] = [];
+  const prio = getPrioridade(l.status);
+  out.push({
+    icon: prio === "quente" ? "🔴" : prio === "morno" ? "🟡" : "🔵",
+    label: prio === "quente" ? "Lead quente" : prio === "morno" ? "Lead morno" : "Lead frio",
+    tone: prio === "quente" ? "danger" : prio === "morno" ? "warn" : "neutral",
+  });
+  out.push({ icon: "📈", label: `Score ${getScoreLead(l)}`, tone: "neutral" });
+  out.push({ icon: "⏰", label: `${l.ultimaInteracao} sem interação`, tone: isAtrasado(l) ? "warn" : "neutral" });
+  if (isAtrasado(l)) out.push({ icon: "⚠️", label: "Cadência atrasada", tone: "danger" });
+  if (l.status === "Visita") out.push({ icon: "📅", label: "Visita amanhã 15h", tone: "good" });
+  if (l.status === "Proposta") out.push({ icon: "📄", label: "Proposta em aberto", tone: "warn" });
+  return out;
+}
+
+function getMotivos(l: Lead): string[] {
+  const out: string[] = [];
+  if (l.status === "Visita") {
+    out.push("Visita marcada para hoje às 15h");
+    out.push("Sem confirmação há 18h");
+    out.push("Risco médio de no-show");
+  } else if (l.status === "Proposta") {
+    out.push("Proposta enviada há 2 dias");
+    out.push("Sem retorno do cliente");
+    out.push("Risco de perda para concorrente");
+  } else if (l.status === "Qualificado") {
+    out.push("Lead qualificado pela IA");
+    out.push("Aguardando envio de imóveis compatíveis");
+  } else if (l.status === "Novo") {
+    out.push("Lead capturado recentemente");
+    out.push("Primeiro contato não realizado");
+  }
+  if (isAtrasado(l)) out.push(`Sem interação há ${l.ultimaInteracao}`);
+  return out.slice(0, 3);
+}
+
+type TLItem = { icon: string; label: string; quando: string; tone: "good" | "warn" | "neutral" };
+function getTimelineOperacional(l: Lead): TLItem[] {
+  const out: TLItem[] = [];
+  l.historico.slice(0, 4).forEach((h, i) => {
+    out.push({
+      icon: h.tipo.includes("WhatsApp") ? "💬" : h.tipo.includes("Liga") ? "📞" : h.tipo.includes("Visita") ? "📅" : h.tipo.includes("IA") ? "🧠" : "📝",
+      label: `${h.tipo} — ${h.texto}`,
+      quando: h.data,
+      tone: i === 0 ? "good" : "neutral",
+    });
+  });
+  if (isAtrasado(l)) out.splice(1, 0, { icon: "⚠️", label: "Sem resposta do cliente", quando: `há ${l.ultimaInteracao}`, tone: "warn" });
+  return out;
+}
+
+function getAlertasComportamentais(l: Lead): string[] {
+  const out: string[] = [];
+  if (isAtrasado(l)) out.push("Sem resposta");
+  if (getPrioridade(l.status) === "quente" && isAtrasado(l)) out.push("Quente parado");
+  if (l.status === "Proposta") out.push("Proposta sem retorno");
+  if (l.status === "Visita") out.push("Visita sem confirmação");
+  return out;
+}
+
+function getSugestaoPosInteracao(tipo: string, l: Lead): string {
+  if (tipo.includes("Liga")) return `Enviar imóveis compatíveis em ${inferRegiao(l.interesse).split(" ")[0]} até o fim do dia.`;
+  if (tipo.includes("WhatsApp")) return "Aguardar resposta por 4h e fazer follow-up se necessário.";
+  if (tipo.includes("Visita")) return "Registrar feedback pós-visita e avançar para proposta.";
+  if (tipo.includes("IA")) return "Confirmar qualificação por ligação e marcar visita.";
+  return "Agendar próxima ação na cadência.";
+}
+
+type CadenciaDet = { dia: number; titulo: string; canal: string; objetivo: string; sla: string; status: "pendente" | "concluido" | "atrasado" | "hoje"; script: string };
+function getCadenciaDetalhada(l: Lead): CadenciaDet[] {
+  const passou = (s: LeadStatus) => {
+    const ord: LeadStatus[] = ["Novo", "Qualificado", "Visita", "Proposta", "Fechado"];
+    return ord.indexOf(l.status) >= ord.indexOf(s);
+  };
+  const atrasado = isAtrasado(l);
+  return [
+    { dia: 1, titulo: "Ligação inicial", canal: "Telefone", objetivo: "Qualificar o lead", sla: "2h", status: passou("Qualificado") ? "concluido" : atrasado ? "atrasado" : "hoje", script: "Apresentação inicial" },
+    { dia: 1, titulo: "WhatsApp de apresentação", canal: "WhatsApp", objetivo: "Confirmar interesse", sla: "4h", status: passou("Qualificado") ? "concluido" : "hoje", script: "Apresentação" },
+    { dia: 2, titulo: "Follow-up", canal: "WhatsApp", objetivo: "Manter cadência", sla: "24h", status: passou("Visita") ? "concluido" : atrasado ? "atrasado" : "pendente", script: "Follow-up D2" },
+    { dia: 2, titulo: "Envio de imóveis compatíveis", canal: "WhatsApp", objetivo: "Mostrar valor", sla: "24h", status: passou("Visita") ? "concluido" : "pendente", script: "" },
+    { dia: 3, titulo: "Confirmar visita", canal: "Ligação", objetivo: "Reduzir no-show", sla: "24h", status: passou("Visita") ? "concluido" : "pendente", script: "Confirmação 24h antes" },
+    { dia: 4, titulo: "Pós-visita", canal: "WhatsApp", objetivo: "Avançar para proposta", sla: "12h", status: passou("Proposta") ? "concluido" : "pendente", script: "Feedback pós-visita" },
+  ];
+}
+
+const QUALIF_BLOCOS = (l: Lead) => [
+  { titulo: "Perfil", campos: [["Nome", l.nome], ["Família", "Casal com 1 filho"], ["Profissão", "—"], ["Cidade", "Niterói / RJ"]] },
+  { titulo: "Busca", campos: [["Tipo", inferTipo(l.interesse)], ["Região", inferRegiao(l.interesse)], ["Faixa de valor", formatBRL(l.orcamento)], ["Características", "Varanda, vista, 2+ vagas"]] },
+  { titulo: "Financeiro", campos: [["Possui crédito?", "Pré-aprovado"], ["Entrada", "30% disponível"], ["Financiamento", "Sim · Caixa"], ["Prazo de compra", "3-6 meses"]] },
+  { titulo: "Decisão", campos: [["Momento", "Pronto para decidir"], ["Motivação", "Mudança de imóvel"], ["Objeções", "—"], ["Urgência", l.status === "Proposta" ? "Alta" : "Média"]] },
+];
+
+function getVisitaInfo(l: Lead) {
+  if (l.status !== "Visita") return null;
+  return {
+    imovel: `${inferTipo(l.interesse)} em ${inferRegiao(l.interesse).split(" ")[0]}`,
+    quando: "Sábado, 10h",
+    endereco: `Rua Lopes Trovão, 200 — ${inferRegiao(l.interesse).split(" ")[0]}`,
+    status: "Agendada" as const,
+  };
+}
 
 type FiltrosAv = {
   origem: string;
