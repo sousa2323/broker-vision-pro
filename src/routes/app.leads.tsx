@@ -343,6 +343,13 @@ function LeadsPage() {
   const [filtrosAv, setFiltrosAv] = useState<FiltrosAv>(FILTROS_AV_VAZIO);
   const [filtrosAvAplicados, setFiltrosAvAplicados] = useState<FiltrosAv>(FILTROS_AV_VAZIO);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [perdaOpen, setPerdaOpen] = useState(false);
+  const [perdaMotivo, setPerdaMotivo] = useState("");
+  const [perdaObs, setPerdaObs] = useState("");
+  const [registroOpen, setRegistroOpen] = useState(false);
+  const [registroTipo, setRegistroTipo] = useState<string>("Ligação");
+  const [registroTexto, setRegistroTexto] = useState("");
+  const [waTexto, setWaTexto] = useState("");
 
   const aFazerHoje = leads.filter((l) => isAtivo(l) && (isHoje(l) || l.status === "Qualificado" || l.status === "Proposta")).length;
   const atrasados = leads.filter(isAtrasado).length;
