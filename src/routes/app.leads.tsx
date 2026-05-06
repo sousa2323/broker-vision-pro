@@ -170,13 +170,161 @@ function getCadenciaPlano(l: Lead): CadenciaItem[] {
   ];
 }
 
-const SCRIPTS = [
-  { titulo: "Primeiro contato", texto: "Oi {nome}, aqui é o Ramon da Ubroker. Vi seu interesse em {tipo} em {regiao}. Posso te ligar rapidinho pra entender o que você procura?" },
-  { titulo: "Reativação", texto: "Oi {nome}, tudo bem? Apareceram opções novas que combinam com o que conversamos. Quer dar uma olhada?" },
-  { titulo: "Confirmação de visita", texto: "{nome}, só confirmando nossa visita amanhã. Posso te enviar a localização?" },
-  { titulo: "Pós-visita", texto: "E aí {nome}, o que achou do imóvel? Quero te ajudar a decidir com calma." },
-  { titulo: "Proposta", texto: "{nome}, preparei a proposta. Posso te enviar os detalhes agora?" },
+const SCRIPTS_LIB = [
+  { categoria: "Primeiro contato", titulo: "Apresentação inicial", objetivo: "Quebrar o gelo e marcar conversa", texto: "Oi {nome}, aqui é o Ramon da Ubroker. Vi seu interesse em {tipo} em {regiao}. Posso te ligar rapidinho pra entender o que você procura?" },
+  { categoria: "Reativação", titulo: "Lead frio retorno", objetivo: "Trazer de volta lead sem resposta", texto: "Oi {nome}, tudo bem? Apareceram opções novas que combinam com o que conversamos. Quer dar uma olhada?" },
+  { categoria: "Follow-up", titulo: "Follow-up D2", objetivo: "Manter cadência e mostrar interesse", texto: "{nome}, separei mais 2 imóveis dentro do seu perfil. Quer que eu envie agora?" },
+  { categoria: "Confirmação de visita", titulo: "Confirmação 24h antes", objetivo: "Reduzir no-show", texto: "{nome}, só confirmando nossa visita amanhã. Posso te enviar a localização?" },
+  { categoria: "Pós-visita", titulo: "Feedback pós-visita", objetivo: "Capturar percepção e avançar etapa", texto: "E aí {nome}, o que achou do imóvel? Quero te ajudar a decidir com calma." },
+  { categoria: "Proposta", titulo: "Envio de proposta", objetivo: "Apresentar condições e fechar", texto: "{nome}, preparei a proposta. Posso te enviar os detalhes agora?" },
 ];
+
+const MOTIVOS_PERDA = [
+  "Sem retorno",
+  "Sem perfil",
+  "Comprou outro imóvel",
+  "Sem crédito",
+  "Momento errado",
+  "Valor acima",
+  "Não gostou da região",
+  "Outro",
+];
+
+const TIPOS_INTERACAO = ["Ligação", "WhatsApp", "Reunião", "Visita", "Observação", "Follow-up"] as const;
+
+const TEMPLATES_WA = [
+  { titulo: "Apresentação", texto: "Oi {nome}, sou da Ubroker. Vi seu interesse em {tipo} em {regiao}." },
+  { titulo: "Confirmação visita", texto: "{nome}, confirmando nossa visita. Posso te mandar a localização?" },
+  { titulo: "Follow-up", texto: "{nome}, alguma dúvida sobre o imóvel? Posso te ligar 5 min?" },
+  { titulo: "Pós-visita", texto: "{nome}, o que achou do imóvel? Posso preparar uma proposta?" },
+];
+
+function hashCode(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function getScoreLead(l: Lead) {
+  const base = 60 + (hashCode(l.id) % 30);
+  const bonus = l.status === "Proposta" ? 10 : l.status === "Visita" ? 7 : l.status === "Qualificado" ? 4 : 0;
+  return Math.min(98, base + bonus);
+}
+function getChanceConversao(l: Lead) {
+  const s = getScoreLead(l);
+  return Math.min(95, Math.round(s * 0.85));
+}
+function getEstagioDecisao(l: Lead) {
+  if (l.status === "Proposta" || l.status === "Visita") return "Alto";
+  if (l.status === "Qualificado") return "Médio";
+  return "Baixo";
+}
+function getTempoMedioResp(l: Lead) {
+  return ["8min", "14min", "22min", "31min", "47min"][hashCode(l.id) % 5];
+}
+
+type StatusOp = { icon: string; label: string; tone: "neutral" | "warn" | "danger" | "good" };
+function getStatusOperacional(l: Lead): StatusOp[] {
+  const out: StatusOp[] = [];
+  const prio = getPrioridade(l.status);
+  out.push({
+    icon: prio === "quente" ? "🔴" : prio === "morno" ? "🟡" : "🔵",
+    label: prio === "quente" ? "Lead quente" : prio === "morno" ? "Lead morno" : "Lead frio",
+    tone: prio === "quente" ? "danger" : prio === "morno" ? "warn" : "neutral",
+  });
+  out.push({ icon: "📈", label: `Score ${getScoreLead(l)}`, tone: "neutral" });
+  out.push({ icon: "⏰", label: `${l.ultimaInteracao} sem interação`, tone: isAtrasado(l) ? "warn" : "neutral" });
+  if (isAtrasado(l)) out.push({ icon: "⚠️", label: "Cadência atrasada", tone: "danger" });
+  if (l.status === "Visita") out.push({ icon: "📅", label: "Visita amanhã 15h", tone: "good" });
+  if (l.status === "Proposta") out.push({ icon: "📄", label: "Proposta em aberto", tone: "warn" });
+  return out;
+}
+
+function getMotivos(l: Lead): string[] {
+  const out: string[] = [];
+  if (l.status === "Visita") {
+    out.push("Visita marcada para hoje às 15h");
+    out.push("Sem confirmação há 18h");
+    out.push("Risco médio de no-show");
+  } else if (l.status === "Proposta") {
+    out.push("Proposta enviada há 2 dias");
+    out.push("Sem retorno do cliente");
+    out.push("Risco de perda para concorrente");
+  } else if (l.status === "Qualificado") {
+    out.push("Lead qualificado pela IA");
+    out.push("Aguardando envio de imóveis compatíveis");
+  } else if (l.status === "Novo") {
+    out.push("Lead capturado recentemente");
+    out.push("Primeiro contato não realizado");
+  }
+  if (isAtrasado(l)) out.push(`Sem interação há ${l.ultimaInteracao}`);
+  return out.slice(0, 3);
+}
+
+type TLItem = { icon: string; label: string; quando: string; tone: "good" | "warn" | "neutral" };
+function getTimelineOperacional(l: Lead): TLItem[] {
+  const out: TLItem[] = [];
+  l.historico.slice(0, 4).forEach((h, i) => {
+    out.push({
+      icon: h.tipo.includes("WhatsApp") ? "💬" : h.tipo.includes("Liga") ? "📞" : h.tipo.includes("Visita") ? "📅" : h.tipo.includes("IA") ? "🧠" : "📝",
+      label: `${h.tipo} — ${h.texto}`,
+      quando: h.data,
+      tone: i === 0 ? "good" : "neutral",
+    });
+  });
+  if (isAtrasado(l)) out.splice(1, 0, { icon: "⚠️", label: "Sem resposta do cliente", quando: `há ${l.ultimaInteracao}`, tone: "warn" });
+  return out;
+}
+
+function getAlertasComportamentais(l: Lead): string[] {
+  const out: string[] = [];
+  if (isAtrasado(l)) out.push("Sem resposta");
+  if (getPrioridade(l.status) === "quente" && isAtrasado(l)) out.push("Quente parado");
+  if (l.status === "Proposta") out.push("Proposta sem retorno");
+  if (l.status === "Visita") out.push("Visita sem confirmação");
+  return out;
+}
+
+function getSugestaoPosInteracao(tipo: string, l: Lead): string {
+  if (tipo.includes("Liga")) return `Enviar imóveis compatíveis em ${inferRegiao(l.interesse).split(" ")[0]} até o fim do dia.`;
+  if (tipo.includes("WhatsApp")) return "Aguardar resposta por 4h e fazer follow-up se necessário.";
+  if (tipo.includes("Visita")) return "Registrar feedback pós-visita e avançar para proposta.";
+  if (tipo.includes("IA")) return "Confirmar qualificação por ligação e marcar visita.";
+  return "Agendar próxima ação na cadência.";
+}
+
+type CadenciaDet = { dia: number; titulo: string; canal: string; objetivo: string; sla: string; status: "pendente" | "concluido" | "atrasado" | "hoje"; script: string };
+function getCadenciaDetalhada(l: Lead): CadenciaDet[] {
+  const passou = (s: LeadStatus) => {
+    const ord: LeadStatus[] = ["Novo", "Qualificado", "Visita", "Proposta", "Fechado"];
+    return ord.indexOf(l.status) >= ord.indexOf(s);
+  };
+  const atrasado = isAtrasado(l);
+  return [
+    { dia: 1, titulo: "Ligação inicial", canal: "Telefone", objetivo: "Qualificar o lead", sla: "2h", status: passou("Qualificado") ? "concluido" : atrasado ? "atrasado" : "hoje", script: "Apresentação inicial" },
+    { dia: 1, titulo: "WhatsApp de apresentação", canal: "WhatsApp", objetivo: "Confirmar interesse", sla: "4h", status: passou("Qualificado") ? "concluido" : "hoje", script: "Apresentação" },
+    { dia: 2, titulo: "Follow-up", canal: "WhatsApp", objetivo: "Manter cadência", sla: "24h", status: passou("Visita") ? "concluido" : atrasado ? "atrasado" : "pendente", script: "Follow-up D2" },
+    { dia: 2, titulo: "Envio de imóveis compatíveis", canal: "WhatsApp", objetivo: "Mostrar valor", sla: "24h", status: passou("Visita") ? "concluido" : "pendente", script: "" },
+    { dia: 3, titulo: "Confirmar visita", canal: "Ligação", objetivo: "Reduzir no-show", sla: "24h", status: passou("Visita") ? "concluido" : "pendente", script: "Confirmação 24h antes" },
+    { dia: 4, titulo: "Pós-visita", canal: "WhatsApp", objetivo: "Avançar para proposta", sla: "12h", status: passou("Proposta") ? "concluido" : "pendente", script: "Feedback pós-visita" },
+  ];
+}
+
+const QUALIF_BLOCOS = (l: Lead) => [
+  { titulo: "Perfil", campos: [["Nome", l.nome], ["Família", "Casal com 1 filho"], ["Profissão", "—"], ["Cidade", "Niterói / RJ"]] },
+  { titulo: "Busca", campos: [["Tipo", inferTipo(l.interesse)], ["Região", inferRegiao(l.interesse)], ["Faixa de valor", formatBRL(l.orcamento)], ["Características", "Varanda, vista, 2+ vagas"]] },
+  { titulo: "Financeiro", campos: [["Possui crédito?", "Pré-aprovado"], ["Entrada", "30% disponível"], ["Financiamento", "Sim · Caixa"], ["Prazo de compra", "3-6 meses"]] },
+  { titulo: "Decisão", campos: [["Momento", "Pronto para decidir"], ["Motivação", "Mudança de imóvel"], ["Objeções", "—"], ["Urgência", l.status === "Proposta" ? "Alta" : "Média"]] },
+];
+
+function getVisitaInfo(l: Lead) {
+  if (l.status !== "Visita") return null;
+  return {
+    imovel: `${inferTipo(l.interesse)} em ${inferRegiao(l.interesse).split(" ")[0]}`,
+    quando: "Sábado, 10h",
+    endereco: `Rua Lopes Trovão, 200 — ${inferRegiao(l.interesse).split(" ")[0]}`,
+    status: "Agendada" as const,
+  };
+}
 
 type FiltrosAv = {
   origem: string;
@@ -195,6 +343,13 @@ function LeadsPage() {
   const [filtrosAv, setFiltrosAv] = useState<FiltrosAv>(FILTROS_AV_VAZIO);
   const [filtrosAvAplicados, setFiltrosAvAplicados] = useState<FiltrosAv>(FILTROS_AV_VAZIO);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [perdaOpen, setPerdaOpen] = useState(false);
+  const [perdaMotivo, setPerdaMotivo] = useState("");
+  const [perdaObs, setPerdaObs] = useState("");
+  const [registroOpen, setRegistroOpen] = useState(false);
+  const [registroTipo, setRegistroTipo] = useState<string>("Ligação");
+  const [registroTexto, setRegistroTexto] = useState("");
+  const [waTexto, setWaTexto] = useState("");
 
   const aFazerHoje = leads.filter((l) => isAtivo(l) && (isHoje(l) || l.status === "Qualificado" || l.status === "Proposta")).length;
   const atrasados = leads.filter(isAtrasado).length;
@@ -618,18 +773,36 @@ function LeadsPage() {
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
           <div className="absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto bg-background shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-border bg-background p-5">
-              <div>
-                <div className="text-[10px] text-muted-foreground/70">{selected.id} · Operação do Lead</div>
-                <div className="font-display text-xl">{selected.nome}</div>
-                <div className="mt-1 flex items-center gap-2">
-                  <span className={cn("rounded-full px-2 py-0.5 text-[11px]", statusColor[selected.status])}>{selected.status}</span>
-                  <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", selectedNivelMeta.chip)}>
-                    <span aria-hidden>{selectedNivelMeta.emoji}</span>{selectedNivelMeta.label}
-                  </span>
+            <div className="sticky top-0 z-10 border-b border-border bg-background p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-[10px] text-muted-foreground/70">{selected.id} · Operação do Lead</div>
+                  <div className="font-display text-xl">{selected.nome}</div>
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className={cn("rounded-full px-2 py-0.5 text-[11px]", statusColor[selected.status])}>{selected.status}</span>
+                    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", selectedNivelMeta.chip)}>
+                      <span aria-hidden>{selectedNivelMeta.emoji}</span>{selectedNivelMeta.label}
+                    </span>
+                    <span className={cn(
+                      "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                      selectedPrio === "quente" ? "bg-red-50 text-red-700" :
+                      selectedPrio === "morno" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-700"
+                    )}>
+                      {selectedPrio === "quente" ? "🔥 Quente" : selectedPrio === "morno" ? "🌤 Morno" : "❄️ Frio"}
+                    </span>
+                    {getAlertasComportamentais(selected).map((a) => (
+                      <span key={a} className="rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">⚠ {a}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPerdaOpen(true)}
+                    className="rounded-md border border-border px-2.5 py-1.5 text-xs text-red-700 hover:bg-red-50"
+                  >Marcar como perdido</button>
+                  <button onClick={() => setDrawerOpen(false)} className="rounded-md p-1.5 hover:bg-surface"><X className="h-4 w-4" /></button>
                 </div>
               </div>
-              <button onClick={() => setDrawerOpen(false)} className="rounded-md p-1.5 hover:bg-surface"><X className="h-4 w-4" /></button>
             </div>
 
             <div className="p-5">
@@ -645,130 +818,289 @@ function LeadsPage() {
                   <TabsTrigger value="historico">Histórico</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="execucao" className="space-y-4">
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
-                    <div className="text-[11px] uppercase tracking-widest text-emerald-800">Próxima ação recomendada</div>
-                    <div className="mt-2 text-base font-medium">
-                      {selectedAcao.tipo !== "nenhum" ? `${selectedAcao.label} ${primeiroNome}` : "Sem ação imediata"}
+                {/* EXECUÇÃO */}
+                <TabsContent value="execucao" className="space-y-5">
+                  {/* Bloco 1 — Status operacional */}
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Status operacional</div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {getStatusOperacional(selected).map((s, i) => (
+                        <span
+                          key={i}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+                            s.tone === "danger" ? "border-red-100 bg-red-50 text-red-700" :
+                            s.tone === "warn" ? "border-amber-100 bg-amber-50 text-amber-800" :
+                            s.tone === "good" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
+                            "border-border bg-surface text-foreground"
+                          )}
+                        >
+                          <span aria-hidden>{s.icon}</span>{s.label}
+                        </span>
+                      ))}
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">{subtextoUrg}</div>
                   </div>
-                  <div>
-                    <div className="text-xs uppercase tracking-widest text-muted-foreground">Tarefas de hoje</div>
-                    <ul className="mt-2 space-y-1.5 text-sm">
-                      {selectedAcao.tipo !== "nenhum" ? (
-                        <li className="rounded-md border border-border px-3 py-2">{selectedAcao.label} — {primeiroNome}</li>
-                      ) : (
-                        <li className="text-muted-foreground">Sem tarefas para hoje.</li>
-                      )}
-                    </ul>
-                  </div>
-                  {isAtrasado(selected) && (
-                    <div>
-                      <div className="text-xs uppercase tracking-widest text-red-700">Tarefas atrasadas</div>
-                      <ul className="mt-2 space-y-1.5 text-sm">
-                        <li className="rounded-md border border-red-200 bg-red-50/50 px-3 py-2 text-red-800">
-                          {selectedAcao.label} — atrasado há {selected.ultimaInteracao}
-                        </li>
-                      </ul>
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                    <button className="rounded-md bg-navy px-3 py-2 text-xs text-navy-foreground">Avançar etapa</button>
-                    <button className="rounded-md border border-border px-3 py-2 text-xs">Registrar interação</button>
-                  </div>
-                </TabsContent>
 
-                <TabsContent value="cadencia" className="space-y-3">
-                  {[1, 2, 3].map((d) => (
-                    <div key={d}>
-                      <div className="text-xs uppercase tracking-widest text-muted-foreground">Dia {d}</div>
-                      <ul className="mt-2 space-y-1.5">
-                        {getCadenciaPlano(selected).filter((c) => c.dia === d).map((c, i) => (
-                          <li key={i} className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
-                            <span>{c.titulo}</span>
-                            <span className={cn(
-                              "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                              c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
-                              c.status === "atrasado" ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600"
-                            )}>
-                              {c.status === "concluido" ? "Concluído" : c.status === "atrasado" ? "Atrasado" : "Pendente"}
-                            </span>
-                          </li>
+                  {/* Bloco 2 — Próxima ação */}
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
+                    <div className="text-[11px] uppercase tracking-widest text-emerald-800">Próxima ação recomendada</div>
+                    <div className="mt-1 text-lg font-semibold">
+                      {selectedAcao.tipo !== "nenhum" ? `${selectedAcao.label} com ${primeiroNome}` : "Sem ação imediata"}
+                    </div>
+                    {getMotivos(selected).length > 0 && (
+                      <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                        {getMotivos(selected).map((m) => (
+                          <li key={m} className="flex gap-1.5"><span className="text-emerald-700">•</span>{m}</li>
                         ))}
                       </ul>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button className="inline-flex items-center gap-1.5 rounded-md bg-navy px-3 py-1.5 text-xs font-medium text-navy-foreground"><Phone className="h-3.5 w-3.5" /> Ligar</button>
+                      <button className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</button>
+                      {selected.status === "Visita" && (
+                        <button className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium"><Calendar className="h-3.5 w-3.5" /> Confirmar visita</button>
+                      )}
+                      <button className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs">Adiar tarefa</button>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Bloco 3 — Timeline */}
+                  <div>
+                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Timeline operacional</div>
+                    <ol className="mt-2 space-y-2 border-l border-border pl-4">
+                      {getTimelineOperacional(selected).map((t, i) => (
+                        <li key={i} className="relative text-sm">
+                          <span className="absolute -left-[21px] top-1 grid h-3 w-3 place-items-center rounded-full bg-background text-[10px]">{t.icon}</span>
+                          <div className={cn(
+                            "leading-snug",
+                            t.tone === "warn" && "text-amber-800",
+                            t.tone === "good" && "text-foreground"
+                          )}>{t.label}</div>
+                          <div className="text-[11px] text-muted-foreground">{t.quando}</div>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+
+                  {/* Bloco 4 — Cadência ativa */}
+                  <div className="rounded-xl border border-border p-4">
+                    <div className="flex items-baseline justify-between">
+                      <div>
+                        <div className="text-sm font-semibold">Cadência ativa</div>
+                        <div className="text-xs text-muted-foreground">Sequência operacional em andamento</div>
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">Qualificação Premium</span>
+                    </div>
+                    <ul className="mt-3 space-y-1.5">
+                      {getCadenciaDetalhada(selected).slice(0, 6).map((c, i) => {
+                        const tone =
+                          c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
+                          c.status === "atrasado" ? "bg-red-50 text-red-700" :
+                          c.status === "hoje" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600";
+                        const icon = c.status === "concluido" ? "☑" : c.status === "atrasado" ? "⚠" : "⬜";
+                        return (
+                          <li key={i} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="text-base">{icon}</span>
+                              <div className="min-w-0">
+                                <div className="truncate">{c.titulo}</div>
+                                <div className="text-[11px] text-muted-foreground">{c.canal} · SLA {c.sla}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", tone)}>
+                                {c.status === "concluido" ? "Concluído" : c.status === "atrasado" ? "Atrasado" : c.status === "hoje" ? "Hoje" : "Pendente"}
+                              </span>
+                              {c.status !== "concluido" && (
+                                <button className="rounded-md border border-border px-2 py-0.5 text-[10px] hover:bg-surface">Concluir</button>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {/* Bloco 5 — Métricas rápidas */}
+                  <div>
+                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Métricas do lead</div>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {[
+                        { k: "Score", v: String(getScoreLead(selected)) },
+                        { k: "Potencial", v: formatBRL(selected.orcamento) },
+                        { k: "Comissão", v: formatBRL(selectedComissao) },
+                        { k: "Conversão", v: `${getChanceConversao(selected)}%` },
+                        { k: "Resposta média", v: getTempoMedioResp(selected) },
+                        { k: "Decisão", v: getEstagioDecisao(selected) },
+                      ].map((m) => (
+                        <div key={m.k} className="rounded-md border border-border bg-card px-3 py-2">
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{m.k}</div>
+                          <div className="num mt-0.5 text-sm font-semibold">{m.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </TabsContent>
 
-                <TabsContent value="interacoes">
-                  <ol className="space-y-3">
+                {/* CADÊNCIA */}
+                <TabsContent value="cadencia" className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-semibold">Cadência: Qualificação Premium</div>
+                      <div className="text-xs text-muted-foreground">Jornada operacional do lead</div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button className="rounded-md border border-border px-2 py-1 text-[11px]">Pausar</button>
+                      <button className="rounded-md border border-border px-2 py-1 text-[11px]">Reiniciar</button>
+                      <button className="rounded-md border border-border px-2 py-1 text-[11px]">Trocar</button>
+                    </div>
+                  </div>
+                  {[1, 2, 3, 4].map((d) => {
+                    const itens = getCadenciaDetalhada(selected).filter((c) => c.dia === d);
+                    if (itens.length === 0) return null;
+                    return (
+                      <div key={d} className="rounded-xl border border-border p-3">
+                        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Dia {d}</div>
+                        <ul className="mt-2 space-y-1.5">
+                          {itens.map((c, i) => (
+                            <li key={i} className="rounded-md border border-border bg-surface/50 px-3 py-2 text-sm">
+                              <div className="flex items-center justify-between">
+                                <div className="font-medium">{c.titulo}</div>
+                                <span className={cn(
+                                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                  c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
+                                  c.status === "atrasado" ? "bg-red-50 text-red-700" :
+                                  c.status === "hoje" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600"
+                                )}>{c.status === "concluido" ? "Concluído" : c.status === "atrasado" ? "Atrasado" : c.status === "hoje" ? "Hoje" : "Pendente"}</span>
+                              </div>
+                              <div className="mt-0.5 text-[11px] text-muted-foreground">{c.canal} · {c.objetivo} · SLA {c.sla}</div>
+                              {c.script && <div className="mt-1 text-[11px] italic text-muted-foreground">Script: {c.script}</div>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </TabsContent>
+
+                {/* INTERAÇÕES */}
+                <TabsContent value="interacoes" className="space-y-3">
+                  <div className="flex justify-end">
+                    <button onClick={() => setRegistroOpen(true)} className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background">
+                      <Plus className="h-3 w-3" /> Registrar interação
+                    </button>
+                  </div>
+                  <ol className="space-y-2">
                     {selected.historico.map((h, i) => (
-                      <li key={i} className="flex gap-3 text-sm">
-                        <div className={cn("mt-1 h-2 w-2 shrink-0 rounded-full", i === 0 ? "bg-brand ring-2 ring-brand/20" : "bg-muted-foreground/40")} />
-                        <div>
-                          <div className="text-xs text-muted-foreground">{h.data} · {h.tipo} · Ramon</div>
-                          <div className={cn(i === 0 && "font-medium")}>{h.texto}</div>
+                      <li key={i} className="rounded-xl border border-border p-3 text-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 font-medium">
+                            <span>{h.tipo.includes("WhatsApp") ? "💬" : h.tipo.includes("Liga") ? "📞" : h.tipo.includes("Visita") ? "📅" : h.tipo.includes("IA") ? "🧠" : "📝"}</span>
+                            {h.tipo}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">{h.data} · Você</div>
+                        </div>
+                        <div className="mt-1 text-foreground">{h.texto}</div>
+                        <div className="mt-2 rounded-md bg-surface px-2 py-1.5 text-[11px] text-muted-foreground">
+                          ➡ Próxima ação sugerida: <span className="text-foreground">{getSugestaoPosInteracao(h.tipo, selected)}</span>
                         </div>
                       </li>
                     ))}
                   </ol>
                 </TabsContent>
 
+                {/* WHATSAPP */}
                 <TabsContent value="whatsapp" className="space-y-3">
-                  <div className="rounded-md border border-border p-3 text-sm">
-                    <div className="text-xs text-muted-foreground">Última mensagem</div>
-                    <div className="mt-1">{selected.historico.find((h) => h.tipo === "WhatsApp")?.texto ?? "Sem mensagens registradas."}</div>
+                  <div className="rounded-xl border border-border p-3">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Última conversa</span>
+                      <span>{selected.historico.find((h) => h.tipo.includes("WhatsApp"))?.data ?? "—"}</span>
+                    </div>
+                    <div className="mt-1 text-sm">{selected.historico.find((h) => h.tipo.includes("WhatsApp"))?.texto ?? "Sem conversa registrada."}</div>
                   </div>
+                  <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-3">
+                    <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-violet-800">
+                      <Sparkles className="h-3 w-3" /> Sugestão IA
+                    </div>
+                    <div className="mt-1 text-sm">{`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou sobre ${inferTipo(selected.interesse).toLowerCase()} em ${inferRegiao(selected.interesse).split(" ")[0]}.`}</div>
+                    <div className="mt-2 flex gap-1.5">
+                      <button onClick={() => setWaTexto(`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou.`)} className="rounded-md bg-violet-600 px-2.5 py-1 text-[11px] text-white">Usar sugestão</button>
+                      <button className="rounded-md border border-border px-2.5 py-1 text-[11px]">Editar</button>
+                      <button onClick={() => navigator.clipboard?.writeText(waTexto)} className="rounded-md border border-border px-2.5 py-1 text-[11px]">Copiar</button>
+                    </div>
+                  </div>
+                  <textarea
+                    value={waTexto}
+                    onChange={(e) => setWaTexto(e.target.value)}
+                    placeholder="Escreva uma mensagem..."
+                    className="h-24 w-full rounded-md border border-border bg-background p-2 text-sm"
+                  />
                   <div>
-                    <div className="text-xs text-muted-foreground">Mensagem sugerida</div>
-                    <textarea
-                      defaultValue={`Oi ${primeiroNome}, tudo bem? Separei algumas opções que combinam com o que você procura. Posso te enviar?`}
-                      className="mt-1 h-28 w-full rounded-md border border-border bg-background p-2 text-sm"
-                    />
+                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Templates rápidos</div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {TEMPLATES_WA.map((t) => {
+                        const txt = t.texto.replace("{nome}", primeiroNome).replace("{tipo}", inferTipo(selected.interesse).toLowerCase()).replace("{regiao}", inferRegiao(selected.interesse).split(" ")[0]);
+                        return (
+                          <button key={t.titulo} onClick={() => setWaTexto(txt)} className="rounded-md border border-border bg-card p-2 text-left text-xs hover:bg-surface">
+                            <div className="font-medium">{t.titulo}</div>
+                            <div className="line-clamp-2 text-muted-foreground">{txt}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <button className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white">
-                    <Send className="h-3.5 w-3.5" /> Enviar mensagem sugerida
-                  </button>
                 </TabsContent>
 
-                <TabsContent value="visitas">
-                  {selected.status === "Visita" ? (
-                    <div className="rounded-md border border-border p-3 text-sm">
-                      <div className="font-medium">Sábado, 10h</div>
-                      <div className="text-muted-foreground">Apartamento em {inferRegiao(selected.interesse)}</div>
-                      <div className="mt-2"><span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">A confirmar</span></div>
-                      <textarea placeholder="Feedback da visita..." className="mt-3 h-20 w-full rounded-md border border-border bg-background p-2 text-sm" />
-                    </div>
-                  ) : (
-                    <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                      Nenhuma visita agendada.
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="qualificacao">
-                  <dl className="grid grid-cols-2 gap-3 text-sm">
-                    {[
-                      ["Perfil do cliente", selected.interesse.split(",").slice(0, 2).join(",") || "—"],
-                      ["Tipo de imóvel", inferTipo(selected.interesse)],
-                      ["Região", inferRegiao(selected.interesse)],
-                      ["Orçamento", formatBRL(selected.orcamento)],
-                      ["Capacidade financeira", "A confirmar"],
-                      ["Prazo de compra", "3-6 meses"],
-                      ["Motivação", "Mudança de imóvel"],
-                      ["Objeções", "—"],
-                    ].map(([k, v]) => (
-                      <div key={k} className="rounded-md border border-border p-3">
-                        <dt className="text-xs text-muted-foreground">{k}</dt>
-                        <dd className="mt-0.5 font-medium">{v}</dd>
+                {/* VISITAS */}
+                <TabsContent value="visitas" className="space-y-3">
+                  {(() => {
+                    const v = getVisitaInfo(selected);
+                    if (!v) return (
+                      <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                        Nenhuma visita agendada para este lead.
                       </div>
-                    ))}
-                  </dl>
+                    );
+                    return (
+                      <div className="rounded-xl border border-border p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-semibold">{v.imovel}</div>
+                            <div className="text-xs text-muted-foreground">{v.endereco}</div>
+                          </div>
+                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">{v.status}</span>
+                        </div>
+                        <div className="mt-2 text-sm">{v.quando}</div>
+                        <textarea placeholder="Feedback ou observações..." className="mt-3 h-20 w-full rounded-md border border-border bg-background p-2 text-sm" />
+                        <div className="mt-3 flex gap-1.5">
+                          <button className="rounded-md bg-emerald-600 px-2.5 py-1.5 text-[11px] text-white">Confirmar visita</button>
+                          <button className="rounded-md border border-border px-2.5 py-1.5 text-[11px]">Registrar feedback</button>
+                          <button className="rounded-md border border-border px-2.5 py-1.5 text-[11px]">Reagendar</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </TabsContent>
 
+                {/* QUALIFICAÇÃO */}
+                <TabsContent value="qualificacao" className="space-y-3">
+                  {QUALIF_BLOCOS(selected).map((b) => (
+                    <div key={b.titulo} className="rounded-xl border border-border p-4">
+                      <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
+                      <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                        {b.campos.map(([k, v]) => (
+                          <div key={k} className="rounded-md bg-surface/60 px-3 py-1.5">
+                            <dt className="text-[11px] text-muted-foreground">{k}</dt>
+                            <dd className="font-medium">{v}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  ))}
+                </TabsContent>
+
+                {/* SCRIPTS */}
                 <TabsContent value="scripts" className="space-y-2">
-                  {SCRIPTS.map((s) => {
+                  {SCRIPTS_LIB.map((s) => {
                     const texto = s.texto
                       .replace("{nome}", primeiroNome)
                       .replace("{tipo}", inferTipo(selected.interesse))
@@ -776,44 +1108,43 @@ function LeadsPage() {
                     return (
                       <div key={s.titulo} className="rounded-md border border-border p-3">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <Sparkles className="h-3.5 w-3.5 text-violet-600" />
-                            {s.titulo}
+                          <div>
+                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.categoria}</div>
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              <Sparkles className="h-3.5 w-3.5 text-violet-600" />
+                              {s.titulo}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">Objetivo: {s.objetivo}</div>
                           </div>
                           <button onClick={() => navigator.clipboard?.writeText(texto)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
                             <Copy className="h-3 w-3" /> Copiar
                           </button>
                         </div>
-                        <p className="mt-2 text-sm text-muted-foreground">{texto}</p>
+                        <p className="mt-2 rounded-md bg-surface px-2 py-1.5 text-sm text-muted-foreground">{texto}</p>
                       </div>
                     );
                   })}
                 </TabsContent>
 
+                {/* HISTÓRICO */}
                 <TabsContent value="historico">
-                  <ol className="space-y-3">
-                    <li className="flex gap-3 text-sm">
-                      <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />
-                      <div>
-                        <div className="text-xs text-muted-foreground">Etapa atual</div>
-                        <div>Lead em <span className="font-medium">{selected.status}</span></div>
-                      </div>
+                  <ol className="space-y-2.5 border-l border-border pl-4">
+                    <li className="relative text-sm">
+                      <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-emerald-500" />
+                      <div className="text-[11px] text-muted-foreground">Sistema · agora</div>
+                      <div>Lead em <span className="font-medium">{selected.status}</span></div>
                     </li>
                     {selected.historico.map((h, i) => (
-                      <li key={i} className="flex gap-3 text-sm">
-                        <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />
-                        <div>
-                          <div className="text-xs text-muted-foreground">{h.data} · {h.tipo}</div>
-                          <div>{h.texto}</div>
-                        </div>
+                      <li key={i} className="relative text-sm">
+                        <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-muted-foreground/40" />
+                        <div className="text-[11px] text-muted-foreground">{h.data} · {h.tipo} · Você</div>
+                        <div>{h.texto}</div>
                       </li>
                     ))}
-                    <li className="flex gap-3 text-sm">
-                      <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />
-                      <div>
-                        <div className="text-xs text-muted-foreground">Origem</div>
-                        <div>Lead criado via {selected.origem}</div>
-                      </div>
+                    <li className="relative text-sm">
+                      <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-muted-foreground/40" />
+                      <div className="text-[11px] text-muted-foreground">Origem</div>
+                      <div>Lead criado via {selected.origem}</div>
                     </li>
                   </ol>
                 </TabsContent>
@@ -822,6 +1153,65 @@ function LeadsPage() {
           </div>
         </div>
       )}
+
+      {/* Modal: Marcar como perdido */}
+      <Dialog open={perdaOpen} onOpenChange={setPerdaOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Marcar lead como perdido</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground">Motivo *</span>
+              <select value={perdaMotivo} onChange={(e) => setPerdaMotivo(e.target.value)} className="w-full rounded-md border border-border bg-background px-2 py-1.5">
+                <option value="">Selecione um motivo</option>
+                {MOTIVOS_PERDA.map((m) => <option key={m}>{m}</option>)}
+              </select>
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground">Observação *</span>
+              <textarea value={perdaObs} onChange={(e) => setPerdaObs(e.target.value)} rows={3} className="w-full rounded-md border border-border bg-background px-2 py-1.5" placeholder="Conte o que aconteceu..." />
+            </label>
+          </div>
+          <DialogFooter>
+            <button onClick={() => setPerdaOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm">Cancelar</button>
+            <button
+              disabled={!perdaMotivo || !perdaObs.trim()}
+              onClick={() => { setPerdaOpen(false); setPerdaMotivo(""); setPerdaObs(""); }}
+              className="rounded-md bg-red-600 px-3 py-2 text-sm text-white disabled:opacity-50"
+            >Confirmar perda</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Registrar interação */}
+      <Dialog open={registroOpen} onOpenChange={setRegistroOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Registrar interação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground">Tipo</span>
+              <select value={registroTipo} onChange={(e) => setRegistroTipo(e.target.value)} className="w-full rounded-md border border-border bg-background px-2 py-1.5">
+                {TIPOS_INTERACAO.map((t) => <option key={t}>{t}</option>)}
+              </select>
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs text-muted-foreground">Resumo</span>
+              <textarea value={registroTexto} onChange={(e) => setRegistroTexto(e.target.value)} rows={3} className="w-full rounded-md border border-border bg-background px-2 py-1.5" placeholder="O que foi conversado?" />
+            </label>
+          </div>
+          <DialogFooter>
+            <button onClick={() => setRegistroOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm">Cancelar</button>
+            <button
+              onClick={() => { setRegistroOpen(false); setRegistroTexto(""); }}
+              className="rounded-md bg-foreground px-3 py-2 text-sm text-background"
+            >Salvar</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
