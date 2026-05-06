@@ -1,94 +1,94 @@
-## Etapa 3 — Prioridade inteligente + sensação de perda
+# Plano — Leads como Central de Execução Comercial Guiada
 
-Arquivo único editado: `src/routes/app.leads.tsx`. Sem mudanças em mock, sidebar, rotas, cards do topo, chips de filtro, colunas existentes ou lógica financeira.
+Alteração restrita a `src/routes/app.leads.tsx` (sem mexer em sidebar, rotas, mock, Pipeline ou outras telas). Mantém a base atual (cards, filtros rápidos, tabela, aside) e adiciona as camadas faltantes: 5º card de VGV, busca real, filtros avançados, colunas operacionais, ações rápidas no aside e o drawer “Operação do Lead” com 8 abas.
 
-### 1. Novo tipo `Nivel` (alta/media/baixa) + helpers
+## 1. Cabeçalho
 
-Adicionar logo após os helpers existentes (`getUrgencia`, etc.):
+Atualizar subtítulo para:
+"Sua central diária de execução comercial. Veja o que fazer, quando fazer e quais oportunidades priorizar."
 
-- `getNivel(l: Lead): "alta" | "media" | "baixa"` — regra puramente visual:
-  - **alta**: `isAtrasado(l)` OU (`getPrioridade === "quente"` e `getUrgencia === "hoje"`) OU (top‑20% de comissão entre leads ativos com ação pendente).
-  - **media**: ação para hoje (`getUrgencia === "hoje"`) OU (`getPrioridade === "morno"` com comissão acima da mediana).
-  - **baixa**: `getPrioridade === "frio"` ou sem urgência.
-- `getNivelMeta(n)` → `{ label, dot, chip, border }`:
-  - alta → `🔴 Alta prioridade`, chip `bg-red-50 text-red-700 border-red-100`, border esquerda `border-l-red-500`.
-  - media → `🟡 Média prioridade`, chip `bg-amber-50 text-amber-800 border-amber-100`, `border-l-amber-400`.
-  - baixa → `⚪ Baixa prioridade`, chip `bg-slate-50 text-slate-600 border-slate-200`, `border-l-transparent`.
-- `getNivelRank(n)` → 0/1/2.
-- `getReforco(l): string | null` — microtexto de tensão para alta prioridade:
-  - atrasado → `"Sem resposta há ${ultimaInteracao}"`
-  - status Visita + hoje → `"Visita hoje — ainda não confirmada"`
-  - status Proposta → `"Proposta enviada — sem retorno"`
-  - quente sem `isHoje` → `"Lead quente sem contato"`
-  - default → `null`
+## 2. Bloco "Execução de hoje" — adicionar 5º card
 
-Limiar de comissão (top‑20%): calculado uma vez dentro do componente a partir de `leads` ativos:
-```ts
-const comissoesAtivas = leads.filter(isAtivo).map(l => getComissao(l.orcamento)).sort((a,b)=>b-a);
-const topComissao = comissoesAtivas[Math.floor(comissoesAtivas.length * 0.2)] ?? Infinity;
-const medianaComissao = comissoesAtivas[Math.floor(comissoesAtivas.length / 2)] ?? 0;
-```
-Passados para `getNivel` como segundo argumento (assinatura `getNivel(l, { topComissao, medianaComissao })`).
+Manter os 4 cards existentes e acrescentar:
 
-### 2. Ordenação atualizada
+- **Oportunidades quentes** — valor `R$ X mi` em VGV (soma de `orcamento` dos leads com `getPrioridade === "quente"` e ativos), label "VGV em leads quentes", subtexto "Potencial estimado das oportunidades prioritárias".
 
-Substituir o sort atual por:
-```
-1. ativos antes de inativos (mantido)
-2. nível: alta → media → baixa
-3. maior comissão primeiro
-```
-(Remover o tiebreaker por urgência — nível já reflete urgência.)
+Grid passa a `lg:grid-cols-5` (mantém `grid-cols-2` no mobile).
 
-### 3. Linha do lead — badge de prioridade
+## 3. Filtros rápidos + busca + filtros avançados
 
-Na coluna **Lead**, abaixo (ou ao lado) do nome adicionar um badge discreto com `getNivelMeta`:
+- Adicionar chip **"Perdidos"** ao array `FILTROS_RAPIDOS` (filtra `status === "Perdido"`).
+- Substituir o "campo de busca" decorativo por `<input>` real controlado (`busca`), aplicado sobre nome / id / interesse.
+- Botão **"Filtros"** abre um `<Dialog>` com filtros avançados (somente UI, sem persistência de lógica nova): Origem, Temperatura, Etapa, Região, Tipo de imóvel, Faixa de orçamento, Tempo sem interação, Status da cadência. Render via `select`/`checkbox` simples + botão "Aplicar"/"Limpar". Estado local; aplicar reduz `leadsFiltrados`.
+- Mover o botão "+ Novo lead" para a barra de ações junto com "Filtros" (mantém o do header também, conforme já existe — opcional remover do header para não duplicar; manter no header e adicionar primário na toolbar).
+
+## 4. Tabela — novas colunas
+
+Reordenar/adicionar colunas para a ordem operacional:
 
 ```
-🔴 Alta prioridade
+Lead | Origem | Potencial | Etapa | Próxima ação | Prazo/SLA | Última interação
 ```
 
-Estilo: `inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium` + `chip` do nível. Substituir o badge "Quente/Morno/Frio" atual por este badge de nível (mantém apenas 1 badge por linha, conforme Etapa 2). A bolinha colorida emoji entra como prefixo textual.
+- **Origem**: igual hoje (badge "qual." quando aplicável).
+- **Etapa**: usa `l.status` com `statusColor` (renomeia coluna "Status" para "Etapa").
+- **Última interação**: novo helper `getCanalUltimo(l)` deriva canal a partir do primeiro item de `l.historico` (se existir) ou "—". Render: `Canal · ultimaInteracao`. Sem alterar mock.
 
-A `border-l-4` da `<tr>` passa a usar `getNivelMeta(...).border` em vez de `urgMeta.border`, reforçando prioridade visualmente.
+Mantém `border-l-4` por nível, badge de prioridade no Lead, microtexto de tensão na coluna "Próxima ação".
 
-### 4. Microtexto de reforço emocional
+## 5. Painel lateral — ações rápidas e atalho ao drawer
 
-Na coluna **Próxima ação**, abaixo do label, quando `getReforco(l)` retornar string e o nível for `alta`:
+Logo abaixo dos 3 CTAs (Ligar / WhatsApp / Registrar), incluir um grid 2x2 de ações secundárias compactas:
 
-```tsx
-<div className="mt-1 text-[11px] font-medium text-red-600">⚠️ {reforco}</div>
-```
+- Registrar interação
+- Agendar visita
+- Avançar etapa
+- Marcar como perdido
 
-Não alterar o restante da célula. Para outros níveis, nada extra (mantém limpeza).
+E um botão full-width **"Ver operação completa"** que abre o drawer.
 
-### 5. Painel lateral — bloco de risco
+Acrescentar pequenos badges/alertas contextuais no topo do aside quando aplicável (reaproveitando os helpers existentes): "Visita hoje às 15h" (quando `status === "Visita"` + `isHoje`), "Proposta sem retorno" (status Proposta), "Lead sem contato há Xh" (atrasado), "Lead qualificado pela IA" (se `historico` contém item com `tipo === "IA"`).
 
-Dentro do card "Potencial" do `<aside>`, abaixo do `subtextoUrg`, adicionar quando `selectedNivel === "alta"`:
+## 6. Drawer "Operação do Lead"
 
-```tsx
-{reforcoSelected && (
-  <div className="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700">
-    ⚠️ {reforcoSelected}
-  </div>
-)}
-{selectedNivel === "alta" && getPrioridade(selected.status) === "quente" && (
-  <div className="mt-1 text-xs font-medium text-red-700">⚠️ Lead quente em risco de esfriar</div>
-)}
-```
+Usar `Drawer` (vaul) lateral à direita controlado por `useState`. Abre via "Ver operação completa".
 
-Header do aside: trocar o badge "Quente/Morno/Frio" pelo badge de nível (mesma regra da tabela, 1 badge só).
+Conteúdo com `Tabs` (`@/components/ui/tabs`) — 8 abas:
 
-### 6. Restrições respeitadas
+1. **Execução** (default): repete o card de Próxima ação, lista "Tarefas de hoje" (mock derivado: ação atual), "Tarefas atrasadas" (se `isAtrasado`), botões "Avançar etapa" e "Registrar interação".
+2. **Cadência**: lista estática de Dia 1 / Dia 2 / Dia 3 com ações (Ligação inicial, WhatsApp, Follow-up, Envio de imóveis, Prova social, Nova tentativa). Status (Pendente / Concluído / Atrasado) derivado simples a partir do `status`/`urgencia` do lead.
+3. **Interações**: timeline a partir de `l.historico` (data, canal, texto). Reaproveita o histórico que já está no aside.
+4. **WhatsApp**: card com "última mensagem" (primeiro item de histórico com tipo WhatsApp ou placeholder), `<textarea>` com mensagem sugerida pré-preenchida e botão "Enviar mensagem sugerida" (sem ação real).
+5. **Visitas**: cartão com visita derivada (status Visita → "Sábado 10h, Apartamento em Icaraí"), campo de feedback. Demais leads: estado vazio.
+6. **Qualificação**: campos read-only derivados do `interesse`: Perfil, Tipo, Região, Orçamento, Capacidade, Prazo, Motivação, Objeções, Observações (placeholders quando não inferível).
+7. **Scripts**: lista de scripts por etapa (Primeiro contato, Reativação, Confirmação de visita, Pós-visita, Proposta) — texto curto estático com botão "Copiar".
+8. **Histórico**: timeline completa do `l.historico` + eventos sintéticos ("Lead criado", "Etapa atual: X").
 
-- Nada de novas colunas, modais, drawers, rotas.
-- Cards do topo, chips de filtro rápido, sidebar, mock e lógica financeira intactos.
-- Nenhuma mudança em outros arquivos.
+Drawer ocupa `max-w-2xl` à direita em desktop, full-width no mobile. Header do drawer: nome, id, etapa, badge de nível.
 
-### Critérios de aceite mapeados
+## 7. Lógica de priorização
 
-- Cada linha exibe um badge claro 🔴/🟡/⚪ + borda esquerda colorida correspondente.
-- Leads de alta prioridade aparecem primeiro e têm microtexto vermelho de tensão ("Sem resposta há…", "Visita hoje — ainda não confirmada", etc.).
-- Painel lateral reforça risco para leads críticos com bloco de alerta vermelho.
-- Diferença visual imediata entre alta vs. baixa prioridade; baixa prioridade fica neutra/cinza.
-- Ordenação: alta → média → baixa → maior comissão.
+Mantém ordenação atual (ativo → nível alta/média/baixa → maior comissão). Sem mudança.
+
+## 8. Restrições respeitadas
+
+- Sem alteração em sidebar, rotas, Pipeline, Financeiro, Imóveis, Indicações, Parcerias, mock.
+- Sem novas dependências (usa `Dialog`, `Drawer`, `Tabs` já presentes).
+- Identidade visual mantida (navy, surface, cards arredondados, fundo claro).
+
+## Detalhes técnicos
+
+- Novos estados em `LeadsPage`: `busca: string`, `filtrosOpen: boolean`, `drawerOpen: boolean`, `filtrosAvancados: { origem?, etapa?, tipo?, regiao?, orcamentoMax? }`.
+- Novos helpers no topo do arquivo: `getCanalUltimo`, `getVgvQuente(leads)`, `getAlertasContexto(l): string[]`, `getCadenciaPlano(l)`, `getScripts()`.
+- Reaproveita `getNivel`, `getNivelMeta`, `getReforco`, `getProximaAcao`, `getUrgencia`, `getUrgenciaMeta` já existentes.
+- Drawer renderizado uma única vez fora do `<aside>`, ligado a `selected`.
+- Garantir tipagem: extender `FILTROS_RAPIDOS` com `"Perdidos"`.
+
+## Critérios de aceite
+
+- Topo mostra 5 cards (4 atuais + VGV de quentes).
+- Chip "Perdidos" presente; busca filtra a tabela; botão Filtros abre dialog funcional.
+- Tabela mostra 7 colunas na ordem definida, incluindo Etapa e Última interação.
+- Aside tem 3 CTAs principais + 4 ações secundárias + botão "Ver operação completa".
+- Drawer abre com 8 abas navegáveis e conteúdo coerente por lead.
+- Visual da Ubroker preservado, sidebar e demais telas inalteradas.
