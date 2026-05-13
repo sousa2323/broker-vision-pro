@@ -768,67 +768,101 @@ function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Drawer Operação do Lead */}
+      {/* Modal Operação do Lead */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto bg-background shadow-2xl">
-            <div className="sticky top-0 z-10 border-b border-border bg-background p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="text-[10px] text-muted-foreground/70">{selected.id} · Operação do Lead</div>
-                  <div className="font-display text-xl">{selected.nome}</div>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className={cn("rounded-full px-2 py-0.5 text-[11px]", statusColor[selected.status])}>{selected.status}</span>
-                    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", selectedNivelMeta.chip)}>
-                      <span aria-hidden>{selectedNivelMeta.emoji}</span>{selectedNivelMeta.label}
-                    </span>
-                    <span className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                      selectedPrio === "quente" ? "bg-red-50 text-red-700" :
-                      selectedPrio === "morno" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-700"
-                    )}>
-                      {selectedPrio === "quente" ? "🔥 Quente" : selectedPrio === "morno" ? "🌤 Morno" : "❄️ Frio"}
-                    </span>
-                    {getAlertasComportamentais(selected).map((a) => (
-                      <span key={a} className="rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">⚠ {a}</span>
-                    ))}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
+          <div className="relative flex h-[90vh] max-h-[900px] w-[96vw] max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl md:w-[88vw]">
+            <Tabs defaultValue="execucao" className="flex h-full min-h-0 flex-1 flex-col">
+              {/* Scroll único */}
+              <div className="flex-1 overflow-y-auto">
+                {/* HEADER STICKY */}
+                <div className="sticky top-0 z-30 border-b border-border bg-background px-6 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <h2 className="font-display text-xl leading-tight">{selected.nome}</h2>
+                        <span className="text-[11px] text-muted-foreground/70">{selected.id}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className={cn("rounded-full px-2 py-0.5 text-[11px]", statusColor[selected.status])}>{selected.status}</span>
+                        <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", selectedNivelMeta.chip)}>
+                          <span aria-hidden>{selectedNivelMeta.emoji}</span>{selectedNivelMeta.label}
+                        </span>
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                          selectedPrio === "quente" ? "bg-red-50 text-red-700" :
+                          selectedPrio === "morno" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-700"
+                        )}>
+                          {selectedPrio === "quente" ? "🔥 Quente" : selectedPrio === "morno" ? "🌤 Morno" : "❄️ Frio"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        onClick={() => setPerdaOpen(true)}
+                        className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-surface hover:text-red-700"
+                      >Marcar como perdido</button>
+                      <button onClick={() => setDrawerOpen(false)} className="rounded-md p-1.5 hover:bg-surface" aria-label="Fechar"><X className="h-4 w-4" /></button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPerdaOpen(true)}
-                    className="rounded-md border border-border px-2.5 py-1.5 text-xs text-red-700 hover:bg-red-50"
-                  >Marcar como perdido</button>
-                  <button onClick={() => setDrawerOpen(false)} className="rounded-md p-1.5 hover:bg-surface"><X className="h-4 w-4" /></button>
-                </div>
-              </div>
-            </div>
 
-            <div className="p-5">
-              <Tabs defaultValue="execucao">
-                <TabsList className="flex w-full flex-wrap justify-start gap-1 bg-surface">
-                  <TabsTrigger value="execucao">Execução</TabsTrigger>
-                  <TabsTrigger value="cadencia">Cadência</TabsTrigger>
-                  <TabsTrigger value="interacoes">Interações</TabsTrigger>
-                  <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
-                  <TabsTrigger value="visitas">Visitas</TabsTrigger>
-                  <TabsTrigger value="qualificacao">Qualificação</TabsTrigger>
-                  <TabsTrigger value="scripts">Scripts</TabsTrigger>
-                  <TabsTrigger value="historico">Histórico</TabsTrigger>
-                </TabsList>
+                {/* TABS STICKY */}
+                <div className="sticky top-[88px] z-20 border-b border-border bg-background px-6 pt-3">
+                  <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-0 bg-transparent p-0">
+                    {[
+                      ["execucao","Execução"],["cadencia","Cadência"],["interacoes","Interações"],
+                      ["whatsapp","WhatsApp"],["visitas","Visitas"],["qualificacao","Qualificação"],
+                      ["scripts","Scripts"],["historico","Histórico"],
+                    ].map(([v,l]) => (
+                      <TabsTrigger
+                        key={v}
+                        value={v}
+                        className="rounded-none border-b-2 border-transparent bg-transparent px-3 pb-3 pt-1 text-sm shadow-none data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                      >{l}</TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+
+                {/* CONTEÚDO */}
+                <div className="px-6 py-6">
 
                 {/* EXECUÇÃO */}
-                <TabsContent value="execucao" className="space-y-5">
-                  {/* Bloco 1 — Status operacional */}
-                  <div className="rounded-xl border border-border bg-card p-4">
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Status operacional</div>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                <TabsContent value="execucao" className="mt-0 space-y-6">
+                  {/* NÍVEL 1 — Próxima ação (herói) */}
+                  <div className="rounded-xl border border-primary/30 bg-surface p-6 shadow-sm">
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Próxima ação recomendada</div>
+                    <div className="mt-2 text-2xl font-semibold leading-tight">
+                      {selectedAcao.tipo !== "nenhum" ? `${selectedAcao.label} com ${primeiroNome}` : "Sem ação imediata"}
+                    </div>
+                    {getMotivos(selected).length > 0 && (
+                      <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+                        {getMotivos(selected).map((m) => (
+                          <li key={m} className="flex gap-2"><span className="text-primary">•</span>{m}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Botões operacionais — grid uniforme */}
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-navy text-sm font-medium text-navy-foreground hover:opacity-90"><Phone className="h-4 w-4" /> Ligar</button>
+                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-emerald-600 text-sm font-medium text-white hover:opacity-90"><MessageCircle className="h-4 w-4" /> WhatsApp</button>
+                    <button onClick={() => setRegistroOpen(true)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><Plus className="h-4 w-4" /> Registrar</button>
+                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><Calendar className="h-4 w-4" /> Agendar visita</button>
+                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><ArrowRight className="h-4 w-4" /> Avançar etapa</button>
+                  </div>
+
+                  {/* NÍVEL 2 — Status operacional */}
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Status operacional</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
                       {getStatusOperacional(selected).map((s, i) => (
                         <span
                           key={i}
                           className={cn(
-                            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+                            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
                             s.tone === "danger" ? "border-red-100 bg-red-50 text-red-700" :
                             s.tone === "warn" ? "border-amber-100 bg-amber-50 text-amber-800" :
                             s.tone === "good" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
@@ -841,49 +875,25 @@ function LeadsPage() {
                     </div>
                   </div>
 
-                  {/* Bloco 2 — Próxima ação */}
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
-                    <div className="text-[11px] uppercase tracking-widest text-emerald-800">Próxima ação recomendada</div>
-                    <div className="mt-1 text-lg font-semibold">
-                      {selectedAcao.tipo !== "nenhum" ? `${selectedAcao.label} com ${primeiroNome}` : "Sem ação imediata"}
-                    </div>
-                    {getMotivos(selected).length > 0 && (
-                      <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
-                        {getMotivos(selected).map((m) => (
-                          <li key={m} className="flex gap-1.5"><span className="text-emerald-700">•</span>{m}</li>
-                        ))}
-                      </ul>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button className="inline-flex items-center gap-1.5 rounded-md bg-navy px-3 py-1.5 text-xs font-medium text-navy-foreground"><Phone className="h-3.5 w-3.5" /> Ligar</button>
-                      <button className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</button>
-                      {selected.status === "Visita" && (
-                        <button className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium"><Calendar className="h-3.5 w-3.5" /> Confirmar visita</button>
-                      )}
-                      <button className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs">Adiar tarefa</button>
-                    </div>
-                  </div>
-
-                  {/* Bloco 3 — Timeline */}
+                  {/* NÍVEL 2 — Timeline */}
                   <div>
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Timeline operacional</div>
-                    <ol className="mt-2 space-y-2 border-l border-border pl-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Timeline operacional</div>
+                    <ol className="ml-2 mt-3 space-y-4 border-l border-border pl-4">
                       {getTimelineOperacional(selected).map((t, i) => (
                         <li key={i} className="relative text-sm">
-                          <span className="absolute -left-[21px] top-1 grid h-3 w-3 place-items-center rounded-full bg-background text-[10px]">{t.icon}</span>
+                          <span className="absolute -left-[22px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full border border-border bg-background text-[10px]">{t.icon}</span>
                           <div className={cn(
                             "leading-snug",
-                            t.tone === "warn" && "text-amber-800",
-                            t.tone === "good" && "text-foreground"
+                            t.tone === "warn" && "text-amber-800"
                           )}>{t.label}</div>
-                          <div className="text-[11px] text-muted-foreground">{t.quando}</div>
+                          <div className="text-xs text-muted-foreground">{t.quando}</div>
                         </li>
                       ))}
                     </ol>
                   </div>
 
-                  {/* Bloco 4 — Cadência ativa */}
-                  <div className="rounded-xl border border-border p-4">
+                  {/* NÍVEL 2 — Cadência ativa */}
+                  <div className="rounded-xl border border-border bg-card p-5">
                     <div className="flex items-baseline justify-between">
                       <div>
                         <div className="text-sm font-semibold">Cadência ativa</div>
@@ -891,7 +901,7 @@ function LeadsPage() {
                       </div>
                       <span className="text-[11px] text-muted-foreground">Qualificação Premium</span>
                     </div>
-                    <ul className="mt-3 space-y-1.5">
+                    <ul className="mt-4 space-y-2">
                       {getCadenciaDetalhada(selected).slice(0, 6).map((c, i) => {
                         const tone =
                           c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
@@ -899,8 +909,8 @@ function LeadsPage() {
                           c.status === "hoje" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600";
                         const icon = c.status === "concluido" ? "☑" : c.status === "atrasado" ? "⚠" : "⬜";
                         return (
-                          <li key={i} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm">
-                            <div className="flex min-w-0 items-center gap-2">
+                          <li key={i} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-sm">
+                            <div className="flex min-w-0 items-center gap-3">
                               <span className="text-base">{icon}</span>
                               <div className="min-w-0">
                                 <div className="truncate">{c.titulo}</div>
@@ -921,10 +931,10 @@ function LeadsPage() {
                     </ul>
                   </div>
 
-                  {/* Bloco 5 — Métricas rápidas */}
+                  {/* NÍVEL 2 — Métricas rápidas */}
                   <div>
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Métricas do lead</div>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Métricas do lead</div>
+                    <div className="mt-3 grid grid-cols-3 gap-3 md:grid-cols-6">
                       {[
                         { k: "Score", v: String(getScoreLead(selected)) },
                         { k: "Potencial", v: formatBRL(selected.orcamento) },
@@ -933,9 +943,9 @@ function LeadsPage() {
                         { k: "Resposta média", v: getTempoMedioResp(selected) },
                         { k: "Decisão", v: getEstagioDecisao(selected) },
                       ].map((m) => (
-                        <div key={m.k} className="rounded-md border border-border bg-card px-3 py-2">
+                        <div key={m.k} className="rounded-lg border border-border bg-card p-3">
                           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{m.k}</div>
-                          <div className="num mt-0.5 text-sm font-semibold">{m.v}</div>
+                          <div className="num mt-1 text-sm font-semibold">{m.v}</div>
                         </div>
                       ))}
                     </div>
@@ -943,7 +953,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* CADÊNCIA */}
-                <TabsContent value="cadencia" className="space-y-4">
+                <TabsContent value="cadencia" className="mt-0 space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm font-semibold">Cadência: Qualificação Premium</div>
@@ -984,7 +994,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* INTERAÇÕES */}
-                <TabsContent value="interacoes" className="space-y-3">
+                <TabsContent value="interacoes" className="mt-0 space-y-4">
                   <div className="flex justify-end">
                     <button onClick={() => setRegistroOpen(true)} className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background">
                       <Plus className="h-3 w-3" /> Registrar interação
@@ -1010,7 +1020,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* WHATSAPP */}
-                <TabsContent value="whatsapp" className="space-y-3">
+                <TabsContent value="whatsapp" className="mt-0 space-y-4">
                   <div className="rounded-xl border border-border p-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>Última conversa</span>
@@ -1052,16 +1062,23 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* VISITAS */}
-                <TabsContent value="visitas" className="space-y-3">
+                <TabsContent value="visitas" className="mt-0 space-y-4">
                   {(() => {
                     const v = getVisitaInfo(selected);
                     if (!v) return (
-                      <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                        Nenhuma visita agendada para este lead.
+                      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center">
+                        <div className="grid h-14 w-14 place-items-center rounded-full bg-surface text-muted-foreground">
+                          <Calendar className="h-6 w-6" />
+                        </div>
+                        <div className="text-sm font-medium">Nenhuma visita agendada ainda.</div>
+                        <div className="max-w-sm text-xs text-muted-foreground">Agende uma visita para acelerar a qualificação e aumentar a chance de conversão deste lead.</div>
+                        <button className="mt-2 inline-flex h-10 items-center gap-2 rounded-md bg-navy px-4 text-sm font-medium text-navy-foreground hover:opacity-90">
+                          <Calendar className="h-4 w-4" /> Agendar primeira visita
+                        </button>
                       </div>
                     );
                     return (
-                      <div className="rounded-xl border border-border p-4">
+                      <div className="rounded-xl border border-border bg-card p-5">
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="text-sm font-semibold">{v.imovel}</div>
@@ -1069,12 +1086,12 @@ function LeadsPage() {
                           </div>
                           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">{v.status}</span>
                         </div>
-                        <div className="mt-2 text-sm">{v.quando}</div>
-                        <textarea placeholder="Feedback ou observações..." className="mt-3 h-20 w-full rounded-md border border-border bg-background p-2 text-sm" />
-                        <div className="mt-3 flex gap-1.5">
-                          <button className="rounded-md bg-emerald-600 px-2.5 py-1.5 text-[11px] text-white">Confirmar visita</button>
-                          <button className="rounded-md border border-border px-2.5 py-1.5 text-[11px]">Registrar feedback</button>
-                          <button className="rounded-md border border-border px-2.5 py-1.5 text-[11px]">Reagendar</button>
+                        <div className="mt-3 text-sm">{v.quando}</div>
+                        <textarea placeholder="Feedback ou observações..." className="mt-4 h-24 w-full rounded-md border border-border bg-background p-3 text-sm" />
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white">Confirmar visita</button>
+                          <button className="rounded-md border border-border px-3 py-1.5 text-xs">Registrar feedback</button>
+                          <button className="rounded-md border border-border px-3 py-1.5 text-xs">Reagendar</button>
                         </div>
                       </div>
                     );
@@ -1082,52 +1099,54 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* QUALIFICAÇÃO */}
-                <TabsContent value="qualificacao" className="space-y-3">
-                  {QUALIF_BLOCOS(selected).map((b) => (
-                    <div key={b.titulo} className="rounded-xl border border-border p-4">
-                      <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
-                      <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                        {b.campos.map(([k, v]) => (
-                          <div key={k} className="rounded-md bg-surface/60 px-3 py-1.5">
-                            <dt className="text-[11px] text-muted-foreground">{k}</dt>
-                            <dd className="font-medium">{v}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </div>
-                  ))}
+                <TabsContent value="qualificacao" className="mt-0">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {QUALIF_BLOCOS(selected).map((b) => (
+                      <div key={b.titulo} className="rounded-xl border border-border bg-card p-5">
+                        <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
+                        <dl className="mt-3 space-y-2 text-sm">
+                          {b.campos.map(([k, v]) => (
+                            <div key={k} className="flex items-baseline justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
+                              <dt className="text-xs text-muted-foreground">{k}</dt>
+                              <dd className="text-right text-sm font-medium">{v}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    ))}
+                  </div>
                 </TabsContent>
 
                 {/* SCRIPTS */}
-                <TabsContent value="scripts" className="space-y-2">
+                <TabsContent value="scripts" className="mt-0 space-y-4">
                   {SCRIPTS_LIB.map((s) => {
                     const texto = s.texto
                       .replace("{nome}", primeiroNome)
                       .replace("{tipo}", inferTipo(selected.interesse))
                       .replace("{regiao}", inferRegiao(selected.interesse));
                     return (
-                      <div key={s.titulo} className="rounded-md border border-border p-3">
-                        <div className="flex items-center justify-between">
+                      <div key={s.titulo} className="rounded-xl border border-border bg-card p-5">
+                        <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.categoria}</div>
-                            <div className="flex items-center gap-2 text-sm font-medium">
+                            <div className="mt-0.5 flex items-center gap-2 text-sm font-semibold">
                               <Sparkles className="h-3.5 w-3.5 text-violet-600" />
                               {s.titulo}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">Objetivo: {s.objetivo}</div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">Objetivo: {s.objetivo}</div>
                           </div>
-                          <button onClick={() => navigator.clipboard?.writeText(texto)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                          <button onClick={() => navigator.clipboard?.writeText(texto)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-surface hover:text-foreground">
                             <Copy className="h-3 w-3" /> Copiar
                           </button>
                         </div>
-                        <p className="mt-2 rounded-md bg-surface px-2 py-1.5 text-sm text-muted-foreground">{texto}</p>
+                        <p className="mt-3 rounded-md bg-surface p-3 text-sm text-foreground/80">{texto}</p>
                       </div>
                     );
                   })}
                 </TabsContent>
 
                 {/* HISTÓRICO */}
-                <TabsContent value="historico">
+                <TabsContent value="historico" className="mt-0">
                   <ol className="space-y-2.5 border-l border-border pl-4">
                     <li className="relative text-sm">
                       <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-emerald-500" />
@@ -1148,8 +1167,9 @@ function LeadsPage() {
                     </li>
                   </ol>
                 </TabsContent>
-              </Tabs>
-            </div>
+                </div>
+              </div>
+            </Tabs>
           </div>
         </div>
       )}
