@@ -1,121 +1,107 @@
-## Plano — Central operacional da rede (`/admin/usuarios`)
+## Plano — Gestão operacional ativa da rede (`/admin/usuarios`)
 
-Escopo: somente `src/routes/admin.usuarios.tsx`. Sem nova rota, sem mudar sidebar/identidade, sem novas dependências. Reutilizar tokens existentes (`bg-card`, `bg-surface`, `text-muted-foreground`, semânticas emerald/amber/red já em uso na tela). Drawer com `@/components/ui/sheet` (já disponível). Dados derivados do mock atual `adminBrokers` + `corretorRisco` — sem alterar `admin-mock.ts`.
+Escopo: somente `src/routes/admin.usuarios.tsx`. Sem nova rota, sem mudar sidebar/identidade/sidebar, sem novas dependências. Reutilizar tokens semânticos já em uso (`bg-card`, `bg-surface`, emerald/amber/red), `Sheet`, `Tabs`, `Checkbox` (já no projeto). Toda nova lógica derivada de `adminBrokers` + `corretorRisco` + helpers determinísticos existentes — sem alterar `admin-mock.ts`.
+
+Princípio de tom: linguagem de **suporte operacional**, não de fiscalização. Verbos: acompanhar, ajudar, priorizar, proteger, melhorar. Cores de alerta usadas com parcimônia.
 
 ---
 
-### 1. Helpers operacionais (topo do arquivo, puros)
+### 1. Novos helpers (extensão do bloco existente)
 
-Derivados de `adminBrokers` + `corretorRisco` + um seed determinístico por `id` para gerar números coerentes (sem aleatoriedade entre renders):
+Adicionar ao topo, ao lado dos já existentes:
 
-- `getLeadsAtivos(u) → number`
-- `getExecucao(u) → number (0–100)`
-- `getConversao(u) → number (0–100)`
-- `getNegligencia(u) → number` (leads sem interação acima do SLA)
-- `getDiasSemLogin(u) → number`
-- `getRiscoOperacional(u) → "saudavel" | "atencao" | "critico"` — combina execução baixa, negligência alta, dias sem login, status `Bloqueado/Inativo`.
-- `getScoreIA(u) → number (0–100)`
-- `getRegiao(u)` derivado de `cidade`.
+- `getOrigemLeads(u) → { plataforma: number; propria: number }` — split determinístico (plataforma 30–70%) sobre `getLeadsAtivos`.
+- `getNegligenciaPlataforma(u) → number` — fração de `getNegligencia` aplicável a leads originados pela Ubroker (define se "Redistribuir leads Ubroker" aparece).
+- `getPipelineComposicao(u) → { novos, qualificados, visitas, propostas, criticos }` — soma = `getLeadsAtivos`.
+- `getTendencia(u, metrica) → { atual, delta, direcao }` para `execucao | conversao | negligencia | tempoResposta`.
+- `getAlertasInteligentes(u) → Alerta[]` (max 4) — combina negligência plataforma, queda execução, dias sem login, conversão acima da média.
+- `getAcaoRecomendada(u) → { titulo, motivos: string[] }` — frase única + 2–4 bullets derivados dos piores indicadores.
+- `getSaudeOperacional(u) → "saudavel" | "atencao" | "critico"` — alias semântico do `getRiscoOperacional` para uso no novo bloco/badge no drawer.
 
-Helpers de classificação visual: `tonExecucao(n)`, `tonConversao(n)`, `tonRisco(r)` retornando classes `bg-emerald-50 text-emerald-700`, `bg-amber-50 text-amber-700`, `bg-red-50 text-red-700`, `bg-surface text-muted-foreground` — alinhados ao estilo já usado nos badges Plano/Status.
+Helpers visuais novos: `tonDelta(direcao, metrica)` (verde/vermelho conforme métrica — em "negligência" subir é ruim), `setaDelta(direcao)` (↑ ↓ →).
 
-### 2. Camada executiva — 6 KPIs no topo
+### 2. Tabela principal — seleção múltipla + ações em massa
 
-Acima dos filtros atuais. Grid `grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3`. Cada card: `rounded-xl bg-card border border-border p-3`, label uppercase 10px, valor 20px medium, subtexto 11px muted.
+- Coluna 1 vira checkbox (`<Checkbox />`). Estado `selectedIds: Set<string>`. Header com checkbox "selecionar todos visíveis (filtrados)".
+- Quando `selectedIds.size > 0`, renderizar **barra de ações em massa** flutuando acima da tabela: `sticky top-0` dentro do wrapper, `rounded-xl bg-card border border-border p-2 flex items-center gap-2`:
+  - `N selecionados` + botão limpar.
+  - Botões: **Enviar alerta operacional**, **Alterar cadência padrão**, **Agendar acompanhamento**, **Pausar distribuição de leads da plataforma**.
+  - Cada ação dispara `toast` (sonner já no projeto) com confirmação. Sem mutação real.
+  - Texto do botão de pausa traz tooltip: "Não bloqueia o corretor — apenas interrompe entrada de novos leads Ubroker até normalização."
+- Linha continua clicável p/ abrir drawer; clique no checkbox `stopPropagation`.
 
-1. Corretores ativos — count `status === "Ativo"` × multiplicador para 752.
-2. Execução média da rede — média de `getExecucao`.
-3. Leads negligenciados — soma de `getNegligencia`.
-4. Corretores em risco — count `risco === "critico"`.
-5. Receita da plataforma — soma de `receita`.
-6. Conversão média — média de `getConversao`.
+### 3. Drawer — cockpit de intervenção
 
-### 3. Faixa de alertas operacionais
-
-Container `rounded-xl bg-card border border-border p-3`, lista horizontal `flex flex-wrap gap-2`. Cada alerta: pill `text-xs` com bullet colorido (●) + texto. 4 alertas derivados:
-
-- 🔴 N corretores com >10 leads negligenciados
-- 🟠 N corretores sem login há >7 dias
-- 🟡 N propostas sem follow-up (derivado)
-- 🟢 N corretores com conversão >30%
-
-Clicar num alerta aplica filtro correspondente (por ex. risco=crítico).
-
-### 4. Filtros operacionais (substitui linha atual)
-
-Manter o input de busca à direita. Substituir os 4 chips atuais (`Todos/Pro/Free/Bloqueados`) por 6 grupos de filtros como popovers/selects compactos lado a lado, no mesmo estilo dos chips já existentes:
-
-- Execução: Todas · Alta · Média · Baixa
-- Risco: Todos · Saudável · Atenção · Crítico
-- Conversão: Todas · Alta · Baixa
-- Status operacional: Todos · Sem login · Negligenciando · Cadência atrasada · Pipeline parado
-- Plano: Todos · Free · Pro
-- Região: Todas · (lista derivada de `cidade`)
-
-Implementação simples: cada filtro é um `<select>` estilizado com classes existentes, ou chips em linha com overflow horizontal. Estado em `useState` único `{exec, risco, conv, status, plano, regiao, busca}`.
-
-### 5. Tabela operacional (substitui colunas atuais)
-
-Mantém `overflow-hidden rounded-xl border border-border bg-card` + `<table>` + `<thead bg-surface>`. Novas colunas:
-
-| Corretor | Plano | Região | Leads ativos | Execução | Conversão | Negligência | Receita | Risco | Ações |
-
-- **Corretor**: avatar + nome + CRECI (igual hoje).
-- **Plano / Região**: pills/texto compactos.
-- **Leads ativos**: número monoespaçado (`num`).
-- **Execução**: `XX%` + barrinha 60px (`h-1 rounded-full bg-surface` com fill colorido por tom).
-- **Conversão**: `XX%` colorido.
-- **Negligência**: número + ícone alerta quando >10 (vermelho).
-- **Receita**: `formatBRL` (igual hoje).
-- **Risco**: badge `Saudável/Atenção/Crítico` com tons emerald/amber/red.
-- **Ações**: ícones existentes (`ArrowUpRight`, `Ban`) + `MoreHorizontal` opcional.
-
-Linha inteira clicável: `onClick` abre o drawer do corretor (cursor-pointer, hover já existente).
-
-### 6. Drawer lateral do corretor
-
-Usar `Sheet` de `@/components/ui/sheet` com `side="right"` largura `sm:max-w-2xl`. Estado `selected: AdminBroker | null`.
-
-**Cabeçalho**: avatar 56px, nome (`font-display text-xl`), linha meta (CRECI · plano · região · status), badge risco grande, score IA (`🧠 87`).
-
-**Tabs** (`@/components/ui/tabs`): `Resumo · Operação · Performance · Cadências · Financeiro · Auditoria`.
-
-Conteúdo de cada aba: grids 2-col de mini-cards `rounded-lg bg-surface p-3` com label + valor, todos derivados dos helpers. Listas curtas (visitas, propostas, tarefas atrasadas, logs) renderizadas como linhas simples com bullet colorido — sem gráficos. Densidade controlada, espaçamento generoso.
-
-- **Resumo**: leads ativos, vendas, conversão, receita, score, execução, negligência.
-- **Operação**: visitas agendadas, propostas abertas, tarefas atrasadas, leads em risco, pipeline (mini lista por estágio).
-- **Performance**: conversão, tempo médio resposta, follow-ups, consistência, ranking interno (#N).
-- **Cadências**: ativas, % conclusão (barra), gargalos, tarefas ignoradas.
-- **Financeiro**: comissão gerada, fee plataforma, MRR SaaS, inadimplência (`corretorRisco.pctAtraso`), repasses pendentes (`corretorRisco.totalAberto`).
-- **Auditoria**: lista de eventos (mock derivado): alterações críticas, leads perdidos, bloqueios, denúncias, disputas.
-
-### 7. Ordem de renderização final
+Reorganizar o conteúdo do `Sheet` mantendo cabeçalho atual. Nova ordem dentro do `SheetContent`:
 
 ```
-Header (título + subtítulo)
+Header (avatar, nome, meta, badge risco, score IA)        ← já existe
 ↓
-6 KPIs
+[1] Bloco "Ação recomendada"            ← novo, destaque
 ↓
-Faixa de alertas
+[2] Bloco "Saúde operacional"           ← novo, badge grande + 1 linha
 ↓
-Linha de filtros + busca
+[3] Bloco "Alertas inteligentes"        ← novo, lista pills
 ↓
-Tabela operacional
+[4] Bloco "Tendência operacional"       ← novo, 4 mini-cards com delta
 ↓
-Sheet (drawer) — overlay quando selected ≠ null
+[5] Bloco "Composição do pipeline"      ← novo, barra empilhada + legendas
+↓
+Tabs (Resumo · Operação · Performance · Cadências · Financeiro · Auditoria)  ← mantém
 ```
 
-### 8. Responsividade
+#### 3.1. Ação recomendada
+`rounded-xl bg-card border border-border p-4`. Título uppercase 10px "AÇÃO RECOMENDADA". Frase principal (`text-base font-medium`) vinda de `getAcaoRecomendada().titulo` (ex.: "Entrar em contato com Ramon Capone"). Lista compacta de motivos (bullets coloridos `•`). Quatro botões em `flex flex-wrap gap-2`:
 
-- KPIs: `grid-cols-2 md:grid-cols-3 lg:grid-cols-6`.
-- Filtros: `flex flex-wrap gap-2`.
-- Tabela: mantém `overflow-auto` do `Table` wrapper; em telas <1024px o scroll horizontal preserva todas as colunas.
-- Drawer: `w-full sm:max-w-2xl`, conteúdo `overflow-y-auto`.
+- **Abrir leads críticos** → fecha drawer e navega para `/admin/leads` com filtro (`navigate({ to: "/admin/leads", search: { risco: "critico", corretor: u.id } })`). Se a rota não aceitar search, usar `toast` + manter scope visual.
+- **Enviar alerta operacional** → abre `Dialog` simples com preview do texto: "Você possui leads da plataforma sem interação acima do SLA." + canais (WhatsApp / notificação / aviso interno) como chips informativos. Confirmar → toast.
+- **Agendar acompanhamento** → toast "Acompanhamento agendado para amanhã, 09h".
+- **Redistribuir leads Ubroker** → renderizado **somente** quando `getNegligenciaPlataforma(u) > 0`. Tooltip: "Apenas leads originados pela plataforma podem ser redistribuídos. Carteira própria do corretor é preservada." Confirmação obrigatória via `AlertDialog` listando "X leads da plataforma serão redistribuídos. Y leads de carteira própria permanecem com o corretor."
 
-### Critérios de aceite
+#### 3.2. Saúde operacional
+Linha única: badge grande (`Saudável` emerald / `Atenção` amber / `Crítico` red) + microcopy explicativa ("execução alta · baixa negligência · boa resposta" etc., gerada a partir dos indicadores).
 
-- Topo mostra 6 KPIs + faixa de alertas, sem poluição.
-- Filtros operacionais funcionais combinados com busca atual.
-- Tabela exibe novas colunas com badges/barras coloridas conforme tom.
-- Clique em linha abre drawer com 6 abas funcionais e dados derivados.
-- Nenhuma alteração fora de `src/routes/admin.usuarios.tsx`. Estética continua minimalista e consistente com o restante do admin.
+#### 3.3. Alertas inteligentes
+`flex flex-col gap-1.5`. Cada alerta = pill `text-xs` com bullet colorido + texto curto. Máx 4. Tons suaves (`bg-red-50/50`, `bg-amber-50/50`, `bg-emerald-50/50`) — sem inundar de vermelho.
+
+#### 3.4. Tendência operacional
+Grid `grid-cols-2 md:grid-cols-4 gap-2`. Cada mini-card `rounded-lg bg-surface p-3`:
+- label uppercase 10px ("Execução", "Conversão", "Negligência", "Tempo médio")
+- valor 18px medium
+- linha delta: seta + `+/-X%` + "últimos 7 dias", colorida via `tonDelta`.
+
+#### 3.5. Composição do pipeline
+- Linha-resumo: `42 leads ativos`.
+- **Barra empilhada** horizontal (`flex h-2 rounded-full overflow-hidden`) com 5 segmentos proporcionais: novos / qualificados / visitas / propostas / críticos — tons da paleta existente.
+- Legenda em grid `grid-cols-5 gap-2` com bullet + label + número.
+- **Badge de origem** ao lado: "X da plataforma · Y carteira própria" — reforça regra de redistribuição.
+
+### 4. Tabela — coluna "Origem dos leads"
+
+Adicionar coluna compacta entre **Leads ativos** e **Execução**: dois micro-pills empilhados: `Plataforma N` (azul) / `Própria N` (cinza). Comunica imediatamente o que pode ser redistribuído. Sem aumentar densidade significativa (texto 11px).
+
+### 5. Saúde da rede — KPI extra na faixa de alertas existente
+
+Na faixa horizontal de alertas já existente (acima dos filtros), adicionar **um pill resumo** à esquerda: `● Saúde da rede: Saudável (78%)` — % = corretores `saudavel` / total. Cor do bullet conforme nível agregado. Mantém densidade atual.
+
+### 6. Tom & restrições visuais
+
+- Nenhum copy com "punir/monitorar/controlar/penalizar/bloquear corretor". Sempre "acompanhar/priorizar/proteger leads da plataforma/suporte operacional".
+- Vermelho restrito a: badge crítico, negligência > 10, alerta 🔴. Resto em âmbar/cinza/azul.
+- Mantém tipografia, espaçamentos e radii já estabelecidos. Nada de bordas grossas, gradientes pesados, ícones em excesso.
+
+### 7. Estado e interações
+
+- `selectedIds`, `bulkActionOpen`, `recommendDialogOpen`, `redistributeDialogOpen` em `useState` no componente raiz.
+- Toasts via `sonner` (já presente em `src/components/ui/sonner.tsx`).
+- Filtros existentes preservados; alertas operacionais continuam clicáveis.
+
+### 8. Critérios de aceite
+
+- Drawer abre com Ação Recomendada visível primeiro, motivos claros e 3–4 botões de intervenção.
+- Botão "Redistribuir leads Ubroker" some quando o corretor não tem leads de plataforma negligenciados; quando aparece, o diálogo deixa explícito que carteira própria é preservada.
+- Tabela permite seleção múltipla; barra de ações em massa surge apenas quando há seleção; "Pausar distribuição" comunica claramente que NÃO bloqueia o corretor.
+- Tendência mostra seta/delta corretos por métrica (em negligência e tempo de resposta, subir = ruim = vermelho).
+- Pipeline composto via barra empilhada + split plataforma/própria.
+- Linguagem em todo o fluxo é de suporte, não de fiscalização. Densidade visual permanece minimalista.
+- Nenhuma alteração fora de `src/routes/admin.usuarios.tsx`.
