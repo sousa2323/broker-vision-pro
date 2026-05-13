@@ -854,26 +854,46 @@ function LeadsPage() {
                     <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><ArrowRight className="h-4 w-4" /> Avançar etapa</button>
                   </div>
 
-                  {/* Bloco 3 — Timeline */}
+                  {/* NÍVEL 2 — Status operacional */}
                   <div>
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Timeline operacional</div>
-                    <ol className="mt-2 space-y-2 border-l border-border pl-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Status operacional</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {getStatusOperacional(selected).map((s, i) => (
+                        <span
+                          key={i}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
+                            s.tone === "danger" ? "border-red-100 bg-red-50 text-red-700" :
+                            s.tone === "warn" ? "border-amber-100 bg-amber-50 text-amber-800" :
+                            s.tone === "good" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
+                            "border-border bg-surface text-foreground"
+                          )}
+                        >
+                          <span aria-hidden>{s.icon}</span>{s.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* NÍVEL 2 — Timeline */}
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Timeline operacional</div>
+                    <ol className="ml-2 mt-3 space-y-4 border-l border-border pl-4">
                       {getTimelineOperacional(selected).map((t, i) => (
                         <li key={i} className="relative text-sm">
-                          <span className="absolute -left-[21px] top-1 grid h-3 w-3 place-items-center rounded-full bg-background text-[10px]">{t.icon}</span>
+                          <span className="absolute -left-[22px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full border border-border bg-background text-[10px]">{t.icon}</span>
                           <div className={cn(
                             "leading-snug",
-                            t.tone === "warn" && "text-amber-800",
-                            t.tone === "good" && "text-foreground"
+                            t.tone === "warn" && "text-amber-800"
                           )}>{t.label}</div>
-                          <div className="text-[11px] text-muted-foreground">{t.quando}</div>
+                          <div className="text-xs text-muted-foreground">{t.quando}</div>
                         </li>
                       ))}
                     </ol>
                   </div>
 
-                  {/* Bloco 4 — Cadência ativa */}
-                  <div className="rounded-xl border border-border p-4">
+                  {/* NÍVEL 2 — Cadência ativa */}
+                  <div className="rounded-xl border border-border bg-card p-5">
                     <div className="flex items-baseline justify-between">
                       <div>
                         <div className="text-sm font-semibold">Cadência ativa</div>
@@ -881,7 +901,7 @@ function LeadsPage() {
                       </div>
                       <span className="text-[11px] text-muted-foreground">Qualificação Premium</span>
                     </div>
-                    <ul className="mt-3 space-y-1.5">
+                    <ul className="mt-4 space-y-2">
                       {getCadenciaDetalhada(selected).slice(0, 6).map((c, i) => {
                         const tone =
                           c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
@@ -889,8 +909,8 @@ function LeadsPage() {
                           c.status === "hoje" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600";
                         const icon = c.status === "concluido" ? "☑" : c.status === "atrasado" ? "⚠" : "⬜";
                         return (
-                          <li key={i} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm">
-                            <div className="flex min-w-0 items-center gap-2">
+                          <li key={i} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-sm">
+                            <div className="flex min-w-0 items-center gap-3">
                               <span className="text-base">{icon}</span>
                               <div className="min-w-0">
                                 <div className="truncate">{c.titulo}</div>
@@ -911,10 +931,10 @@ function LeadsPage() {
                     </ul>
                   </div>
 
-                  {/* Bloco 5 — Métricas rápidas */}
+                  {/* NÍVEL 2 — Métricas rápidas */}
                   <div>
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Métricas do lead</div>
-                    <div className="mt-2 grid grid-cols-3 gap-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Métricas do lead</div>
+                    <div className="mt-3 grid grid-cols-3 gap-3 md:grid-cols-6">
                       {[
                         { k: "Score", v: String(getScoreLead(selected)) },
                         { k: "Potencial", v: formatBRL(selected.orcamento) },
@@ -923,9 +943,9 @@ function LeadsPage() {
                         { k: "Resposta média", v: getTempoMedioResp(selected) },
                         { k: "Decisão", v: getEstagioDecisao(selected) },
                       ].map((m) => (
-                        <div key={m.k} className="rounded-md border border-border bg-card px-3 py-2">
+                        <div key={m.k} className="rounded-lg border border-border bg-card p-3">
                           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{m.k}</div>
-                          <div className="num mt-0.5 text-sm font-semibold">{m.v}</div>
+                          <div className="num mt-1 text-sm font-semibold">{m.v}</div>
                         </div>
                       ))}
                     </div>
