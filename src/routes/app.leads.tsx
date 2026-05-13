@@ -14,6 +14,16 @@ import {
   ArrowRight,
   Copy,
   Sparkles,
+  User as UserIcon,
+  Search as SearchIcon,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  TrendingUp,
+  Flame,
+  Activity,
+  Bot,
+  Zap,
 } from "lucide-react";
 import { leads, type Lead, type LeadOrigin, type LeadStatus, formatBRL } from "@/data/mock";
 import { cn } from "@/lib/utils";
