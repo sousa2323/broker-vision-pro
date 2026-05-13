@@ -1,73 +1,121 @@
-## Plano — Evolução operacional do Pipeline
+## Plano — Central operacional da rede (`/admin/usuarios`)
 
-Escopo: somente `src/routes/app.pipeline.tsx`. Sem alterar sidebar, identidade visual, estrutura do kanban ou outras telas. Sem novas dependências. Reutilizar tokens existentes (`bg-card`, `bg-surface`, `bg-brand`, `bg-navy`, `text-muted-foreground`, semânticas emerald/amber/red/violet/blue/slate já em uso).
+Escopo: somente `src/routes/admin.usuarios.tsx`. Sem nova rota, sem mudar sidebar/identidade, sem novas dependências. Reutilizar tokens existentes (`bg-card`, `bg-surface`, `text-muted-foreground`, semânticas emerald/amber/red já em uso na tela). Drawer com `@/components/ui/sheet` (já disponível). Dados derivados do mock atual `adminBrokers` + `corretorRisco` — sem alterar `admin-mock.ts`.
 
 ---
 
-### 1. Helpers derivados (topo do arquivo, sem novos dados)
+### 1. Helpers operacionais (topo do arquivo, puros)
 
-Criar funções puras que derivam tudo do mock atual (`cards`, `valor`, `dias`, `tag`, `stageId`):
+Derivados de `adminBrokers` + `corretorRisco` + um seed determinístico por `id` para gerar números coerentes (sem aleatoriedade entre renders):
 
-- `getScoreOperacional(card, stageId) → 0–100` — combina valor (peso VGV), `dias` (penaliza inatividade), estágio (Proposta/Visita pesam mais), `tag` (boost se "Score 87", "À vista", "IA qualificando").
-- `getRiscoPerda(card, stageId) → "baixo" | "medio" | "alto"` — derivado de `dias` por estágio (ex.: Proposta >2d = alto, Visita >5d = alto, Qualificado >5d = médio).
-- `getPrioridade(card, stageId) → boolean` — true se: VGV ≥ R$1,5M OU estágio Visita/Proposta com `dias` ativos OU `tag` presente OU score ≥ 85.
-- `getComandoAcao(card, stageId) → string` — substitui `proximaAcaoDefault` por verbos imperativos: "Ligar agora", "Confirmar visita", "Enviar imóveis", "Cobrar decisão", "Iniciar pós-venda".
-- `getMotivoPrioridade(card, stageId) → string` — frase curta para a fila ("Visita agendada para hoje", "3 dias sem retorno", "Lead novo aguardando abordagem").
-- `buildFilaDoDia(stages) → Card[]` — seleciona top 3–5 ações priorizando: (1) visitas com `tag` de horário, (2) propostas com `dias ≥ 1`, (3) qualificados quentes sem interação, (4) atrasados (`dias ≥ 4`), (5) leads novos. Ordena por score desc, limita a 5.
+- `getLeadsAtivos(u) → number`
+- `getExecucao(u) → number (0–100)`
+- `getConversao(u) → number (0–100)`
+- `getNegligencia(u) → number` (leads sem interação acima do SLA)
+- `getDiasSemLogin(u) → number`
+- `getRiscoOperacional(u) → "saudavel" | "atencao" | "critico"` — combina execução baixa, negligência alta, dias sem login, status `Bloqueado/Inativo`.
+- `getScoreIA(u) → number (0–100)`
+- `getRegiao(u)` derivado de `cidade`.
 
-### 2. Nova faixa "Fila Operacional do Dia" (topo)
+Helpers de classificação visual: `tonExecucao(n)`, `tonConversao(n)`, `tonRisco(r)` retornando classes `bg-emerald-50 text-emerald-700`, `bg-amber-50 text-amber-700`, `bg-red-50 text-red-700`, `bg-surface text-muted-foreground` — alinhados ao estilo já usado nos badges Plano/Status.
 
-Inserida entre o header da página e a linha de KPIs. Container `rounded-2xl bg-card border border-border p-4`.
+### 2. Camada executiva — 6 KPIs no topo
 
-- Título: `Hoje você precisa executar` (`font-display text-lg`).
-- Subtítulo: `Prioridades operacionais recomendadas pela Ubroker IA.` (`text-xs text-muted-foreground`).
-- Lista horizontal: `flex gap-3 overflow-x-auto` com cards `min-w-[260px] max-w-[280px]`.
-- Cada mini-card mostra: nome do lead, chip do tipo de ação, motivo (1 linha), tempo/atraso (pill colorida por risco), VGV em `num`, botão `Executar agora` (`bg-navy text-navy-foreground h-8`).
-- Empty state se vazio: linha discreta "Nenhuma execução pendente — bom trabalho."
+Acima dos filtros atuais. Grid `grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3`. Cada card: `rounded-xl bg-card border border-border p-3`, label uppercase 10px, valor 20px medium, subtexto 11px muted.
 
-### 3. Nova linha de KPIs operacionais (acima do kanban, abaixo da fila)
+1. Corretores ativos — count `status === "Ativo"` × multiplicador para 752.
+2. Execução média da rede — média de `getExecucao`.
+3. Leads negligenciados — soma de `getNegligencia`.
+4. Corretores em risco — count `risco === "critico"`.
+5. Receita da plataforma — soma de `receita`.
+6. Conversão média — média de `getConversao`.
 
-Grid `grid-cols-2 md:grid-cols-5 gap-3`. Cards `rounded-xl bg-card border border-border p-3` com label uppercase 10px + valor 20px medium. Todos derivados:
+### 3. Faixa de alertas operacionais
 
-- **Execução do dia** — `X/Y tarefas` (Y = total de cards com ação devida hoje, X = mock fixo coerente, ex.: 14/18).
-- **Tempo médio de resposta** — string fixa coerente "1h42".
-- **Leads negligenciados** — count de cards com `dias ≥ 4`.
-- **Cadências em atraso** — count de cards com `dias ≥ 3` em Visita/Proposta.
-- **Taxa de execução** — derivada de execução do dia (%).
+Container `rounded-xl bg-card border border-border p-3`, lista horizontal `flex flex-wrap gap-2`. Cada alerta: pill `text-xs` com bullet colorido (●) + texto. 4 alertas derivados:
 
-Manter os indicadores existentes do header ("X oportunidades · VGV", "oportunidades próximas de fechamento") intactos.
+- 🔴 N corretores com >10 leads negligenciados
+- 🟠 N corretores sem login há >7 dias
+- 🟡 N propostas sem follow-up (derivado)
+- 🟢 N corretores com conversão >30%
 
-### 4. Refinos nos cards do kanban
+Clicar num alerta aplica filtro correspondente (por ex. risco=crítico).
 
-Sem mudar layout principal. Adições discretas:
+### 4. Filtros operacionais (substitui linha atual)
 
-- **Borda/destaque prioritário**: cards com `getPrioridade === true` ganham `border-l-2 border-l-brand` + `shadow-md ring-1 ring-brand/20`. Cards comuns mantêm visual atual.
-- **Badge "Prioritário"**: pequeno chip `bg-brand/10 text-brand text-[10px]` no topo direito (substitui o atual "🎯 Foco" — mesma lógica `isDestaque` ampliada via `getPrioridade`).
-- **Score operacional**: linha discreta abaixo da comissão — `🧠 Score 87` em `text-[11px] text-muted-foreground` (cor verde se ≥80, âmbar 50–79, vermelho <50 — apenas no número).
-- **Risco de perda**: pill `text-[10px]` ao lado da urgência: `Baixo risco` (slate), `Médio risco` (amber), `Alto risco` (red). Suprimida quando estágio = Fechado.
-- **Próxima ação imperativa**: trocar `proximaAcaoDefault` + `c.proximaAcao` pela saída de `getComandoAcao`. Label muda de "Próximo passo:" para "Ação:" e o comando vira `font-semibold text-foreground`.
+Manter o input de busca à direita. Substituir os 4 chips atuais (`Todos/Pro/Free/Bloqueados`) por 6 grupos de filtros como popovers/selects compactos lado a lado, no mesmo estilo dos chips já existentes:
 
-### 5. Ordem de renderização final na página
+- Execução: Todas · Alta · Média · Baixa
+- Risco: Todos · Saudável · Atenção · Crítico
+- Conversão: Todas · Alta · Baixa
+- Status operacional: Todos · Sem login · Negligenciando · Cadência atrasada · Pipeline parado
+- Plano: Todos · Free · Pro
+- Região: Todas · (lista derivada de `cidade`)
+
+Implementação simples: cada filtro é um `<select>` estilizado com classes existentes, ou chips em linha com overflow horizontal. Estado em `useState` único `{exec, risco, conv, status, plano, regiao, busca}`.
+
+### 5. Tabela operacional (substitui colunas atuais)
+
+Mantém `overflow-hidden rounded-xl border border-border bg-card` + `<table>` + `<thead bg-surface>`. Novas colunas:
+
+| Corretor | Plano | Região | Leads ativos | Execução | Conversão | Negligência | Receita | Risco | Ações |
+
+- **Corretor**: avatar + nome + CRECI (igual hoje).
+- **Plano / Região**: pills/texto compactos.
+- **Leads ativos**: número monoespaçado (`num`).
+- **Execução**: `XX%` + barrinha 60px (`h-1 rounded-full bg-surface` com fill colorido por tom).
+- **Conversão**: `XX%` colorido.
+- **Negligência**: número + ícone alerta quando >10 (vermelho).
+- **Receita**: `formatBRL` (igual hoje).
+- **Risco**: badge `Saudável/Atenção/Crítico` com tons emerald/amber/red.
+- **Ações**: ícones existentes (`ArrowUpRight`, `Ban`) + `MoreHorizontal` opcional.
+
+Linha inteira clicável: `onClick` abre o drawer do corretor (cursor-pointer, hover já existente).
+
+### 6. Drawer lateral do corretor
+
+Usar `Sheet` de `@/components/ui/sheet` com `side="right"` largura `sm:max-w-2xl`. Estado `selected: AdminBroker | null`.
+
+**Cabeçalho**: avatar 56px, nome (`font-display text-xl`), linha meta (CRECI · plano · região · status), badge risco grande, score IA (`🧠 87`).
+
+**Tabs** (`@/components/ui/tabs`): `Resumo · Operação · Performance · Cadências · Financeiro · Auditoria`.
+
+Conteúdo de cada aba: grids 2-col de mini-cards `rounded-lg bg-surface p-3` com label + valor, todos derivados dos helpers. Listas curtas (visitas, propostas, tarefas atrasadas, logs) renderizadas como linhas simples com bullet colorido — sem gráficos. Densidade controlada, espaçamento generoso.
+
+- **Resumo**: leads ativos, vendas, conversão, receita, score, execução, negligência.
+- **Operação**: visitas agendadas, propostas abertas, tarefas atrasadas, leads em risco, pipeline (mini lista por estágio).
+- **Performance**: conversão, tempo médio resposta, follow-ups, consistência, ranking interno (#N).
+- **Cadências**: ativas, % conclusão (barra), gargalos, tarefas ignoradas.
+- **Financeiro**: comissão gerada, fee plataforma, MRR SaaS, inadimplência (`corretorRisco.pctAtraso`), repasses pendentes (`corretorRisco.totalAberto`).
+- **Auditoria**: lista de eventos (mock derivado): alterações críticas, leads perdidos, bloqueios, denúncias, disputas.
+
+### 7. Ordem de renderização final
 
 ```
-Header (título + botão Nova oportunidade)
+Header (título + subtítulo)
 ↓
-Fila Operacional do Dia (novo)
+6 KPIs
 ↓
-KPIs operacionais (novo, 5 cards)
+Faixa de alertas
 ↓
-Kanban (existente, com refinos)
+Linha de filtros + busca
+↓
+Tabela operacional
+↓
+Sheet (drawer) — overlay quando selected ≠ null
 ```
 
-### 6. Responsividade
+### 8. Responsividade
 
-- Fila do dia: `overflow-x-auto` em todas as breakpoints (já mobile-friendly).
-- KPIs: `grid-cols-2 md:grid-cols-5`.
-- Kanban: mantém comportamento atual (`auto-cols-[300px]` mobile, 5 colunas em lg).
+- KPIs: `grid-cols-2 md:grid-cols-3 lg:grid-cols-6`.
+- Filtros: `flex flex-wrap gap-2`.
+- Tabela: mantém `overflow-auto` do `Table` wrapper; em telas <1024px o scroll horizontal preserva todas as colunas.
+- Drawer: `w-full sm:max-w-2xl`, conteúdo `overflow-y-auto`.
 
 ### Critérios de aceite
 
-- Faixa "Hoje você precisa executar" visível no topo com 3–5 ações priorizadas.
-- Cards do kanban mostram Score, Risco e Ação imperativa; prioritários têm destaque sutil sem poluir.
-- Linha de 5 KPIs operacionais visível acima do kanban.
-- Nenhuma mudança fora de `app.pipeline.tsx`. Estética continua leve e consistente com o restante do sistema.
+- Topo mostra 6 KPIs + faixa de alertas, sem poluição.
+- Filtros operacionais funcionais combinados com busca atual.
+- Tabela exibe novas colunas com badges/barras coloridas conforme tom.
+- Clique em linha abre drawer com 6 abas funcionais e dados derivados.
+- Nenhuma alteração fora de `src/routes/admin.usuarios.tsx`. Estética continua minimalista e consistente com o restante do admin.
