@@ -1362,45 +1362,57 @@ function LeadsPage() {
                 {/* QUALIFICAÇÃO */}
                 <TabsContent value="qualificacao" className="mt-0">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {QUALIF_BLOCOS(selected).map((b) => (
-                      <div key={b.titulo} className="rounded-xl border border-border bg-card p-5">
-                        <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
-                        <dl className="mt-3 space-y-2 text-sm">
-                          {b.campos.map(([k, v]) => (
-                            <div key={k} className="flex items-baseline justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
-                              <dt className="text-xs text-muted-foreground">{k}</dt>
-                              <dd className="text-right text-sm font-medium">{v}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </div>
-                    ))}
+                    {QUALIF_BLOCOS(selected).map((b, idx) => {
+                      const cfg = [
+                        { Icon: UserIcon, color: "border-t-blue-400" },
+                        { Icon: SearchIcon, color: "border-t-violet-400" },
+                        { Icon: Wallet, color: "border-t-emerald-400" },
+                        { Icon: CheckCircle2, color: "border-t-amber-400" },
+                      ][idx];
+                      const Icon = cfg.Icon;
+                      return (
+                        <div key={b.titulo} className={cn("rounded-xl border border-border border-t-2 bg-card p-5 transition-all hover:border-foreground/20 hover:shadow-sm", cfg.color)}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
+                          </div>
+                          <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">
+                            {b.campos.map(([k, v]) => (
+                              <React.Fragment key={k}>
+                                <dt className="text-xs text-muted-foreground">{k}</dt>
+                                <dd className="text-right text-sm font-medium">{v}</dd>
+                              </React.Fragment>
+                            ))}
+                          </dl>
+                        </div>
+                      );
+                    })}
                   </div>
                 </TabsContent>
 
                 {/* SCRIPTS */}
-                <TabsContent value="scripts" className="mt-0 space-y-4">
+                <TabsContent value="scripts" className="mt-0 space-y-3">
                   {SCRIPTS_LIB.map((s) => {
                     const texto = s.texto
                       .replace("{nome}", primeiroNome)
                       .replace("{tipo}", inferTipo(selected.interesse))
                       .replace("{regiao}", inferRegiao(selected.interesse));
                     return (
-                      <div key={s.titulo} className="rounded-xl border border-border bg-card p-5">
+                      <div key={s.titulo} className="rounded-xl border border-border bg-card p-4 transition-all hover:border-foreground/20 hover:shadow-sm">
                         <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.categoria}</div>
-                            <div className="mt-0.5 flex items-center gap-2 text-sm font-semibold">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
                               <Sparkles className="h-3.5 w-3.5 text-violet-600" />
-                              {s.titulo}
+                              <div className="text-sm font-semibold">{s.titulo}</div>
+                              <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">{s.categoria}</span>
                             </div>
-                            <div className="mt-0.5 text-xs text-muted-foreground">Objetivo: {s.objetivo}</div>
+                            <div className="mt-0.5 text-[11px] text-muted-foreground">{s.objetivo}</div>
                           </div>
-                          <button onClick={() => navigator.clipboard?.writeText(texto)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-surface hover:text-foreground">
+                          <button onClick={() => navigator.clipboard?.writeText(texto)} className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-surface hover:text-foreground">
                             <Copy className="h-3 w-3" /> Copiar
                           </button>
                         </div>
-                        <p className="mt-3 rounded-md bg-surface p-3 text-sm text-foreground/80">{texto}</p>
+                        <p className="mt-3 rounded-md bg-surface/60 p-3 text-sm leading-relaxed text-foreground/85">{texto}</p>
                       </div>
                     );
                   })}
@@ -1408,25 +1420,51 @@ function LeadsPage() {
 
                 {/* HISTÓRICO */}
                 <TabsContent value="historico" className="mt-0">
-                  <ol className="space-y-2.5 border-l border-border pl-4">
-                    <li className="relative text-sm">
-                      <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-emerald-500" />
-                      <div className="text-[11px] text-muted-foreground">Sistema · agora</div>
-                      <div>Lead em <span className="font-medium">{selected.status}</span></div>
-                    </li>
-                    {selected.historico.map((h, i) => (
-                      <li key={i} className="relative text-sm">
-                        <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-muted-foreground/40" />
-                        <div className="text-[11px] text-muted-foreground">{h.data} · {h.tipo} · Você</div>
-                        <div>{h.texto}</div>
-                      </li>
-                    ))}
-                    <li className="relative text-sm">
-                      <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-muted-foreground/40" />
-                      <div className="text-[11px] text-muted-foreground">Origem</div>
-                      <div>Lead criado via {selected.origem}</div>
-                    </li>
-                  </ol>
+                  {(() => {
+                    type Ev = { quando: string; titulo: string; texto?: string; kind: CanalKind; origemLabel: string; grupo: string };
+                    const eventos: Ev[] = [
+                      { quando: "agora", titulo: `Lead em ${selected.status}`, kind: "sistema", origemLabel: "Sistema", grupo: "Hoje" },
+                      ...selected.historico.map((h) => {
+                        const k = getCanalKind(h.tipo);
+                        const grupo = h.data.toLowerCase().includes("hoje") || h.data.toLowerCase().includes("min") ? "Hoje"
+                          : h.data.toLowerCase().includes("ontem") ? "Ontem"
+                          : h.data.toLowerCase().includes("dia") ? "Esta semana" : "Anterior";
+                        return { quando: h.data, titulo: h.tipo, texto: h.texto, kind: k, origemLabel: k === "ia" ? "IA" : k === "whatsapp" ? "WhatsApp" : k === "ligacao" ? "Corretor" : k === "visita" ? "Corretor" : "Sistema", grupo };
+                      }),
+                      { quando: "origem", titulo: `Lead criado via ${selected.origem}`, kind: "sistema", origemLabel: "Sistema", grupo: "Anterior" },
+                    ];
+                    const grupos = ["Hoje", "Ontem", "Esta semana", "Anterior"] as const;
+                    return (
+                      <div className="space-y-5">
+                        {grupos.map((g) => {
+                          const items = eventos.filter((e) => e.grupo === g);
+                          if (items.length === 0) return null;
+                          return (
+                            <div key={g}>
+                              <div className="mb-3 border-b border-dashed border-border py-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{g}</div>
+                              <ol className="relative ml-2 space-y-4 border-l-2 border-border pl-5">
+                                {items.map((ev, i) => (
+                                  <li key={i} className="group relative -mx-2 rounded px-2 text-sm transition-colors hover:bg-surface/60">
+                                    <span className={cn("absolute -left-[26px] top-1 grid h-4 w-4 place-items-center rounded-full text-white shadow-sm", canalDot[ev.kind])}>
+                                      <CanalIcon kind={ev.kind} className="h-2.5 w-2.5" />
+                                    </span>
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{ev.titulo}</span>
+                                        <span className={cn("rounded border px-1.5 py-0.5 text-[10px]", canalBadge[ev.kind])}>{ev.origemLabel}</span>
+                                      </div>
+                                      <span className="text-[10px] text-muted-foreground/70">{ev.quando}</span>
+                                    </div>
+                                    {ev.texto && <div className="mt-1 text-sm text-muted-foreground">{ev.texto}</div>}
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </TabsContent>
                 </div>
               </div>
