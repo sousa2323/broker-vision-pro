@@ -1066,12 +1066,19 @@ function LeadsPage() {
                   {(() => {
                     const v = getVisitaInfo(selected);
                     if (!v) return (
-                      <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                        Nenhuma visita agendada para este lead.
+                      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-card px-6 py-16 text-center">
+                        <div className="grid h-14 w-14 place-items-center rounded-full bg-surface text-muted-foreground">
+                          <Calendar className="h-6 w-6" />
+                        </div>
+                        <div className="text-sm font-medium">Nenhuma visita agendada ainda.</div>
+                        <div className="max-w-sm text-xs text-muted-foreground">Agende uma visita para acelerar a qualificação e aumentar a chance de conversão deste lead.</div>
+                        <button className="mt-2 inline-flex h-10 items-center gap-2 rounded-md bg-navy px-4 text-sm font-medium text-navy-foreground hover:opacity-90">
+                          <Calendar className="h-4 w-4" /> Agendar primeira visita
+                        </button>
                       </div>
                     );
                     return (
-                      <div className="rounded-xl border border-border p-4">
+                      <div className="rounded-xl border border-border bg-card p-5">
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="text-sm font-semibold">{v.imovel}</div>
@@ -1079,12 +1086,12 @@ function LeadsPage() {
                           </div>
                           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">{v.status}</span>
                         </div>
-                        <div className="mt-2 text-sm">{v.quando}</div>
-                        <textarea placeholder="Feedback ou observações..." className="mt-3 h-20 w-full rounded-md border border-border bg-background p-2 text-sm" />
-                        <div className="mt-3 flex gap-1.5">
-                          <button className="rounded-md bg-emerald-600 px-2.5 py-1.5 text-[11px] text-white">Confirmar visita</button>
-                          <button className="rounded-md border border-border px-2.5 py-1.5 text-[11px]">Registrar feedback</button>
-                          <button className="rounded-md border border-border px-2.5 py-1.5 text-[11px]">Reagendar</button>
+                        <div className="mt-3 text-sm">{v.quando}</div>
+                        <textarea placeholder="Feedback ou observações..." className="mt-4 h-24 w-full rounded-md border border-border bg-background p-3 text-sm" />
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white">Confirmar visita</button>
+                          <button className="rounded-md border border-border px-3 py-1.5 text-xs">Registrar feedback</button>
+                          <button className="rounded-md border border-border px-3 py-1.5 text-xs">Reagendar</button>
                         </div>
                       </div>
                     );
@@ -1093,19 +1100,21 @@ function LeadsPage() {
 
                 {/* QUALIFICAÇÃO */}
                 <TabsContent value="qualificacao" className="mt-0">
-                  {QUALIF_BLOCOS(selected).map((b) => (
-                    <div key={b.titulo} className="rounded-xl border border-border p-4">
-                      <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
-                      <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                        {b.campos.map(([k, v]) => (
-                          <div key={k} className="rounded-md bg-surface/60 px-3 py-1.5">
-                            <dt className="text-[11px] text-muted-foreground">{k}</dt>
-                            <dd className="font-medium">{v}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </div>
-                  ))}
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {QUALIF_BLOCOS(selected).map((b) => (
+                      <div key={b.titulo} className="rounded-xl border border-border bg-card p-5">
+                        <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
+                        <dl className="mt-3 space-y-2 text-sm">
+                          {b.campos.map(([k, v]) => (
+                            <div key={k} className="flex items-baseline justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
+                              <dt className="text-xs text-muted-foreground">{k}</dt>
+                              <dd className="text-right text-sm font-medium">{v}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    ))}
+                  </div>
                 </TabsContent>
 
                 {/* SCRIPTS */}
