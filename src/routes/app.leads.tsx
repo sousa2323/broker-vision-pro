@@ -1158,8 +1158,9 @@ function LeadsPage() {
                     </li>
                   </ol>
                 </TabsContent>
-              </Tabs>
-            </div>
+                </div>
+              </div>
+            </Tabs>
           </div>
         </div>
       )}
