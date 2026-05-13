@@ -483,11 +483,63 @@ function UsuariosAdmin() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-surface">
+      {/* Barra de ações em massa */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-sm">
+          <span className="ml-1 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{selectedIds.size}</span> selecionado(s)
+          </span>
+          <button onClick={clearSelection} className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-surface">
+            Limpar
+          </button>
+          <span className="mx-1 h-4 w-px bg-border" />
+          <BulkBtn icon={<Send className="h-3.5 w-3.5" />} onClick={() => bulkAction("Alerta operacional enviado")}>
+            Enviar alerta operacional
+          </BulkBtn>
+          <BulkBtn icon={<Activity className="h-3.5 w-3.5" />} onClick={() => bulkAction("Cadência padrão atualizada")}>
+            Alterar cadência padrão
+          </BulkBtn>
+          <BulkBtn icon={<CalendarClock className="h-3.5 w-3.5" />} onClick={() => bulkAction("Acompanhamento agendado")}>
+            Agendar acompanhamento
+          </BulkBtn>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <BulkBtn icon={<PauseCircle className="h-3.5 w-3.5" />} onClick={() => bulkAction("Distribuição de leads Ubroker pausada")}>
+                    Pausar distribuição de leads da plataforma
+                  </BulkBtn>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Não bloqueia o corretor — apenas interrompe a entrada de novos leads Ubroker até a normalização operacional.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+
+      {/* Tabela operacional */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-surface">
               <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground">
+                <th className="w-10 px-3 py-3">
+                  <Checkbox
+                    checked={filtered.length > 0 && filtered.every((x) => selectedIds.has(x.u.id))}
+                    onCheckedChange={(v) => {
+                      if (v) setSelectedIds(new Set(filtered.map((x) => x.u.id)));
+                      else clearSelection();
+                    }}
+                    aria-label="Selecionar todos"
+                  />
+                </th>
                 <th className="px-4 py-3">Corretor</th>
                 <th className="px-4 py-3">Plano</th>
                 <th className="px-4 py-3">Região</th>
                 <th className="px-4 py-3 text-right">Leads</th>
+                <th className="px-4 py-3">Origem</th>
                 <th className="px-4 py-3">Execução</th>
                 <th className="px-4 py-3 text-right">Conversão</th>
                 <th className="px-4 py-3 text-right">Negligência</th>
@@ -497,12 +549,24 @@ function UsuariosAdmin() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((x) => (
+              {filtered.map((x) => {
+                const origem = getOrigemLeads(x.u);
+                return (
                 <tr
                   key={x.u.id}
                   onClick={() => setSelected(x.u)}
-                  className="cursor-pointer hover:bg-surface/60"
+                  className={cn(
+                    "cursor-pointer hover:bg-surface/60",
+                    selectedIds.has(x.u.id) && "bg-surface/50",
+                  )}
                 >
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(x.u.id)}
+                      onCheckedChange={() => toggleSelect(x.u.id)}
+                      aria-label={`Selecionar ${x.u.nome}`}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <img src={x.u.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
@@ -520,6 +584,16 @@ function UsuariosAdmin() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{x.regiao}</td>
                   <td className="px-4 py-3 text-right num">{x.leads}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-0.5 text-[11px] leading-tight">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-blue-700">
+                        Plataforma <span className="num">{origem.plataforma}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-surface px-1.5 py-0.5 text-muted-foreground">
+                        Própria <span className="num">{origem.propria}</span>
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <span className={cn("rounded-md px-1.5 py-0.5 text-xs num", tonExecucao(x.exec))}>
@@ -557,10 +631,10 @@ function UsuariosAdmin() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );})}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={12} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     Nenhum corretor corresponde aos filtros aplicados.
                   </td>
                 </tr>
