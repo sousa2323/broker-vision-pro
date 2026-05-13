@@ -1,127 +1,126 @@
-# Refinar modal "Operação do Lead"
+# Refinamento estrutural — Modal "Operação do Lead"
 
-Alteração restrita ao drawer "Operação do Lead" em `src/routes/app.leads.tsx`. Sem mexer em sidebar, rotas, mock, Pipeline, Financeiro, Admin ou no restante da tela de Leads (cards, filtros, tabela e aside seguem como estão).
+Escopo restrito ao drawer atual em `src/routes/app.leads.tsx` (linhas ~771–1151). Sem nova lógica, sem novas abas, sem mudar mock, sidebar, tabela, cards do topo, Pipeline ou demais telas. Apenas estrutura visual, spacing, hierarquia e comportamento de scroll.
 
-## 1. Header do drawer
+## 1. Container do modal
 
-Manter nome / id / etapa / nível, mas reorganizar como faixa única com:
-- Nome + id
-- Badge de etapa (`statusColor`)
-- Badge de prioridade (`getNivelMeta`)
-- Badge de temperatura (quente / morno / frio)
-- Botão "Marcar como perdido" (ghost, à direita) que abre o modal de saída descrito no item 10.
+Substituir o painel lateral atual por um modal grande centralizado:
 
-## 2. Aba "Execução" — reestruturação completa
+- Overlay `bg-black/50` cobrindo a tela.
+- Card central: `w-[88vw] max-w-[1400px] h-[90vh]` centralizado (flex center).
+- `rounded-2xl`, `bg-background`, `shadow-2xl`, `border border-border`.
+- Estrutura interna em 3 zonas verticais com **um único scroll**:
 
-Cinco blocos verticais, espaçados, todos derivados dos helpers já existentes + novos auxiliares puros (sem alterar mock).
+```text
+┌─────────────────────────────────────────┐
+│ HEADER STICKY (fixo no topo)            │
+├─────────────────────────────────────────┤
+│ TABS STICKY (fixas abaixo do header)    │
+├─────────────────────────────────────────┤
+│ CONTEÚDO (único overflow-y-auto)        │
+│   ...                                    │
+└─────────────────────────────────────────┘
+```
 
-### Bloco 1 — Status operacional
-Card compacto com linha de mini-badges:
-- Temperatura (🔴/🟡/🔵)
-- Score (mock determinístico a partir do id+orçamento, 60–95)
-- Tempo sem interação (`l.ultimaInteracao`)
-- Risco de perda (quando `isAtrasado` ou prioridade Proposta sem retorno)
-- Cadência (Em dia / Dia X atrasado)
-- Visita (quando `status === Visita`)
+Técnico: o card é `flex flex-col`. Header e TabsList recebem `sticky top-0` / `sticky top-[Xpx]` dentro do mesmo container scrollável. Remover `overflow` interno de qualquer aba — só o wrapper de conteúdo rola.
 
-Helper novo: `getStatusOperacional(l)` retorna array `{ icon, label, tone }`.
+## 2. Header sticky
 
-### Bloco 2 — Próxima ação recomendada
-Card destacado (borda suave, fundo `surface`, sem aparência de alerta):
-- Título "Próxima ação recomendada"
-- Frase forte usando `getProximaAcao(l).label` + nome do lead
-- Lista "Motivo" com 2–3 bullets derivados (visita marcada, sem confirmação há Xh, risco médio de no-show, etc.) via `getMotivos(l)`.
-- CTAs: Ligar · WhatsApp · Confirmar visita (quando aplicável) · Adiar tarefa.
+Linha única, `px-6 py-4`, `bg-background`, `border-b border-border`, `sticky top-0 z-20`.
 
-### Bloco 3 — Timeline operacional
-Lista compacta com linha vertical discreta. Itens derivados de `l.historico` + eventos sintéticos ("Sem resposta há Xh", "Visita agendada", "Lead qualificado pela IA"). Ícones pequenos, timestamps pequenos. Helper `getTimelineOperacional(l)`.
+- **Esquerda**: nome do lead (forte) + id (muted, pequeno) numa linha; abaixo, badges em fila — etapa, prioridade, temperatura.
+- **Direita**: botão `Marcar como perdido` (variant ghost/outline, secundário) + botão fechar (ícone X).
+- Remover badges duplicados que hoje aparecem dispersos no topo do conteúdo.
 
-### Bloco 4 — Cadência ativa
-Subtítulo "Sequência operacional em andamento". Lista de checkboxes/itens com status (Concluído / Hoje / Atrasado / Pendente), tipo + canal + prazo. Botão "Concluir tarefa" por item (sem persistir). Reusa `getCadenciaPlano(l)` existente, ampliando para incluir canal e prazo.
+## 3. Tabs sticky
 
-### Bloco 5 — Métricas rápidas
-Linha horizontal de 6 mini-cards: Score, Potencial (`orcamento`), Comissão (`getComissao`), Chance de conversão (derivada de score), Tempo médio resposta (mock por origem), Estágio de decisão (Alto/Médio/Baixo a partir de status).
+`TabsList` com `sticky top-[72px] z-10 bg-background border-b border-border px-6 pt-3 pb-3`. Triggers em linha única com `gap-2`, scroll horizontal só se necessário em telas estreitas (`overflow-x-auto`). Garantir `mb-6` no primeiro bloco de cada `TabsContent` para que a barra nunca encoste no conteúdo (corrige sobreposição atual da aba Histórico).
 
-## 3. Aba "Interações"
+## 4. Spacing global padronizado
 
-Reformatar como mini-CRM. Cada item do histórico vira card com:
-- Ícone do canal
-- Data/hora
-- Responsável (mock: "Você")
-- Resumo (texto do histórico)
-- Linha "➡️ Próxima ação sugerida" (helper `getSugestaoPosInteracao(item, l)`).
+- Padding lateral do conteúdo: `px-6`.
+- Padding vertical do conteúdo: `py-6`.
+- Entre seções (blocos da aba): `space-y-6`.
+- Dentro de cards: `p-5`, elementos internos `space-y-3` (12–16px).
+- Cards: `rounded-xl border border-border bg-card`.
 
-Botão "Registrar interação" abre dialog compacto com `select` de tipo (ligação / WhatsApp / reunião / visita / observação / follow-up) + textarea. Sem persistência.
+## 5. Hierarquia visual em 3 níveis
 
-## 4. Aba "Cadência"
+- **Nível 1 (execução imediata)**: card "Próxima ação", botões operacionais principais. Tipografia maior, borda sutil destacada (`border-primary/30`), fundo `bg-surface`, ação principal em botão `default` cheio.
+- **Nível 2 (contexto operacional)**: timeline, status, cadência, qualificação. Cards normais, títulos `text-sm font-semibold text-muted-foreground uppercase tracking-wide`.
+- **Nível 3 (apoio)**: scripts, histórico antigo, observações. Tipografia menor, `text-muted-foreground`, sem destaques de cor.
 
-Substituir tabela atual por jornada vertical:
-- Título "Cadência: Qualificação Premium"
-- Agrupada por Dia 1–4
-- Cada item: canal · objetivo · SLA · status (badge) · script sugerido (colapsável)
-- Botões topo: Pausar cadência · Reiniciar · Trocar cadência (apenas UI).
+## 6. Aba Execução — refinamento
 
-## 5. Aba "WhatsApp"
+- **Card "Próxima ação"** vira herói da aba: `p-6`, título grande, frase de ação, motivo em bullets discretos, CTA principal em destaque.
+- **Botões operacionais** num grid uniforme: `grid grid-cols-2 md:grid-cols-5 gap-3`, todos com mesma altura (`h-11`), mesmo peso visual. Ordem fixa: Ligar · WhatsApp · Registrar interação · Agendar visita · Avançar etapa. "Marcar perdido" sai daqui (já está no header) — ou fica como link `ghost` discreto ao final.
+- **Status operacional**: linha de mini-badges com `gap-2 flex-wrap`, sem caixas separadas por badge.
+- **Timeline**: lista vertical com linha guia (`border-l border-border pl-4 ml-2`), ícones `h-3.5 w-3.5`, timestamps `text-xs text-muted-foreground`, `space-y-4` entre eventos.
+- **Métricas rápidas**: grid `grid-cols-3 md:grid-cols-6 gap-3`, mini-cards uniformes `p-3`.
 
-Layout mini-inbox:
-- Card "Última conversa" com horário e resumo
-- Bloco "Sugestão IA" (texto pré-pronto baseado no interesse do lead)
-- Botões: Usar sugestão · Editar mensagem · Copiar texto
-- Lista de templates rápidos (Apresentação, Confirmação visita, Follow-up, Pós-visita).
+## 7. Aba Cadência
 
-## 6. Aba "Visitas"
+- Cada dia em container próprio: `Card` com header "Dia N — objetivo", `space-y-4` entre dias.
+- Tarefas como linhas de checklist: ícone status à esquerda, canal+objetivo no centro, SLA `text-xs text-muted-foreground` à direita, script colapsável abaixo (`text-sm text-muted-foreground`).
+- Remover aparência de tabela/formulário.
 
-Card de visita derivado (quando `status === Visita`): imóvel relacionado, data/hora, status (Agendada/Confirmada/Realizada/Não compareceu/Reagendada), endereço, observações, campo feedback. Botões: Confirmar visita · Registrar feedback · Reagendar. Estado vazio elegante para os demais.
+## 8. Aba Interações
 
-## 7. Aba "Qualificação"
+- Cada interação como card leve `p-4`, `space-y-4` entre cards.
+- Cabeçalho do card: ícone canal + responsável + timestamp discreto à direita.
+- Resumo em corpo normal.
+- Bloco "➡️ Próxima ação sugerida" com fundo `bg-surface`, borda esquerda `border-l-2 border-primary/40`, padding compacto.
 
-Reorganizar em 4 cards: Perfil · Busca · Financeiro · Decisão. Campos derivados de `interesse` + placeholders. Visual limpo, sem inputs editáveis (read-only mock).
+## 9. Aba WhatsApp
 
-## 8. Aba "Scripts"
+- Layout em 2 zonas: card "Última conversa" no topo + card "Sugestão IA" destacado.
+- Templates em `grid grid-cols-2 gap-3`, cards iguais com título e botão "Usar".
+- Área de texto maior (`min-h-[120px]`), botões de ação alinhados à direita.
+- Separação clara entre IA (fundo `bg-surface`) e mensagem manual (fundo `bg-card`).
 
-Biblioteca por etapa (Primeiro contato, Reativação, Follow-up, Confirmação de visita, Pós-visita, Proposta). Cada script: título · objetivo · texto · botão "Copiar". Reusa lista atual, expandindo objetivos.
+## 10. Aba Visitas
 
-## 9. Aba "Histórico"
+Quando não há visita: estado vazio premium centralizado — ícone grande discreto, frase "Nenhuma visita agendada ainda.", botão `Agendar primeira visita` (sem lógica nova, apenas UI). Quando há: card único bem espaçado.
 
-Linha do tempo completa estilo auditoria leve:
-- Lead criado · Qualificado · Etapa alterada · Interação registrada · Visita criada · Proposta enviada · Perda/Conversão (quando aplicável)
-- Cada linha: data/hora · responsável · origem da ação · alteração.
+## 11. Aba Qualificação
 
-## 10. Saída operacional — "Marcar como perdido"
+- Grid `grid-cols-1 md:grid-cols-2 gap-4` para os 4 blocos: Perfil, Busca, Financeiro, Decisão.
+- Cada card: título uppercase pequeno, lista de pares label/valor com `space-y-2`, label `text-muted-foreground text-xs`, valor `text-sm font-medium`.
 
-Novo `Dialog` controlado por `perdaOpen`:
-- Select obrigatório com motivos (Sem retorno, Sem perfil, Comprou outro imóvel, Sem crédito, Momento errado, Valor acima, Não gostou da região, Outro)
-- Textarea obrigatório "Observação"
-- Botões: Cancelar · Confirmar perda (sem persistência, apenas fecha).
+## 12. Aba Scripts
 
-## 11. Inteligência comportamental
+- Lista vertical `space-y-4`, cada script em card `p-5`.
+- Header: título forte + objetivo `text-xs text-muted-foreground` em linha separada.
+- Texto do script em bloco com `bg-surface rounded-md p-3`.
+- Botão "Copiar" pequeno (`size="sm" variant="ghost"`) à direita do header.
 
-Mini-badges discretos no header do drawer e no Bloco 1, exibidos condicionalmente:
-- Sem resposta · Quente parado · Proposta sem retorno · Cadência atrasada · Visita sem confirmação · Risco de perda.
+## 13. Aba Histórico
 
-Helper `getAlertasComportamentais(l)`.
+Garantir `mt-6` para evitar a sobreposição atual com a TabsList sticky. Manter timeline já existente, só ajustando spacing (`space-y-3`).
 
-## 12. Restrições
+## 14. Responsividade
 
-- Sem novas dependências.
-- Sem alterações em mock, sidebar, rotas, Pipeline ou demais telas.
-- Sem alterar tabela/aside/cards do topo da página de Leads.
-- Identidade visual Ubroker (navy, surface, cards arredondados) preservada.
-- Sem dashboards, sem formulários gigantes, sem poluição visual.
+- `<lg`: grids de 5–6 colunas caem para 2; tabs com `overflow-x-auto`.
+- Header: badges quebram em segunda linha.
+- Modal: em `<md`, vira `w-[96vw] h-[94vh]`.
+- Sem scroll horizontal em nenhuma aba.
 
-## Detalhes técnicos
+## 15. Detalhes técnicos
 
-- Novos estados em `LeadsPage`: `perdaOpen`, `perdaMotivo`, `perdaObs`, `registroOpen`, `registroTipo`, `registroTexto`.
-- Novos helpers puros: `getStatusOperacional`, `getMotivos`, `getTimelineOperacional`, `getMetricasRapidas`, `getSugestaoPosInteracao`, `getAlertasComportamentais`, `getScoreLead`, `getVisitaInfo`.
-- Ampliar `getCadenciaPlano` para devolver canal + SLA por item.
-- Toda a refatoração ocorre dentro do JSX do drawer já existente; abas são reescritas individualmente.
+- Editar apenas o bloco JSX `{drawerOpen && selected && ...}` (linhas ~772–1151) e seus filhos.
+- Trocar wrapper externo de painel lateral para overlay+card centralizado.
+- Mover `Tabs` para fora do bloco com padding interno: TabsList sticky, TabsContent recebe `px-6 py-6`.
+- Eliminar qualquer `overflow-y-auto` aninhado dentro das abas.
+- Reusar todos os helpers já existentes (`getProximaAcao`, `getMotivos`, `getStatusOperacional`, `getTimelineOperacional`, `getCadenciaPlano`, `getScoreLead`, `getComissao`, `SCRIPTS_LIB`, etc.) — nenhum dado ou lógica nova.
+- Manter os Dialogs `perdaOpen` e `registroOpen` intactos.
 
 ## Critérios de aceite
 
-- Drawer parece um cockpit operacional (status, ação, timeline, cadência, métricas).
-- Próxima ação clara e com motivos.
-- Cadência visual por dias.
-- Interações com sugestão de próxima ação.
-- Histórico em linha do tempo de auditoria leve.
-- Saída operacional com motivo obrigatório.
-- Demais áreas da plataforma e da própria página de Leads inalteradas.
+- Modal centralizado ocupando ~88vw × 90vh, com sombra premium.
+- Um único scroll vertical no conteúdo; header e tabs sempre visíveis.
+- Tabs nunca sobrepõem conteúdo (Histórico corrigido).
+- Spacing uniforme em todas as abas (24px externo, 24px entre seções).
+- Hierarquia clara entre ação imediata, contexto e apoio.
+- Botões operacionais alinhados em grid uniforme.
+- Estado vazio elegante na aba Visitas.
+- Nenhuma alteração fora do bloco do modal.
