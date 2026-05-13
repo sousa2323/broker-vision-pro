@@ -478,11 +478,6 @@ function UsuariosAdmin() {
         </div>
       </div>
 
-      {/* Tabela operacional */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-surface">
       {/* Barra de ações em massa */}
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-sm">
