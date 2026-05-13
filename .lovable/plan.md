@@ -1,126 +1,134 @@
-# Refinamento estrutural — Modal "Operação do Lead"
+# Refinamento visual e hierárquico — Modal "Operação do Lead"
 
-Escopo restrito ao drawer atual em `src/routes/app.leads.tsx` (linhas ~771–1151). Sem nova lógica, sem novas abas, sem mudar mock, sidebar, tabela, cards do topo, Pipeline ou demais telas. Apenas estrutura visual, spacing, hierarquia e comportamento de scroll.
+Escopo: apenas `src/routes/app.leads.tsx`, dentro do bloco do modal (linhas ~771–1237). Sem novas abas, sem mudar estrutura geral, sem alterar lógica/mock. Reusar 100% dos helpers (`getProximaAcao`, `getMotivos`, `getStatusOperacional`, `getCadenciaDetalhada`, `getScoreLead`, `getChanceConversao`, `getTempoMedioResp`, `getComissao`, `getTimelineOperacional`, `SCRIPTS_LIB`, etc.). Pode adicionar 2 helpers visuais derivados se necessário (mapping score→tom, tempoSemInteracao→tom, sla→tom), sem novos dados.
 
-## 1. Container do modal
+---
 
-Substituir o painel lateral atual por um modal grande centralizado:
+## 1. Nova "Mission Control Bar" (logo abaixo das tabs sticky)
 
-- Overlay `bg-black/50` cobrindo a tela.
-- Card central: `w-[88vw] max-w-[1400px] h-[90vh]` centralizado (flex center).
-- `rounded-2xl`, `bg-background`, `shadow-2xl`, `border border-border`.
-- Estrutura interna em 3 zonas verticais com **um único scroll**:
+Barra horizontal sticky, abaixo da `TabsList`, visível em todas as abas — dá contexto operacional permanente. Não substitui a aba Execução; complementa.
 
-```text
-┌─────────────────────────────────────────┐
-│ HEADER STICKY (fixo no topo)            │
-├─────────────────────────────────────────┤
-│ TABS STICKY (fixas abaixo do header)    │
-├─────────────────────────────────────────┤
-│ CONTEÚDO (único overflow-y-auto)        │
-│   ...                                    │
-└─────────────────────────────────────────┘
-```
+Layout: `sticky top-[~140px] z-10 bg-background/95 backdrop-blur border-b border-border px-6 py-3`. Conteúdo em `flex flex-wrap gap-2` (em <md vira `grid-cols-2`).
 
-Técnico: o card é `flex flex-col`. Header e TabsList recebem `sticky top-0` / `sticky top-[Xpx]` dentro do mesmo container scrollável. Remover `overflow` interno de qualquer aba — só o wrapper de conteúdo rola.
+7 mini-pills horizontais (todos `h-9 rounded-md border border-border px-3` com micro-label uppercase 9px e valor 13px medium):
 
-## 2. Header sticky
+1. Comissão potencial — `formatBRL(getComissao(selected))`
+2. VGV/Imóvel — `formatBRL(selected.orcamento)`
+3. Score IA — valor + bolinha de cor (verde ≥80, âmbar 50–79, vermelho <50)
+4. Chance de fechamento — `getChanceConversao()%` + barra fina sob o número
+5. Tempo sem interação — derivado da última `historico[0].data`; tom verde/âmbar/vermelho
+6. SLA próxima ação — texto curto ex. "WhatsApp · 2h"; quando atrasado vira pill `bg-red-50 text-red-700` com ícone de alerta pulsante sutil
+7. Temperatura — reutiliza `selectedPrio` (🔥/🌤/❄️)
 
-Linha única, `px-6 py-4`, `bg-background`, `border-b border-border`, `sticky top-0 z-20`.
+Comportamento visual: pills neutras por padrão; só os indicadores de risco recebem cor. Resultado: leitura escaneável tipo cockpit.
 
-- **Esquerda**: nome do lead (forte) + id (muted, pequeno) numa linha; abaixo, badges em fila — etapa, prioridade, temperatura.
-- **Direita**: botão `Marcar como perdido` (variant ghost/outline, secundário) + botão fechar (ícone X).
-- Remover badges duplicados que hoje aparecem dispersos no topo do conteúdo.
+## 2. Hero "Próxima ação recomendada" reforçado
 
-## 3. Tabs sticky
+Hoje: `border-primary/30 bg-surface p-6`. Ajustes:
 
-`TabsList` com `sticky top-[72px] z-10 bg-background border-b border-border px-6 pt-3 pb-3`. Triggers em linha única com `gap-2`, scroll horizontal só se necessário em telas estreitas (`overflow-x-auto`). Garantir `mb-6` no primeiro bloco de cada `TabsContent` para que a barra nunca encoste no conteúdo (corrige sobreposição atual da aba Histórico).
+- Container: `p-7`, `rounded-2xl`, `border-l-4 border-l-primary`, `bg-gradient-to-br from-surface to-background`, sombra `shadow-md`.
+- Linha superior: 3 chips em fila — etapa da cadência (ex. "Dia 2 · Follow-up"), prioridade ("Alta"), SLA ("vence em 2h"). Quando SLA atrasado: chip vermelho "Atrasado · impacta conversão".
+- Título maior (`text-2xl md:text-3xl font-semibold`), nome do lead em destaque.
+- Sub-linha de impacto: frase curta dinâmica ("Atraso reduz chance de conversão em ~15%") derivada do score/tempo sem interação.
+- Motivos: bullets com ícone `Sparkles` discreto à esquerda em vez de "•".
+- CTA principal dominante: botão único `h-12 px-6 text-base font-semibold` (verde WhatsApp se ação=whatsapp; navy se ligar) ocupando largura máx. ~340px, alinhado à direita ou em linha própria abaixo. Ícone grande à esquerda + label ("Enviar WhatsApp agora").
+- Link discreto "Ver alternativas" à direita do CTA, `text-xs text-muted-foreground hover:underline`.
 
-## 4. Spacing global padronizado
+## 3. Botões secundários — peso reduzido
 
-- Padding lateral do conteúdo: `px-6`.
-- Padding vertical do conteúdo: `py-6`.
-- Entre seções (blocos da aba): `space-y-6`.
-- Dentro de cards: `p-5`, elementos internos `space-y-3` (12–16px).
-- Cards: `rounded-xl border border-border bg-card`.
+Hoje 5 botões competem (Ligar e WhatsApp coloridos no mesmo grid). Novo:
 
-## 5. Hierarquia visual em 3 níveis
+- O CTA principal sai do grid e vai para dentro do hero.
+- Grid vira `grid-cols-2 md:grid-cols-4 gap-2` apenas com: Ligar · Registrar · Agendar · Avançar.
+- Todos `variant outline`, `h-10`, ícone 14px, label `text-xs font-medium`. Sem cores fortes — neutralidade total para que o hero seja a única coisa "gritante".
 
-- **Nível 1 (execução imediata)**: card "Próxima ação", botões operacionais principais. Tipografia maior, borda sutil destacada (`border-primary/30`), fundo `bg-surface`, ação principal em botão `default` cheio.
-- **Nível 2 (contexto operacional)**: timeline, status, cadência, qualificação. Cards normais, títulos `text-sm font-semibold text-muted-foreground uppercase tracking-wide`.
-- **Nível 3 (apoio)**: scripts, histórico antigo, observações. Tipografia menor, `text-muted-foreground`, sem destaques de cor.
+## 4. Status operacional — mini painel horizontal
 
-## 6. Aba Execução — refinamento
+Já existe como pills coloridas (`getStatusOperacional`). Refinar:
 
-- **Card "Próxima ação"** vira herói da aba: `p-6`, título grande, frase de ação, motivo em bullets discretos, CTA principal em destaque.
-- **Botões operacionais** num grid uniforme: `grid grid-cols-2 md:grid-cols-5 gap-3`, todos com mesma altura (`h-11`), mesmo peso visual. Ordem fixa: Ligar · WhatsApp · Registrar interação · Agendar visita · Avançar etapa. "Marcar perdido" sai daqui (já está no header) — ou fica como link `ghost` discreto ao final.
-- **Status operacional**: linha de mini-badges com `gap-2 flex-wrap`, sem caixas separadas por badge.
-- **Timeline**: lista vertical com linha guia (`border-l border-border pl-4 ml-2`), ícones `h-3.5 w-3.5`, timestamps `text-xs text-muted-foreground`, `space-y-4` entre eventos.
-- **Métricas rápidas**: grid `grid-cols-3 md:grid-cols-6 gap-3`, mini-cards uniformes `p-3`.
+- Trocar título "Status operacional" por linha mais densa, mover para logo abaixo do hero.
+- Pills com `h-7 px-2.5 rounded-full text-[11px]`, ícone 12px à esquerda. Adicionar bolinha pulsante (`animate-pulse`) só em pills `tone === "danger"`.
+- Wrap natural; sem card-container — apenas a fila.
 
-## 7. Aba Cadência
+## 5. Timeline operacional — linha viva
 
-- Cada dia em container próprio: `Card` com header "Dia N — objetivo", `space-y-4` entre dias.
-- Tarefas como linhas de checklist: ícone status à esquerda, canal+objetivo no centro, SLA `text-xs text-muted-foreground` à direita, script colapsável abaixo (`text-sm text-muted-foreground`).
-- Remover aparência de tabela/formulário.
+- Linha guia `border-l-2 border-border` mais visível, com gradiente sutil no topo (`bg-gradient-to-b from-primary/30 to-transparent` nos primeiros 40px).
+- Bullets coloridos por canal (não só por tone): WhatsApp `bg-emerald-500`, Visita `bg-blue-500`, IA `bg-violet-500`, Sistema `bg-slate-400`, Ligação `bg-amber-500`. Ícone branco dentro.
+- Espaçamento `space-y-5`, timestamp `text-[10px] text-muted-foreground/70` à direita do label (não embaixo).
+- Hover em cada item: `bg-surface/50 -mx-2 px-2 rounded` para feedback discreto.
 
-## 8. Aba Interações
+## 6. Cadência — sensação de progresso
 
-- Cada interação como card leve `p-4`, `space-y-4` entre cards.
-- Cabeçalho do card: ícone canal + responsável + timestamp discreto à direita.
-- Resumo em corpo normal.
-- Bloco "➡️ Próxima ação sugerida" com fundo `bg-surface`, borda esquerda `border-l-2 border-primary/40`, padding compacto.
+- Adicionar barra de progresso no topo da aba Cadência ("3 de 8 etapas concluídas") com `bg-emerald-500`.
+- Cada dia: `Card` com header "Dia N · objetivo do dia" + chip de status agregado (ex. "2/3 concluídas").
+- Ícones de status: ✓ verde em círculo cheio (concluído), ● âmbar (hoje), ⚠ vermelho (atrasado), ○ cinza (pendente). Sem usar emojis brutos.
+- Item concluído: opacidade levemente reduzida + linha de checkmark animada (apenas CSS transition em hover).
+- Atrasado: borda esquerda `border-l-2 border-l-red-400`, fundo `bg-red-50/30`.
 
-## 9. Aba WhatsApp
+## 7. Interações — histórico inteligente
 
-- Layout em 2 zonas: card "Última conversa" no topo + card "Sugestão IA" destacado.
-- Templates em `grid grid-cols-2 gap-3`, cards iguais com título e botão "Usar".
-- Área de texto maior (`min-h-[120px]`), botões de ação alinhados à direita.
-- Separação clara entre IA (fundo `bg-surface`) e mensagem manual (fundo `bg-card`).
+- Cada card de interação ganha 1 linha de microcontexto derivada da ação (já temos `getSugestaoPosInteracao`). Adicionar 1 micro-badge no header tipo "Lead respondeu em 12min" / "Score +5" / "Follow-up em 1h" — derivada simples do tipo + posição no histórico.
+- Cabeçalho com avatar circular do canal (mesma paleta da timeline §5) substituindo o emoji solto.
+- Bloco "Próxima ação sugerida" com fundo `bg-primary/5`, borda esquerda `border-l-2 border-l-primary/40`, ícone `ArrowRight` 12px.
 
-## 10. Aba Visitas
+## 8. WhatsApp — central inteligente
 
-Quando não há visita: estado vazio premium centralizado — ícone grande discreto, frase "Nenhuma visita agendada ainda.", botão `Agendar primeira visita` (sem lógica nova, apenas UI). Quando há: card único bem espaçado.
+- "Sugestão IA" promovida: `rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-background p-5`, header com `Sparkles` 16px + label "Assistente IA" e mini-tag "personalizada". Botão "Usar sugestão" `h-9` violeta sólido.
+- Templates: grid `grid-cols-2 md:grid-cols-3 gap-2`, cards `p-3 h-auto` com título `text-xs font-semibold` + preview `text-[11px] text-muted-foreground line-clamp-2` + botão "Usar" pequeno fantasma.
+- Textarea: `min-h-[140px]`, `bg-card`, header próprio "Mensagem" + contador de caracteres + botões de ação ("Enviar" sólido emerald + "Salvar como template" ghost) ancorados.
+- Última conversa colapsada num accordion fino acima da composição.
 
-## 11. Aba Qualificação
+## 9. Qualificação — painel de inteligência
 
-- Grid `grid-cols-1 md:grid-cols-2 gap-4` para os 4 blocos: Perfil, Busca, Financeiro, Decisão.
-- Cada card: título uppercase pequeno, lista de pares label/valor com `space-y-2`, label `text-muted-foreground text-xs`, valor `text-sm font-medium`.
+- Cada um dos 4 cards (Perfil, Busca, Financeiro, Decisão) ganha:
+  - Ícone leve no header (`User`, `Search`, `Wallet`, `CheckCircle`) `h-4 w-4 text-muted-foreground`.
+  - Border-top colorida fina por categoria (azul/violeta/verde/âmbar) `border-t-2`.
+  - Pares label/valor em `grid grid-cols-[auto_1fr] gap-x-3 gap-y-2`, valor `font-medium`.
 
-## 12. Aba Scripts
+## 10. Scripts — biblioteca premium
 
-- Lista vertical `space-y-4`, cada script em card `p-5`.
-- Header: título forte + objetivo `text-xs text-muted-foreground` em linha separada.
-- Texto do script em bloco com `bg-surface rounded-md p-3`.
-- Botão "Copiar" pequeno (`size="sm" variant="ghost"`) à direita do header.
+- Cada script `p-4` (não 5), header em 2 linhas: título `text-sm font-semibold` + objetivo `text-[11px] text-muted-foreground`. Categoria como chip pequeno à direita.
+- Mensagem em bloco `bg-surface/60 rounded-md p-3 text-sm font-mono-like` (usar `font-normal` mas leading mais alto).
+- Botão "Copiar" `ghost size-sm` com ícone `Copy` 12px, alinhado ao topo direito.
 
-## 13. Aba Histórico
+## 11. Histórico — timeline institucional
 
-Garantir `mt-6` para evitar a sobreposição atual com a TabsList sticky. Manter timeline já existente, só ajustando spacing (`space-y-3`).
+- Agrupar por data (hoje, ontem, esta semana, anterior) com header sticky-suave `text-[11px] uppercase tracking-widest text-muted-foreground py-2 border-b border-dashed`.
+- Linha temporal contínua (mesma estética da §5).
+- Cada evento com microbadge de origem: IA (violeta), WhatsApp (emerald), Sistema (slate), Corretor (navy) — `text-[10px] px-1.5 py-0.5 rounded`.
 
-## 14. Responsividade
+## 12. Microinterações globais
 
-- `<lg`: grids de 5–6 colunas caem para 2; tabs com `overflow-x-auto`.
-- Header: badges quebram em segunda linha.
-- Modal: em `<md`, vira `w-[96vw] h-[94vh]`.
-- Sem scroll horizontal em nenhuma aba.
+- Todos os cards interativos: `transition-all hover:border-foreground/20 hover:shadow-sm`.
+- Botões: `active:scale-[0.98] transition-transform`.
+- Pills "danger" com `animate-pulse` só na bolinha indicadora (não no texto).
+- Tabs: indicador inferior animado já existe; aumentar para `border-b-2 transition-colors`.
+- Sem motion lib nova — apenas Tailwind transitions.
 
-## 15. Detalhes técnicos
+## 13. Tokens e responsividade
 
-- Editar apenas o bloco JSX `{drawerOpen && selected && ...}` (linhas ~772–1151) e seus filhos.
-- Trocar wrapper externo de painel lateral para overlay+card centralizado.
-- Mover `Tabs` para fora do bloco com padding interno: TabsList sticky, TabsContent recebe `px-6 py-6`.
-- Eliminar qualquer `overflow-y-auto` aninhado dentro das abas.
-- Reusar todos os helpers já existentes (`getProximaAcao`, `getMotivos`, `getStatusOperacional`, `getTimelineOperacional`, `getCadenciaPlano`, `getScoreLead`, `getComissao`, `SCRIPTS_LIB`, etc.) — nenhum dado ou lógica nova.
-- Manter os Dialogs `perdaOpen` e `registroOpen` intactos.
+- Reutilizar tokens existentes (`bg-surface`, `bg-card`, `text-muted-foreground`, `border-border`, `bg-navy`). Cores semânticas (emerald/red/amber/violet/blue/slate) já estão em uso no arquivo — manter consistência, não inventar nova paleta.
+- Mission Control Bar em <md: vira `grid grid-cols-2 gap-2`. Hero CTA em <md: `w-full`.
+- Sem scroll horizontal em nenhuma aba; manter `overflow-x-auto` apenas em TabsList.
+
+## Detalhes técnicos
+
+- Editar somente o bloco `{drawerOpen && ...}` em `src/routes/app.leads.tsx`.
+- Adicionar (no topo do arquivo, entre os helpers existentes):
+  - `getScoreTone(score) → "good"|"warn"|"danger"`
+  - `getTempoSemInteracao(lead) → { label, tone }` derivando de `historico[0].data`
+  - `getSlaProximaAcao(lead) → { label, atrasado: boolean }` baseado em `getCadenciaDetalhada` (primeiro item `hoje`/`atrasado`).
+- Importar ícones já não usados de `lucide-react` se necessário (`Copy`, `User`, `Search`, `Wallet`, `CheckCircle`, `AlertCircle`).
+- Não tocar nos Dialogs `perdaOpen`/`registroOpen`, na tabela, sidebar, cards do topo, Pipeline ou outras rotas.
 
 ## Critérios de aceite
 
-- Modal centralizado ocupando ~88vw × 90vh, com sombra premium.
-- Um único scroll vertical no conteúdo; header e tabs sempre visíveis.
-- Tabs nunca sobrepõem conteúdo (Histórico corrigido).
-- Spacing uniforme em todas as abas (24px externo, 24px entre seções).
-- Hierarquia clara entre ação imediata, contexto e apoio.
-- Botões operacionais alinhados em grid uniforme.
-- Estado vazio elegante na aba Visitas.
-- Nenhuma alteração fora do bloco do modal.
+- Mission Control Bar visível e fixa abaixo das tabs em todas as abas.
+- Hero "Próxima ação" claramente dominante; CTA único e óbvio.
+- Botões secundários neutros, sem competir com o CTA.
+- Timeline e Histórico com bullets coloridos por canal e linha guia contínua.
+- Cadência com progresso visível e estados emocionais (concluído leve, atrasado urgente).
+- WhatsApp parecendo central com IA, não textarea solta.
+- Qualificação com ícones e categorias visualmente distintas.
+- Microinterações sutis em hover/active sem exageros.
+- Nenhuma alteração fora do modal; nenhuma lógica/mock alterada.

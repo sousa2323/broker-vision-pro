@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import * as React from "react";
 import { useMemo, useState } from "react";
 import {
   Calendar,
@@ -14,6 +15,16 @@ import {
   ArrowRight,
   Copy,
   Sparkles,
+  User as UserIcon,
+  Search as SearchIcon,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  TrendingUp,
+  Flame,
+  Activity,
+  Bot,
+  Zap,
 } from "lucide-react";
 import { leads, type Lead, type LeadOrigin, type LeadStatus, formatBRL } from "@/data/mock";
 import { cn } from "@/lib/utils";
@@ -220,6 +231,81 @@ function getEstagioDecisao(l: Lead) {
 }
 function getTempoMedioResp(l: Lead) {
   return ["8min", "14min", "22min", "31min", "47min"][hashCode(l.id) % 5];
+}
+
+type Tone = "good" | "warn" | "danger" | "neutral";
+function getScoreTone(score: number): Tone {
+  if (score >= 80) return "good";
+  if (score >= 50) return "warn";
+  return "danger";
+}
+function getTempoSemInteracao(l: Lead): { label: string; tone: Tone } {
+  const u = l.ultimaInteracao.toLowerCase();
+  if (u.includes("min")) return { label: l.ultimaInteracao, tone: "good" };
+  if (u.includes("h")) return { label: l.ultimaInteracao, tone: "good" };
+  if (u.includes("hoje")) return { label: l.ultimaInteracao, tone: "good" };
+  if (u.includes("ontem") || u.includes("1 dia") || u.includes("2 dia")) return { label: l.ultimaInteracao, tone: "warn" };
+  return { label: l.ultimaInteracao, tone: "danger" };
+}
+function getSlaProximaAcao(l: Lead): { label: string; atrasado: boolean; etapa: string } {
+  const cad = getCadenciaDetalhada(l);
+  const proximo = cad.find((c) => c.status === "atrasado") ?? cad.find((c) => c.status === "hoje") ?? cad.find((c) => c.status === "pendente");
+  if (!proximo) return { label: "Sem SLA", atrasado: false, etapa: "—" };
+  const atrasado = proximo.status === "atrasado";
+  return { label: `${proximo.canal} · ${proximo.sla}`, atrasado, etapa: `Dia ${proximo.dia} · ${proximo.objetivo}` };
+}
+function getProgressoCadencia(l: Lead): { feitos: number; total: number; pct: number } {
+  const cad = getCadenciaDetalhada(l);
+  const feitos = cad.filter((c) => c.status === "concluido").length;
+  return { feitos, total: cad.length, pct: Math.round((feitos / cad.length) * 100) };
+}
+type CanalKind = "whatsapp" | "ligacao" | "visita" | "ia" | "sistema" | "proposta";
+function getCanalKind(tipo: string): CanalKind {
+  const t = tipo.toLowerCase();
+  if (t.includes("whats")) return "whatsapp";
+  if (t.includes("liga") || t.includes("telefone")) return "ligacao";
+  if (t.includes("visit")) return "visita";
+  if (t.includes("ia") || t.includes("bot")) return "ia";
+  if (t.includes("propos")) return "proposta";
+  return "sistema";
+}
+const canalDot: Record<CanalKind, string> = {
+  whatsapp: "bg-emerald-500",
+  ligacao: "bg-amber-500",
+  visita: "bg-blue-500",
+  ia: "bg-violet-500",
+  proposta: "bg-rose-500",
+  sistema: "bg-slate-400",
+};
+const canalBadge: Record<CanalKind, string> = {
+  whatsapp: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  ligacao: "bg-amber-50 text-amber-800 border-amber-100",
+  visita: "bg-blue-50 text-blue-700 border-blue-100",
+  ia: "bg-violet-50 text-violet-700 border-violet-100",
+  proposta: "bg-rose-50 text-rose-700 border-rose-100",
+  sistema: "bg-slate-50 text-slate-600 border-slate-200",
+};
+function CanalIcon({ kind, className }: { kind: CanalKind; className?: string }) {
+  const map: Record<CanalKind, React.ReactElement> = {
+    whatsapp: <MessageCircle className={className} />,
+    ligacao: <Phone className={className} />,
+    visita: <Calendar className={className} />,
+    ia: <Sparkles className={className} />,
+    proposta: <ClipboardCheck className={className} />,
+    sistema: <Activity className={className} />,
+  };
+  return map[kind];
+}
+function getMicroContexto(tipo: string, indexFromTop: number): string | null {
+  const k = getCanalKind(tipo);
+  if (indexFromTop === 0) {
+    if (k === "whatsapp") return "Lead respondeu em 12min";
+    if (k === "ligacao") return "Conversa de 6min";
+    if (k === "ia") return "Score +5";
+    if (k === "visita") return "Confirmada";
+  }
+  if (indexFromTop === 1) return "Follow-up em 1h";
+  return null;
 }
 
 type StatusOp = { icon: string; label: string; tone: "neutral" | "warn" | "danger" | "good" };
@@ -825,75 +911,180 @@ function LeadsPage() {
                   </TabsList>
                 </div>
 
+                {/* MISSION CONTROL BAR (sticky abaixo das tabs) */}
+                {(() => {
+                  const score = getScoreLead(selected);
+                  const scoreTone = getScoreTone(score);
+                  const tsi = getTempoSemInteracao(selected);
+                  const sla = getSlaProximaAcao(selected);
+                  const chance = getChanceConversao(selected);
+                  const dotByTone: Record<Tone, string> = {
+                    good: "bg-emerald-500",
+                    warn: "bg-amber-500",
+                    danger: "bg-red-500",
+                    neutral: "bg-slate-400",
+                  };
+                  const Pill = ({ label, value, tone, danger, children }: { label: string; value?: React.ReactNode; tone?: Tone; danger?: boolean; children?: React.ReactNode }) => (
+                    <div className={cn(
+                      "flex h-11 min-w-[120px] items-center gap-2.5 rounded-md border px-3 transition-colors",
+                      danger ? "border-red-200 bg-red-50/60" : "border-border bg-card hover:border-foreground/20"
+                    )}>
+                      {tone && <span className={cn("h-2 w-2 shrink-0 rounded-full", dotByTone[tone], tone === "danger" && "animate-pulse")} />}
+                      <div className="min-w-0">
+                        <div className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
+                        <div className={cn("text-[13px] font-medium leading-tight", danger && "text-red-700")}>{value ?? children}</div>
+                      </div>
+                    </div>
+                  );
+                  return (
+                    <div className="sticky top-[140px] z-10 border-b border-border bg-background/95 px-6 py-3 backdrop-blur">
+                      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                        <Pill label="Comissão" value={formatBRL(selectedComissao)} />
+                        <Pill label="VGV" value={formatBRL(selected.orcamento)} />
+                        <Pill label="Score IA" tone={scoreTone} value={<span className="num">{score}</span>} />
+                        <Pill label="Conversão">
+                          <div className="flex items-center gap-1.5">
+                            <span className="num">{chance}%</span>
+                            <span className="h-1 w-10 overflow-hidden rounded-full bg-muted">
+                              <span className="block h-full rounded-full bg-emerald-500" style={{ width: `${chance}%` }} />
+                            </span>
+                          </div>
+                        </Pill>
+                        <Pill label="Sem interação" tone={tsi.tone} value={tsi.label} />
+                        <Pill label="SLA" danger={sla.atrasado} value={
+                          <span className="inline-flex items-center gap-1">
+                            {sla.atrasado && <AlertCircle className="h-3 w-3" />}
+                            {sla.label}
+                          </span>
+                        } />
+                        <Pill label="Temperatura" value={selectedPrio === "quente" ? "🔥 Quente" : selectedPrio === "morno" ? "🌤 Morno" : "❄️ Frio"} />
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* CONTEÚDO */}
                 <div className="px-6 py-6">
 
                 {/* EXECUÇÃO */}
                 <TabsContent value="execucao" className="mt-0 space-y-6">
-                  {/* NÍVEL 1 — Próxima ação (herói) */}
-                  <div className="rounded-xl border border-primary/30 bg-surface p-6 shadow-sm">
-                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Próxima ação recomendada</div>
-                    <div className="mt-2 text-2xl font-semibold leading-tight">
-                      {selectedAcao.tipo !== "nenhum" ? `${selectedAcao.label} com ${primeiroNome}` : "Sem ação imediata"}
-                    </div>
-                    {getMotivos(selected).length > 0 && (
-                      <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
-                        {getMotivos(selected).map((m) => (
-                          <li key={m} className="flex gap-2"><span className="text-primary">•</span>{m}</li>
-                        ))}
-                      </ul>
-                    )}
+                  {/* NÍVEL 1 — Próxima ação (HERÓI) */}
+                  {(() => {
+                    const sla = getSlaProximaAcao(selected);
+                    const isWa = selectedAcao.tipo === "whatsapp";
+                    const isCall = selectedAcao.tipo === "ligar";
+                    const ctaLabel = selectedAcao.tipo === "whatsapp" ? "Enviar WhatsApp agora"
+                      : selectedAcao.tipo === "ligar" ? "Ligar agora"
+                      : selectedAcao.tipo === "visita" ? "Confirmar visita"
+                      : selectedAcao.tipo === "followup" ? "Fazer follow-up"
+                      : "Definir próxima ação";
+                    const CtaIcon = isWa ? MessageCircle : isCall ? Phone : selectedAcao.tipo === "visita" ? Calendar : Send;
+                    const ctaColor = isWa ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                      : "bg-navy text-navy-foreground hover:opacity-90";
+                    const score = getScoreLead(selected);
+                    const impacto = sla.atrasado
+                      ? "Atraso reduz a chance de conversão neste lead."
+                      : score >= 80 ? "Lead com alta probabilidade de conversão — agir agora maximiza o resultado."
+                      : "Manter cadência aumenta a chance de avançar para a próxima etapa.";
+                    return (
+                      <div className="rounded-2xl border border-border border-l-4 border-l-primary bg-gradient-to-br from-surface to-background p-6 shadow-md transition-all hover:shadow-lg md:p-7">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-muted-foreground">
+                            <Activity className="h-3 w-3" />{sla.etapa}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">
+                            <Flame className="h-3 w-3" />{selectedNivelMeta.label}
+                          </span>
+                          <span className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
+                            sla.atrasado ? "border-red-200 bg-red-50 text-red-700" : "border-border bg-background text-muted-foreground"
+                          )}>
+                            <Clock className="h-3 w-3" />
+                            {sla.atrasado ? "Atrasado · impacta conversão" : `SLA ${sla.label}`}
+                          </span>
+                        </div>
+                        <div className="mt-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Próxima ação recomendada</div>
+                        <div className="mt-1 text-2xl font-semibold leading-tight md:text-3xl">
+                          {selectedAcao.tipo !== "nenhum" ? `${ctaLabel.replace(" agora","")} com ${primeiroNome}` : "Sem ação imediata"}
+                        </div>
+                        <div className="mt-2 text-sm text-muted-foreground">{impacto}</div>
+                        {getMotivos(selected).length > 0 && (
+                          <ul className="mt-4 space-y-1.5 text-sm text-muted-foreground">
+                            {getMotivos(selected).map((m) => (
+                              <li key={m} className="flex items-start gap-2">
+                                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" />
+                                <span>{m}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <div className="mt-6 flex flex-wrap items-center gap-3">
+                          <button className={cn(
+                            "inline-flex h-12 items-center justify-center gap-2 rounded-md px-6 text-base font-semibold shadow-sm transition-transform active:scale-[0.98]",
+                            ctaColor
+                          )}>
+                            <CtaIcon className="h-5 w-5" /> {ctaLabel}
+                          </button>
+                          <button className="text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline">Ver alternativas</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Status operacional — pills horizontais */}
+                  <div className="flex flex-wrap gap-2">
+                    {getStatusOperacional(selected).map((s, i) => (
+                      <span
+                        key={i}
+                        className={cn(
+                          "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] transition-colors",
+                          s.tone === "danger" ? "border-red-100 bg-red-50 text-red-700" :
+                          s.tone === "warn" ? "border-amber-100 bg-amber-50 text-amber-800" :
+                          s.tone === "good" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
+                          "border-border bg-surface text-foreground"
+                        )}
+                      >
+                        {s.tone === "danger" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />}
+                        <span aria-hidden>{s.icon}</span>{s.label}
+                      </span>
+                    ))}
                   </div>
 
-                  {/* Botões operacionais — grid uniforme */}
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-navy text-sm font-medium text-navy-foreground hover:opacity-90"><Phone className="h-4 w-4" /> Ligar</button>
-                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-emerald-600 text-sm font-medium text-white hover:opacity-90"><MessageCircle className="h-4 w-4" /> WhatsApp</button>
-                    <button onClick={() => setRegistroOpen(true)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><Plus className="h-4 w-4" /> Registrar</button>
-                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><Calendar className="h-4 w-4" /> Agendar visita</button>
-                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><ArrowRight className="h-4 w-4" /> Avançar etapa</button>
+                  {/* Botões secundários — neutros */}
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                    <button className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-background text-xs font-medium transition-colors hover:bg-surface active:scale-[0.98]"><Phone className="h-3.5 w-3.5" /> Ligar</button>
+                    <button onClick={() => setRegistroOpen(true)} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-background text-xs font-medium transition-colors hover:bg-surface active:scale-[0.98]"><Plus className="h-3.5 w-3.5" /> Registrar</button>
+                    <button className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-background text-xs font-medium transition-colors hover:bg-surface active:scale-[0.98]"><Calendar className="h-3.5 w-3.5" /> Agendar</button>
+                    <button className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md border border-border bg-background text-xs font-medium transition-colors hover:bg-surface active:scale-[0.98]"><ArrowRight className="h-3.5 w-3.5" /> Avançar</button>
                   </div>
 
-                  {/* NÍVEL 2 — Status operacional */}
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Status operacional</div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {getStatusOperacional(selected).map((s, i) => (
-                        <span
-                          key={i}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
-                            s.tone === "danger" ? "border-red-100 bg-red-50 text-red-700" :
-                            s.tone === "warn" ? "border-amber-100 bg-amber-50 text-amber-800" :
-                            s.tone === "good" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
-                            "border-border bg-surface text-foreground"
-                          )}
-                        >
-                          <span aria-hidden>{s.icon}</span>{s.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* NÍVEL 2 — Timeline */}
+                  {/* NÍVEL 2 — Timeline operacional VIVA */}
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Timeline operacional</div>
-                    <ol className="ml-2 mt-3 space-y-4 border-l border-border pl-4">
-                      {getTimelineOperacional(selected).map((t, i) => (
-                        <li key={i} className="relative text-sm">
-                          <span className="absolute -left-[22px] top-1 grid h-3.5 w-3.5 place-items-center rounded-full border border-border bg-background text-[10px]">{t.icon}</span>
-                          <div className={cn(
-                            "leading-snug",
-                            t.tone === "warn" && "text-amber-800"
-                          )}>{t.label}</div>
-                          <div className="text-xs text-muted-foreground">{t.quando}</div>
-                        </li>
-                      ))}
+                    <ol className="relative ml-2 mt-3 space-y-5 border-l-2 border-border pl-5">
+                      <span className="pointer-events-none absolute -left-[1px] top-0 h-10 w-[2px] bg-gradient-to-b from-primary/40 to-transparent" />
+                      {getTimelineOperacional(selected).map((t, i) => {
+                        const kind: CanalKind = t.label.toLowerCase().includes("sem resposta") ? "sistema" : getCanalKind(t.label);
+                        return (
+                          <li key={i} className="group relative -mx-2 rounded px-2 text-sm transition-colors hover:bg-surface/60">
+                            <span className={cn(
+                              "absolute -left-[26px] top-1 grid h-4 w-4 place-items-center rounded-full text-white shadow-sm",
+                              t.tone === "warn" ? "bg-amber-500" : canalDot[kind]
+                            )}>
+                              <CanalIcon kind={kind} className="h-2.5 w-2.5" />
+                            </span>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className={cn("leading-snug", t.tone === "warn" && "text-amber-800")}>{t.label}</div>
+                              <div className="shrink-0 text-[10px] text-muted-foreground/70">{t.quando}</div>
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ol>
                   </div>
 
                   {/* NÍVEL 2 — Cadência ativa */}
-                  <div className="rounded-xl border border-border bg-card p-5">
+                  <div className="rounded-xl border border-border bg-card p-5 transition-all hover:border-foreground/20">
                     <div className="flex items-baseline justify-between">
                       <div>
                         <div className="text-sm font-semibold">Cadência ativa</div>
@@ -907,13 +1098,18 @@ function LeadsPage() {
                           c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
                           c.status === "atrasado" ? "bg-red-50 text-red-700" :
                           c.status === "hoje" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600";
-                        const icon = c.status === "concluido" ? "☑" : c.status === "atrasado" ? "⚠" : "⬜";
+                        const StatusIcon = c.status === "concluido" ? CheckCircle2 : c.status === "atrasado" ? AlertCircle : c.status === "hoje" ? Clock : Activity;
+                        const iconColor = c.status === "concluido" ? "text-emerald-600" : c.status === "atrasado" ? "text-red-600" : c.status === "hoje" ? "text-amber-600" : "text-slate-400";
                         return (
-                          <li key={i} className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-sm">
+                          <li key={i} className={cn(
+                            "flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-sm transition-colors hover:bg-surface/40",
+                            c.status === "atrasado" && "border-l-2 border-l-red-400 bg-red-50/30",
+                            c.status === "concluido" && "opacity-70"
+                          )}>
                             <div className="flex min-w-0 items-center gap-3">
-                              <span className="text-base">{icon}</span>
+                              <StatusIcon className={cn("h-4 w-4 shrink-0", iconColor)} />
                               <div className="min-w-0">
-                                <div className="truncate">{c.titulo}</div>
+                                <div className={cn("truncate", c.status === "concluido" && "line-through")}>{c.titulo}</div>
                                 <div className="text-[11px] text-muted-foreground">{c.canal} · SLA {c.sla}</div>
                               </div>
                             </div>
@@ -922,7 +1118,7 @@ function LeadsPage() {
                                 {c.status === "concluido" ? "Concluído" : c.status === "atrasado" ? "Atrasado" : c.status === "hoje" ? "Hoje" : "Pendente"}
                               </span>
                               {c.status !== "concluido" && (
-                                <button className="rounded-md border border-border px-2 py-0.5 text-[10px] hover:bg-surface">Concluir</button>
+                                <button className="rounded-md border border-border px-2 py-0.5 text-[10px] transition-colors hover:bg-surface">Concluir</button>
                               )}
                             </div>
                           </li>
@@ -943,7 +1139,7 @@ function LeadsPage() {
                         { k: "Resposta média", v: getTempoMedioResp(selected) },
                         { k: "Decisão", v: getEstagioDecisao(selected) },
                       ].map((m) => (
-                        <div key={m.k} className="rounded-lg border border-border bg-card p-3">
+                        <div key={m.k} className="rounded-lg border border-border bg-card p-3 transition-all hover:border-foreground/20 hover:shadow-sm">
                           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{m.k}</div>
                           <div className="num mt-1 text-sm font-semibold">{m.v}</div>
                         </div>
@@ -954,39 +1150,67 @@ function LeadsPage() {
 
                 {/* CADÊNCIA */}
                 <TabsContent value="cadencia" className="mt-0 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-semibold">Cadência: Qualificação Premium</div>
-                      <div className="text-xs text-muted-foreground">Jornada operacional do lead</div>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button className="rounded-md border border-border px-2 py-1 text-[11px]">Pausar</button>
-                      <button className="rounded-md border border-border px-2 py-1 text-[11px]">Reiniciar</button>
-                      <button className="rounded-md border border-border px-2 py-1 text-[11px]">Trocar</button>
-                    </div>
-                  </div>
+                  {(() => {
+                    const prog = getProgressoCadencia(selected);
+                    return (
+                      <div className="rounded-xl border border-border bg-card p-5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold">Cadência: Qualificação Premium</div>
+                            <div className="text-xs text-muted-foreground">{prog.feitos} de {prog.total} etapas concluídas</div>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <button className="rounded-md border border-border px-2 py-1 text-[11px] transition-colors hover:bg-surface">Pausar</button>
+                            <button className="rounded-md border border-border px-2 py-1 text-[11px] transition-colors hover:bg-surface">Reiniciar</button>
+                            <button className="rounded-md border border-border px-2 py-1 text-[11px] transition-colors hover:bg-surface">Trocar</button>
+                          </div>
+                        </div>
+                        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${prog.pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {[1, 2, 3, 4].map((d) => {
                     const itens = getCadenciaDetalhada(selected).filter((c) => c.dia === d);
                     if (itens.length === 0) return null;
+                    const feitos = itens.filter((i) => i.status === "concluido").length;
+                    const objetivoDia = d === 1 ? "Primeiro contato" : d === 2 ? "Engajamento" : d === 3 ? "Avanço" : "Conversão";
                     return (
-                      <div key={d} className="rounded-xl border border-border p-3">
-                        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Dia {d}</div>
-                        <ul className="mt-2 space-y-1.5">
-                          {itens.map((c, i) => (
-                            <li key={i} className="rounded-md border border-border bg-surface/50 px-3 py-2 text-sm">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium">{c.titulo}</div>
-                                <span className={cn(
-                                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                                  c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
-                                  c.status === "atrasado" ? "bg-red-50 text-red-700" :
-                                  c.status === "hoje" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600"
-                                )}>{c.status === "concluido" ? "Concluído" : c.status === "atrasado" ? "Atrasado" : c.status === "hoje" ? "Hoje" : "Pendente"}</span>
-                              </div>
-                              <div className="mt-0.5 text-[11px] text-muted-foreground">{c.canal} · {c.objetivo} · SLA {c.sla}</div>
-                              {c.script && <div className="mt-1 text-[11px] italic text-muted-foreground">Script: {c.script}</div>}
-                            </li>
-                          ))}
+                      <div key={d} className="rounded-xl border border-border bg-card p-5 transition-all hover:border-foreground/20">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Dia {d} · {objetivoDia}</div>
+                          </div>
+                          <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] text-muted-foreground">{feitos}/{itens.length} concluídas</span>
+                        </div>
+                        <ul className="mt-4 space-y-2">
+                          {itens.map((c, i) => {
+                            const StatusIcon = c.status === "concluido" ? CheckCircle2 : c.status === "atrasado" ? AlertCircle : c.status === "hoje" ? Clock : Activity;
+                            const iconColor = c.status === "concluido" ? "text-emerald-600" : c.status === "atrasado" ? "text-red-600" : c.status === "hoje" ? "text-amber-600" : "text-slate-400";
+                            return (
+                              <li key={i} className={cn(
+                                "rounded-md border border-border bg-background px-3 py-2.5 text-sm transition-colors hover:bg-surface/40",
+                                c.status === "atrasado" && "border-l-2 border-l-red-400 bg-red-50/30",
+                                c.status === "concluido" && "opacity-70"
+                              )}>
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex min-w-0 items-center gap-2.5">
+                                    <StatusIcon className={cn("h-4 w-4 shrink-0", iconColor)} />
+                                    <div className={cn("font-medium", c.status === "concluido" && "line-through")}>{c.titulo}</div>
+                                  </div>
+                                  <span className={cn(
+                                    "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                    c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
+                                    c.status === "atrasado" ? "bg-red-50 text-red-700" :
+                                    c.status === "hoje" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600"
+                                  )}>{c.status === "concluido" ? "Concluído" : c.status === "atrasado" ? "Atrasado" : c.status === "hoje" ? "Hoje" : "Pendente"}</span>
+                                </div>
+                                <div className="mt-1 pl-6 text-[11px] text-muted-foreground">{c.canal} · {c.objetivo} · SLA {c.sla}</div>
+                                {c.script && <div className="mt-1 pl-6 text-[11px] italic text-muted-foreground">Script: {c.script}</div>}
+                              </li>
+                            );
+                          })}
                         </ul>
                       </div>
                     );
@@ -996,70 +1220,107 @@ function LeadsPage() {
                 {/* INTERAÇÕES */}
                 <TabsContent value="interacoes" className="mt-0 space-y-4">
                   <div className="flex justify-end">
-                    <button onClick={() => setRegistroOpen(true)} className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background">
+                    <button onClick={() => setRegistroOpen(true)} className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background transition-transform active:scale-[0.98]">
                       <Plus className="h-3 w-3" /> Registrar interação
                     </button>
                   </div>
-                  <ol className="space-y-2">
-                    {selected.historico.map((h, i) => (
-                      <li key={i} className="rounded-xl border border-border p-3 text-sm">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 font-medium">
-                            <span>{h.tipo.includes("WhatsApp") ? "💬" : h.tipo.includes("Liga") ? "📞" : h.tipo.includes("Visita") ? "📅" : h.tipo.includes("IA") ? "🧠" : "📝"}</span>
-                            {h.tipo}
+                  <ol className="space-y-3">
+                    {selected.historico.map((h, i) => {
+                      const kind = getCanalKind(h.tipo);
+                      const micro = getMicroContexto(h.tipo, i);
+                      return (
+                        <li key={i} className="rounded-xl border border-border bg-card p-4 text-sm transition-all hover:border-foreground/20 hover:shadow-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <span className={cn("grid h-7 w-7 place-items-center rounded-full text-white", canalDot[kind])}>
+                                <CanalIcon kind={kind} className="h-3.5 w-3.5" />
+                              </span>
+                              <div>
+                                <div className="text-sm font-medium">{h.tipo}</div>
+                                <div className="text-[11px] text-muted-foreground">{h.data} · Você</div>
+                              </div>
+                            </div>
+                            {micro && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700">
+                                <Zap className="h-2.5 w-2.5" />{micro}
+                              </span>
+                            )}
                           </div>
-                          <div className="text-[11px] text-muted-foreground">{h.data} · Você</div>
-                        </div>
-                        <div className="mt-1 text-foreground">{h.texto}</div>
-                        <div className="mt-2 rounded-md bg-surface px-2 py-1.5 text-[11px] text-muted-foreground">
-                          ➡ Próxima ação sugerida: <span className="text-foreground">{getSugestaoPosInteracao(h.tipo, selected)}</span>
-                        </div>
-                      </li>
-                    ))}
+                          <div className="mt-3 text-foreground">{h.texto}</div>
+                          <div className="mt-3 flex items-start gap-2 rounded-md border-l-2 border-l-primary/40 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+                            <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+                            <div><span className="text-foreground">Próxima ação sugerida: </span>{getSugestaoPosInteracao(h.tipo, selected)}</div>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ol>
                 </TabsContent>
 
                 {/* WHATSAPP */}
                 <TabsContent value="whatsapp" className="mt-0 space-y-4">
-                  <div className="rounded-xl border border-border p-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-center justify-between text-[11px] uppercase tracking-widest text-muted-foreground">
                       <span>Última conversa</span>
-                      <span>{selected.historico.find((h) => h.tipo.includes("WhatsApp"))?.data ?? "—"}</span>
+                      <span className="normal-case tracking-normal">{selected.historico.find((h) => h.tipo.includes("WhatsApp"))?.data ?? "—"}</span>
                     </div>
-                    <div className="mt-1 text-sm">{selected.historico.find((h) => h.tipo.includes("WhatsApp"))?.texto ?? "Sem conversa registrada."}</div>
+                    <div className="mt-2 text-sm text-foreground/80">{selected.historico.find((h) => h.tipo.includes("WhatsApp"))?.texto ?? "Sem conversa registrada."}</div>
                   </div>
-                  <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-3">
-                    <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-violet-800">
-                      <Sparkles className="h-3 w-3" /> Sugestão IA
+                  <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-background p-5 transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between">
+                      <div className="inline-flex items-center gap-2">
+                        <span className="grid h-7 w-7 place-items-center rounded-full bg-violet-600 text-white">
+                          <Bot className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <div className="text-sm font-semibold text-violet-900">Assistente IA</div>
+                          <div className="text-[10px] uppercase tracking-widest text-violet-700/80">Sugestão personalizada</div>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-800">+12% conversão</span>
                     </div>
-                    <div className="mt-1 text-sm">{`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou sobre ${inferTipo(selected.interesse).toLowerCase()} em ${inferRegiao(selected.interesse).split(" ")[0]}.`}</div>
-                    <div className="mt-2 flex gap-1.5">
-                      <button onClick={() => setWaTexto(`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou.`)} className="rounded-md bg-violet-600 px-2.5 py-1 text-[11px] text-white">Usar sugestão</button>
-                      <button className="rounded-md border border-border px-2.5 py-1 text-[11px]">Editar</button>
-                      <button onClick={() => navigator.clipboard?.writeText(waTexto)} className="rounded-md border border-border px-2.5 py-1 text-[11px]">Copiar</button>
+                    <div className="mt-3 rounded-md bg-background/60 p-3 text-sm text-foreground">{`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou sobre ${inferTipo(selected.interesse).toLowerCase()} em ${inferRegiao(selected.interesse).split(" ")[0]}.`}</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button onClick={() => setWaTexto(`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou.`)} className="inline-flex h-9 items-center gap-1.5 rounded-md bg-violet-600 px-3 text-xs font-medium text-white transition-colors hover:bg-violet-700"><Sparkles className="h-3.5 w-3.5" /> Usar sugestão</button>
+                      <button className="inline-flex h-9 items-center rounded-md border border-border bg-background px-3 text-xs transition-colors hover:bg-surface">Editar</button>
+                      <button onClick={() => navigator.clipboard?.writeText(waTexto)} className="inline-flex h-9 items-center gap-1 rounded-md border border-border bg-background px-3 text-xs transition-colors hover:bg-surface"><Copy className="h-3 w-3" /> Copiar</button>
                     </div>
                   </div>
-                  <textarea
-                    value={waTexto}
-                    onChange={(e) => setWaTexto(e.target.value)}
-                    placeholder="Escreva uma mensagem..."
-                    className="h-24 w-full rounded-md border border-border bg-background p-2 text-sm"
-                  />
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Mensagem</div>
+                      <div className="text-[10px] text-muted-foreground">{waTexto.length} caracteres</div>
+                    </div>
+                    <textarea
+                      value={waTexto}
+                      onChange={(e) => setWaTexto(e.target.value)}
+                      placeholder="Escreva uma mensagem..."
+                      className="mt-2 min-h-[140px] w-full rounded-md border border-border bg-background p-3 text-sm focus:border-foreground/30 focus:outline-none"
+                    />
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                      <button className="inline-flex h-9 items-center gap-1 rounded-md px-3 text-xs text-muted-foreground transition-colors hover:bg-surface hover:text-foreground">Salvar como template</button>
+                      <button className="inline-flex h-9 items-center gap-1.5 rounded-md bg-emerald-600 px-4 text-xs font-medium text-white transition-colors hover:bg-emerald-700"><Send className="h-3.5 w-3.5" /> Enviar</button>
+                    </div>
+                  </div>
                   <div>
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Templates rápidos</div>
-                    <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Templates rápidos</div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-3">
                       {TEMPLATES_WA.map((t) => {
                         const txt = t.texto.replace("{nome}", primeiroNome).replace("{tipo}", inferTipo(selected.interesse).toLowerCase()).replace("{regiao}", inferRegiao(selected.interesse).split(" ")[0]);
                         return (
-                          <button key={t.titulo} onClick={() => setWaTexto(txt)} className="rounded-md border border-border bg-card p-2 text-left text-xs hover:bg-surface">
-                            <div className="font-medium">{t.titulo}</div>
-                            <div className="line-clamp-2 text-muted-foreground">{txt}</div>
+                          <button key={t.titulo} onClick={() => setWaTexto(txt)} className="group rounded-md border border-border bg-card p-3 text-left text-xs transition-all hover:border-foreground/20 hover:shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs font-semibold">{t.titulo}</div>
+                              <span className="text-[10px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">Usar →</span>
+                            </div>
+                            <div className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{txt}</div>
                           </button>
                         );
                       })}
                     </div>
                   </div>
                 </TabsContent>
+
 
                 {/* VISITAS */}
                 <TabsContent value="visitas" className="mt-0 space-y-4">
@@ -1101,45 +1362,57 @@ function LeadsPage() {
                 {/* QUALIFICAÇÃO */}
                 <TabsContent value="qualificacao" className="mt-0">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {QUALIF_BLOCOS(selected).map((b) => (
-                      <div key={b.titulo} className="rounded-xl border border-border bg-card p-5">
-                        <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
-                        <dl className="mt-3 space-y-2 text-sm">
-                          {b.campos.map(([k, v]) => (
-                            <div key={k} className="flex items-baseline justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
-                              <dt className="text-xs text-muted-foreground">{k}</dt>
-                              <dd className="text-right text-sm font-medium">{v}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </div>
-                    ))}
+                    {QUALIF_BLOCOS(selected).map((b, idx) => {
+                      const cfg = [
+                        { Icon: UserIcon, color: "border-t-blue-400" },
+                        { Icon: SearchIcon, color: "border-t-violet-400" },
+                        { Icon: Wallet, color: "border-t-emerald-400" },
+                        { Icon: CheckCircle2, color: "border-t-amber-400" },
+                      ][idx];
+                      const Icon = cfg.Icon;
+                      return (
+                        <div key={b.titulo} className={cn("rounded-xl border border-border border-t-2 bg-card p-5 transition-all hover:border-foreground/20 hover:shadow-sm", cfg.color)}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
+                          </div>
+                          <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2.5 text-sm">
+                            {b.campos.map(([k, v]) => (
+                              <React.Fragment key={k}>
+                                <dt className="text-xs text-muted-foreground">{k}</dt>
+                                <dd className="text-right text-sm font-medium">{v}</dd>
+                              </React.Fragment>
+                            ))}
+                          </dl>
+                        </div>
+                      );
+                    })}
                   </div>
                 </TabsContent>
 
                 {/* SCRIPTS */}
-                <TabsContent value="scripts" className="mt-0 space-y-4">
+                <TabsContent value="scripts" className="mt-0 space-y-3">
                   {SCRIPTS_LIB.map((s) => {
                     const texto = s.texto
                       .replace("{nome}", primeiroNome)
                       .replace("{tipo}", inferTipo(selected.interesse))
                       .replace("{regiao}", inferRegiao(selected.interesse));
                     return (
-                      <div key={s.titulo} className="rounded-xl border border-border bg-card p-5">
+                      <div key={s.titulo} className="rounded-xl border border-border bg-card p-4 transition-all hover:border-foreground/20 hover:shadow-sm">
                         <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.categoria}</div>
-                            <div className="mt-0.5 flex items-center gap-2 text-sm font-semibold">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
                               <Sparkles className="h-3.5 w-3.5 text-violet-600" />
-                              {s.titulo}
+                              <div className="text-sm font-semibold">{s.titulo}</div>
+                              <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">{s.categoria}</span>
                             </div>
-                            <div className="mt-0.5 text-xs text-muted-foreground">Objetivo: {s.objetivo}</div>
+                            <div className="mt-0.5 text-[11px] text-muted-foreground">{s.objetivo}</div>
                           </div>
-                          <button onClick={() => navigator.clipboard?.writeText(texto)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-surface hover:text-foreground">
+                          <button onClick={() => navigator.clipboard?.writeText(texto)} className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-surface hover:text-foreground">
                             <Copy className="h-3 w-3" /> Copiar
                           </button>
                         </div>
-                        <p className="mt-3 rounded-md bg-surface p-3 text-sm text-foreground/80">{texto}</p>
+                        <p className="mt-3 rounded-md bg-surface/60 p-3 text-sm leading-relaxed text-foreground/85">{texto}</p>
                       </div>
                     );
                   })}
@@ -1147,25 +1420,51 @@ function LeadsPage() {
 
                 {/* HISTÓRICO */}
                 <TabsContent value="historico" className="mt-0">
-                  <ol className="space-y-2.5 border-l border-border pl-4">
-                    <li className="relative text-sm">
-                      <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-emerald-500" />
-                      <div className="text-[11px] text-muted-foreground">Sistema · agora</div>
-                      <div>Lead em <span className="font-medium">{selected.status}</span></div>
-                    </li>
-                    {selected.historico.map((h, i) => (
-                      <li key={i} className="relative text-sm">
-                        <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-muted-foreground/40" />
-                        <div className="text-[11px] text-muted-foreground">{h.data} · {h.tipo} · Você</div>
-                        <div>{h.texto}</div>
-                      </li>
-                    ))}
-                    <li className="relative text-sm">
-                      <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-muted-foreground/40" />
-                      <div className="text-[11px] text-muted-foreground">Origem</div>
-                      <div>Lead criado via {selected.origem}</div>
-                    </li>
-                  </ol>
+                  {(() => {
+                    type Ev = { quando: string; titulo: string; texto?: string; kind: CanalKind; origemLabel: string; grupo: string };
+                    const eventos: Ev[] = [
+                      { quando: "agora", titulo: `Lead em ${selected.status}`, kind: "sistema", origemLabel: "Sistema", grupo: "Hoje" },
+                      ...selected.historico.map((h) => {
+                        const k = getCanalKind(h.tipo);
+                        const grupo = h.data.toLowerCase().includes("hoje") || h.data.toLowerCase().includes("min") ? "Hoje"
+                          : h.data.toLowerCase().includes("ontem") ? "Ontem"
+                          : h.data.toLowerCase().includes("dia") ? "Esta semana" : "Anterior";
+                        return { quando: h.data, titulo: h.tipo, texto: h.texto, kind: k, origemLabel: k === "ia" ? "IA" : k === "whatsapp" ? "WhatsApp" : k === "ligacao" ? "Corretor" : k === "visita" ? "Corretor" : "Sistema", grupo };
+                      }),
+                      { quando: "origem", titulo: `Lead criado via ${selected.origem}`, kind: "sistema", origemLabel: "Sistema", grupo: "Anterior" },
+                    ];
+                    const grupos = ["Hoje", "Ontem", "Esta semana", "Anterior"] as const;
+                    return (
+                      <div className="space-y-5">
+                        {grupos.map((g) => {
+                          const items = eventos.filter((e) => e.grupo === g);
+                          if (items.length === 0) return null;
+                          return (
+                            <div key={g}>
+                              <div className="mb-3 border-b border-dashed border-border py-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{g}</div>
+                              <ol className="relative ml-2 space-y-4 border-l-2 border-border pl-5">
+                                {items.map((ev, i) => (
+                                  <li key={i} className="group relative -mx-2 rounded px-2 text-sm transition-colors hover:bg-surface/60">
+                                    <span className={cn("absolute -left-[26px] top-1 grid h-4 w-4 place-items-center rounded-full text-white shadow-sm", canalDot[ev.kind])}>
+                                      <CanalIcon kind={ev.kind} className="h-2.5 w-2.5" />
+                                    </span>
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">{ev.titulo}</span>
+                                        <span className={cn("rounded border px-1.5 py-0.5 text-[10px]", canalBadge[ev.kind])}>{ev.origemLabel}</span>
+                                      </div>
+                                      <span className="text-[10px] text-muted-foreground/70">{ev.quando}</span>
+                                    </div>
+                                    {ev.texto && <div className="mt-1 text-sm text-muted-foreground">{ev.texto}</div>}
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </TabsContent>
                 </div>
               </div>
