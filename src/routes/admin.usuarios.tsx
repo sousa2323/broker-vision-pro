@@ -7,7 +7,19 @@ import {
   AlertTriangle,
   Brain,
   X,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Bell,
+  CalendarClock,
+  Shuffle,
+  Inbox,
+  Sparkles,
+  PauseCircle,
+  Send,
+  Activity,
 } from "lucide-react";
+import { toast } from "sonner";
 import { adminBrokers, corretorRisco, type AdminBroker } from "@/data/admin-mock";
 import { formatBRL, formatBRLcompact } from "@/data/mock";
 import { cn } from "@/lib/utils";
@@ -18,6 +30,32 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/admin/usuarios")({
   component: UsuariosAdmin,
