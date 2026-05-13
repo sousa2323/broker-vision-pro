@@ -829,49 +829,29 @@ function LeadsPage() {
                 <div className="px-6 py-6">
 
                 {/* EXECUÇÃO */}
-                <TabsContent value="execucao" className="space-y-5">
-                  {/* Bloco 1 — Status operacional */}
-                  <div className="rounded-xl border border-border bg-card p-4">
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Status operacional</div>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {getStatusOperacional(selected).map((s, i) => (
-                        <span
-                          key={i}
-                          className={cn(
-                            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
-                            s.tone === "danger" ? "border-red-100 bg-red-50 text-red-700" :
-                            s.tone === "warn" ? "border-amber-100 bg-amber-50 text-amber-800" :
-                            s.tone === "good" ? "border-emerald-100 bg-emerald-50 text-emerald-700" :
-                            "border-border bg-surface text-foreground"
-                          )}
-                        >
-                          <span aria-hidden>{s.icon}</span>{s.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Bloco 2 — Próxima ação */}
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4">
-                    <div className="text-[11px] uppercase tracking-widest text-emerald-800">Próxima ação recomendada</div>
-                    <div className="mt-1 text-lg font-semibold">
+                <TabsContent value="execucao" className="mt-0 space-y-6">
+                  {/* NÍVEL 1 — Próxima ação (herói) */}
+                  <div className="rounded-xl border border-primary/30 bg-surface p-6 shadow-sm">
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Próxima ação recomendada</div>
+                    <div className="mt-2 text-2xl font-semibold leading-tight">
                       {selectedAcao.tipo !== "nenhum" ? `${selectedAcao.label} com ${primeiroNome}` : "Sem ação imediata"}
                     </div>
                     {getMotivos(selected).length > 0 && (
-                      <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                      <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
                         {getMotivos(selected).map((m) => (
-                          <li key={m} className="flex gap-1.5"><span className="text-emerald-700">•</span>{m}</li>
+                          <li key={m} className="flex gap-2"><span className="text-primary">•</span>{m}</li>
                         ))}
                       </ul>
                     )}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button className="inline-flex items-center gap-1.5 rounded-md bg-navy px-3 py-1.5 text-xs font-medium text-navy-foreground"><Phone className="h-3.5 w-3.5" /> Ligar</button>
-                      <button className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white"><MessageCircle className="h-3.5 w-3.5" /> WhatsApp</button>
-                      {selected.status === "Visita" && (
-                        <button className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium"><Calendar className="h-3.5 w-3.5" /> Confirmar visita</button>
-                      )}
-                      <button className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs">Adiar tarefa</button>
-                    </div>
+                  </div>
+
+                  {/* Botões operacionais — grid uniforme */}
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-navy text-sm font-medium text-navy-foreground hover:opacity-90"><Phone className="h-4 w-4" /> Ligar</button>
+                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-emerald-600 text-sm font-medium text-white hover:opacity-90"><MessageCircle className="h-4 w-4" /> WhatsApp</button>
+                    <button onClick={() => setRegistroOpen(true)} className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><Plus className="h-4 w-4" /> Registrar</button>
+                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><Calendar className="h-4 w-4" /> Agendar visita</button>
+                    <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-medium hover:bg-surface"><ArrowRight className="h-4 w-4" /> Avançar etapa</button>
                   </div>
 
                   {/* Bloco 3 — Timeline */}
