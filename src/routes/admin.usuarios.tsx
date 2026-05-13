@@ -759,6 +759,9 @@ function BrokerDrawer({ broker, onClose }: { broker: AdminBroker; onClose: () =>
         </div>
       </SheetHeader>
 
+      {/* Blocos de inteligência operacional */}
+      <DrawerIntelligence broker={broker} risco={risco} onClose={onClose} />
+
       <Tabs defaultValue="resumo" className="mt-6">
         <TabsList className="flex w-full flex-wrap gap-1 bg-surface">
           <TabsTrigger value="resumo">Resumo</TabsTrigger>
