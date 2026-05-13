@@ -285,7 +285,7 @@ const canalBadge: Record<CanalKind, string> = {
   sistema: "bg-slate-50 text-slate-600 border-slate-200",
 };
 function CanalIcon({ kind, className }: { kind: CanalKind; className?: string }) {
-  const map: Record<CanalKind, JSX.Element> = {
+  const map: Record<CanalKind, React.ReactElement> = {
     whatsapp: <MessageCircle className={className} />,
     ligacao: <Phone className={className} />,
     visita: <Calendar className={className} />,
