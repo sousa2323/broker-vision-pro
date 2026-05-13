@@ -768,46 +768,65 @@ function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Drawer Operação do Lead */}
+      {/* Modal Operação do Lead */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto bg-background shadow-2xl">
-            <div className="sticky top-0 z-10 border-b border-border bg-background p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="text-[10px] text-muted-foreground/70">{selected.id} · Operação do Lead</div>
-                  <div className="font-display text-xl">{selected.nome}</div>
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className={cn("rounded-full px-2 py-0.5 text-[11px]", statusColor[selected.status])}>{selected.status}</span>
-                    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", selectedNivelMeta.chip)}>
-                      <span aria-hidden>{selectedNivelMeta.emoji}</span>{selectedNivelMeta.label}
-                    </span>
-                    <span className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                      selectedPrio === "quente" ? "bg-red-50 text-red-700" :
-                      selectedPrio === "morno" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-700"
-                    )}>
-                      {selectedPrio === "quente" ? "🔥 Quente" : selectedPrio === "morno" ? "🌤 Morno" : "❄️ Frio"}
-                    </span>
-                    {getAlertasComportamentais(selected).map((a) => (
-                      <span key={a} className="rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">⚠ {a}</span>
-                    ))}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
+          <div className="relative flex h-[90vh] max-h-[900px] w-[96vw] max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl md:w-[88vw]">
+            <Tabs defaultValue="execucao" className="flex h-full min-h-0 flex-1 flex-col">
+              {/* Scroll único */}
+              <div className="flex-1 overflow-y-auto">
+                {/* HEADER STICKY */}
+                <div className="sticky top-0 z-30 border-b border-border bg-background px-6 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <h2 className="font-display text-xl leading-tight">{selected.nome}</h2>
+                        <span className="text-[11px] text-muted-foreground/70">{selected.id}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <span className={cn("rounded-full px-2 py-0.5 text-[11px]", statusColor[selected.status])}>{selected.status}</span>
+                        <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium", selectedNivelMeta.chip)}>
+                          <span aria-hidden>{selectedNivelMeta.emoji}</span>{selectedNivelMeta.label}
+                        </span>
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                          selectedPrio === "quente" ? "bg-red-50 text-red-700" :
+                          selectedPrio === "morno" ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-700"
+                        )}>
+                          {selectedPrio === "quente" ? "🔥 Quente" : selectedPrio === "morno" ? "🌤 Morno" : "❄️ Frio"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        onClick={() => setPerdaOpen(true)}
+                        className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-surface hover:text-red-700"
+                      >Marcar como perdido</button>
+                      <button onClick={() => setDrawerOpen(false)} className="rounded-md p-1.5 hover:bg-surface" aria-label="Fechar"><X className="h-4 w-4" /></button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPerdaOpen(true)}
-                    className="rounded-md border border-border px-2.5 py-1.5 text-xs text-red-700 hover:bg-red-50"
-                  >Marcar como perdido</button>
-                  <button onClick={() => setDrawerOpen(false)} className="rounded-md p-1.5 hover:bg-surface"><X className="h-4 w-4" /></button>
-                </div>
-              </div>
-            </div>
 
-            <div className="p-5">
-              <Tabs defaultValue="execucao">
-                <TabsList className="flex w-full flex-wrap justify-start gap-1 bg-surface">
+                {/* TABS STICKY */}
+                <div className="sticky top-[88px] z-20 border-b border-border bg-background px-6 pt-3">
+                  <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-0 bg-transparent p-0">
+                    {[
+                      ["execucao","Execução"],["cadencia","Cadência"],["interacoes","Interações"],
+                      ["whatsapp","WhatsApp"],["visitas","Visitas"],["qualificacao","Qualificação"],
+                      ["scripts","Scripts"],["historico","Histórico"],
+                    ].map(([v,l]) => (
+                      <TabsTrigger
+                        key={v}
+                        value={v}
+                        className="rounded-none border-b-2 border-transparent bg-transparent px-3 pb-3 pt-1 text-sm shadow-none data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                      >{l}</TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+
+                {/* CONTEÚDO */}
+                <div className="px-6 py-6">
                   <TabsTrigger value="execucao">Execução</TabsTrigger>
                   <TabsTrigger value="cadencia">Cadência</TabsTrigger>
                   <TabsTrigger value="interacoes">Interações</TabsTrigger>
