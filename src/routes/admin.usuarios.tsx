@@ -875,3 +875,292 @@ function Mini({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function BulkBtn({
+  icon,
+  children,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface/60 px-2.5 py-1 text-xs text-foreground transition hover:bg-surface"
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
+function DeltaLabel({ direcao, delta, m }: { direcao: Direcao; delta: number; m: MetricaTendencia }) {
+  const Icon = direcao === "up" ? TrendingUp : direcao === "down" ? TrendingDown : Minus;
+  const sign = delta > 0 ? "+" : "";
+  return (
+    <div className={cn("mt-1 inline-flex items-center gap-1 text-[11px]", tonDelta(direcao, m))}>
+      <Icon className="h-3 w-3" />
+      <span className="num">{sign}{delta}%</span>
+      <span className="text-muted-foreground">últimos 7 dias</span>
+    </div>
+  );
+}
+
+function DrawerIntelligence({
+  broker,
+  risco,
+  onClose,
+}: {
+  broker: AdminBroker;
+  risco: Risco;
+  onClose: () => void;
+}) {
+  const acao = getAcaoRecomendada(broker);
+  const alertas = getAlertasInteligentes(broker);
+  const origem = getOrigemLeads(broker);
+  const negPlat = getNegligenciaPlataforma(broker);
+  const pipe = getPipelineComposicao(broker);
+  const total = getLeadsAtivos(broker);
+
+  const tExec = getTendencia(broker, "execucao");
+  const tConv = getTendencia(broker, "conversao");
+  const tNeg = getTendencia(broker, "negligencia");
+  const tResp = getTendencia(broker, "tempoResposta");
+
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [redistOpen, setRedistOpen] = useState(false);
+
+  const podeRedistribuir = negPlat > 0;
+
+  function handleAbrirCriticos() {
+    toast("Filtrando leads críticos da plataforma", {
+      description: `${broker.nome} · ${negPlat} leads Ubroker em risco`,
+    });
+    onClose();
+  }
+  function handleAgendar() {
+    toast.success("Acompanhamento agendado", {
+      description: `Conversa com ${broker.nome.split(" ")[0]} marcada para amanhã às 09h.`,
+    });
+  }
+  function confirmarAlerta() {
+    toast.success("Alerta operacional enviado", {
+      description: `${broker.nome} foi notificado via WhatsApp e aviso interno.`,
+    });
+    setAlertOpen(false);
+  }
+  function confirmarRedistribuir() {
+    toast.success(`${negPlat} leads da plataforma redistribuídos`, {
+      description: `Carteira própria de ${broker.nome} permanece intacta.`,
+    });
+    setRedistOpen(false);
+  }
+
+  const segs: { label: string; n: number; cls: string; dot: string }[] = [
+    { label: "Novos", n: pipe.novos, cls: "bg-blue-400", dot: "bg-blue-400" },
+    { label: "Qualificados", n: pipe.qualificados, cls: "bg-emerald-400", dot: "bg-emerald-400" },
+    { label: "Visitas", n: pipe.visitas, cls: "bg-amber-400", dot: "bg-amber-400" },
+    { label: "Propostas", n: pipe.propostas, cls: "bg-violet-400", dot: "bg-violet-400" },
+    { label: "Críticos", n: pipe.criticos, cls: "bg-red-400", dot: "bg-red-400" },
+  ];
+
+  return (
+    <div className="mt-5 space-y-4">
+      {/* Ação recomendada */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+          <Sparkles className="h-3 w-3" /> Ação recomendada
+        </div>
+        <div className="mt-1.5 text-base font-medium text-foreground">{acao.titulo}</div>
+        {acao.motivos.length > 0 && (
+          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+            {acao.motivos.map((m, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 rounded-full bg-muted-foreground/60" />
+                <span>{m}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" variant="default" onClick={handleAbrirCriticos} className="h-8">
+            <Inbox className="h-3.5 w-3.5" /> Abrir leads críticos
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setAlertOpen(true)} className="h-8">
+            <Bell className="h-3.5 w-3.5" /> Enviar alerta operacional
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleAgendar} className="h-8">
+            <CalendarClock className="h-3.5 w-3.5" /> Agendar acompanhamento
+          </Button>
+          {podeRedistribuir && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button size="sm" variant="outline" onClick={() => setRedistOpen(true)} className="h-8">
+                    <Shuffle className="h-3.5 w-3.5" /> Redistribuir leads Ubroker
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  Apenas leads originados pela plataforma podem ser redistribuídos. Carteira própria do corretor é preservada.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+      </div>
+
+      {/* Saúde operacional */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Saúde operacional</div>
+        <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", tonRisco(risco))}>
+          {labelRisco(risco)}
+        </span>
+        <span className="text-xs text-muted-foreground">{getSaudeMicrocopy(risco)}</span>
+      </div>
+
+      {/* Alertas inteligentes */}
+      {alertas.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-3">
+          <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+            Alertas inteligentes
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {alertas.map((a, i) => {
+              const dot =
+                a.tom === "red" ? "bg-red-500" :
+                a.tom === "amber" ? "bg-amber-500" :
+                a.tom === "yellow" ? "bg-yellow-500" : "bg-emerald-500";
+              const bg =
+                a.tom === "red" ? "bg-red-50/60" :
+                a.tom === "amber" ? "bg-amber-50/60" :
+                a.tom === "yellow" ? "bg-yellow-50/60" : "bg-emerald-50/60";
+              return (
+                <div key={i} className={cn("flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs", bg)}>
+                  <span className={cn("h-2 w-2 rounded-full", dot)} />
+                  <span className="text-foreground">{a.texto}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tendência operacional */}
+      <div className="rounded-xl border border-border bg-card p-3">
+        <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+          Tendência operacional
+        </div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <TendenciaCard label="Execução" t={tExec} m="execucao" />
+          <TendenciaCard label="Conversão" t={tConv} m="conversao" />
+          <TendenciaCard label="Negligência" t={tNeg} m="negligencia" />
+          <TendenciaCard label="Tempo médio" t={tResp} m="tempoResposta" />
+        </div>
+      </div>
+
+      {/* Composição do pipeline */}
+      <div className="rounded-xl border border-border bg-card p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Composição do pipeline
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            <span className="num text-foreground">{origem.plataforma}</span> da plataforma ·{" "}
+            <span className="num text-foreground">{origem.propria}</span> carteira própria
+          </span>
+        </div>
+        <div className="text-sm">
+          <span className="num font-medium">{total}</span>{" "}
+          <span className="text-muted-foreground">leads ativos</span>
+        </div>
+        <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-surface">
+          {segs.map((s, i) =>
+            s.n > 0 ? (
+              <div
+                key={i}
+                className={s.cls}
+                style={{ width: `${(s.n / Math.max(1, total)) * 100}%` }}
+              />
+            ) : null,
+          )}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px] sm:grid-cols-5">
+          {segs.map((s) => (
+            <div key={s.label} className="flex items-center gap-1.5">
+              <span className={cn("h-2 w-2 rounded-full", s.dot)} />
+              <span className="text-muted-foreground">{s.label}</span>
+              <span className="num text-foreground">{s.n}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Diálogo de alerta operacional */}
+      <Dialog open={alertOpen} onOpenChange={setAlertOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Enviar alerta operacional</DialogTitle>
+            <DialogDescription>
+              Mensagem que {broker.nome.split(" ")[0]} receberá:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-border bg-surface p-3 text-sm">
+            "Você possui leads da plataforma sem interação acima do SLA. Vamos te ajudar a priorizar essas oportunidades."
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {["WhatsApp", "Notificação no app", "Aviso interno"].map((c) => (
+              <span key={c} className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground">
+                {c}
+              </span>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAlertOpen(false)}>Cancelar</Button>
+            <Button onClick={confirmarAlerta}>Enviar alerta</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de redistribuição */}
+      <AlertDialog open={redistOpen} onOpenChange={setRedistOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Redistribuir leads da plataforma?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="num font-medium text-foreground">{negPlat}</span> leads originados pela
+              Ubroker serão redistribuídos para outros corretores da rede.{" "}
+              <span className="num font-medium text-foreground">{origem.propria}</span> leads de
+              carteira própria permanecem com {broker.nome.split(" ")[0]}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarRedistribuir}>
+              Redistribuir leads Ubroker
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function TendenciaCard({
+  label,
+  t,
+  m,
+}: {
+  label: string;
+  t: { atual: string; delta: number; direcao: Direcao };
+  m: MetricaTendencia;
+}) {
+  return (
+    <div className="rounded-lg bg-surface p-3">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="mt-1 text-lg font-medium num text-foreground">{t.atual}</div>
+      <DeltaLabel direcao={t.direcao} delta={t.delta} m={m} />
+    </div>
+  );
+}
