@@ -284,6 +284,23 @@ function UsuariosAdmin() {
   const [plano, setPlano] = useState<FPlano>("todos");
   const [regiao, setRegiao] = useState<string>("todas");
   const [selected, setSelected] = useState<AdminBroker | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function clearSelection() { setSelectedIds(new Set()); }
+  function bulkAction(label: string) {
+    toast.success(`${label}`, {
+      description: `${selectedIds.size} corretor(es) selecionado(s).`,
+    });
+    clearSelection();
+  }
 
   const regioes = useMemo(
     () => Array.from(new Set(adminBrokers.map(getRegiao))).sort(),
