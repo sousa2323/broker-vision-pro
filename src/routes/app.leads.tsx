@@ -827,15 +827,6 @@ function LeadsPage() {
 
                 {/* CONTEÚDO */}
                 <div className="px-6 py-6">
-                  <TabsTrigger value="execucao">Execução</TabsTrigger>
-                  <TabsTrigger value="cadencia">Cadência</TabsTrigger>
-                  <TabsTrigger value="interacoes">Interações</TabsTrigger>
-                  <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
-                  <TabsTrigger value="visitas">Visitas</TabsTrigger>
-                  <TabsTrigger value="qualificacao">Qualificação</TabsTrigger>
-                  <TabsTrigger value="scripts">Scripts</TabsTrigger>
-                  <TabsTrigger value="historico">Histórico</TabsTrigger>
-                </TabsList>
 
                 {/* EXECUÇÃO */}
                 <TabsContent value="execucao" className="space-y-5">
