@@ -1125,21 +1125,21 @@ function LeadsPage() {
                       .replace("{tipo}", inferTipo(selected.interesse))
                       .replace("{regiao}", inferRegiao(selected.interesse));
                     return (
-                      <div key={s.titulo} className="rounded-md border border-border p-3">
-                        <div className="flex items-center justify-between">
+                      <div key={s.titulo} className="rounded-xl border border-border bg-card p-5">
+                        <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.categoria}</div>
-                            <div className="flex items-center gap-2 text-sm font-medium">
+                            <div className="mt-0.5 flex items-center gap-2 text-sm font-semibold">
                               <Sparkles className="h-3.5 w-3.5 text-violet-600" />
                               {s.titulo}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">Objetivo: {s.objetivo}</div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">Objetivo: {s.objetivo}</div>
                           </div>
-                          <button onClick={() => navigator.clipboard?.writeText(texto)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                          <button onClick={() => navigator.clipboard?.writeText(texto)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-surface hover:text-foreground">
                             <Copy className="h-3 w-3" /> Copiar
                           </button>
                         </div>
-                        <p className="mt-2 rounded-md bg-surface px-2 py-1.5 text-sm text-muted-foreground">{texto}</p>
+                        <p className="mt-3 rounded-md bg-surface p-3 text-sm text-foreground/80">{texto}</p>
                       </div>
                     );
                   })}
