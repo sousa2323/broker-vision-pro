@@ -391,7 +391,22 @@ function UsuariosAdmin() {
         <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
           Alertas operacionais da rede
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {(() => {
+            const total = enriched.length;
+            const saudaveis = enriched.filter((x) => x.risco === "saudavel").length;
+            const pct = Math.round((saudaveis / total) * 100);
+            const tom: "emerald" | "amber" | "red" = pct >= 70 ? "emerald" : pct >= 45 ? "amber" : "red";
+            const label = pct >= 70 ? "Saudável" : pct >= 45 ? "Atenção" : "Crítica";
+            const dot = tom === "emerald" ? "bg-emerald-500" : tom === "amber" ? "bg-amber-500" : "bg-red-500";
+            return (
+              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-xs">
+                <span className={cn("h-2 w-2 rounded-full", dot)} />
+                <span className="text-muted-foreground">Saúde da rede:</span>
+                <span className="font-medium">{label} ({pct}%)</span>
+              </span>
+            );
+          })()}
           <AlertChip
             color="red"
             label={`${alertNeg} corretores com mais de 10 leads negligenciados`}
