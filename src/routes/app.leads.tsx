@@ -232,6 +232,81 @@ function getTempoMedioResp(l: Lead) {
   return ["8min", "14min", "22min", "31min", "47min"][hashCode(l.id) % 5];
 }
 
+type Tone = "good" | "warn" | "danger" | "neutral";
+function getScoreTone(score: number): Tone {
+  if (score >= 80) return "good";
+  if (score >= 50) return "warn";
+  return "danger";
+}
+function getTempoSemInteracao(l: Lead): { label: string; tone: Tone } {
+  const u = l.ultimaInteracao.toLowerCase();
+  if (u.includes("min")) return { label: l.ultimaInteracao, tone: "good" };
+  if (u.includes("h")) return { label: l.ultimaInteracao, tone: "good" };
+  if (u.includes("hoje")) return { label: l.ultimaInteracao, tone: "good" };
+  if (u.includes("ontem") || u.includes("1 dia") || u.includes("2 dia")) return { label: l.ultimaInteracao, tone: "warn" };
+  return { label: l.ultimaInteracao, tone: "danger" };
+}
+function getSlaProximaAcao(l: Lead): { label: string; atrasado: boolean; etapa: string } {
+  const cad = getCadenciaDetalhada(l);
+  const proximo = cad.find((c) => c.status === "atrasado") ?? cad.find((c) => c.status === "hoje") ?? cad.find((c) => c.status === "pendente");
+  if (!proximo) return { label: "Sem SLA", atrasado: false, etapa: "—" };
+  const atrasado = proximo.status === "atrasado";
+  return { label: `${proximo.canal} · ${proximo.sla}`, atrasado, etapa: `Dia ${proximo.dia} · ${proximo.objetivo}` };
+}
+function getProgressoCadencia(l: Lead): { feitos: number; total: number; pct: number } {
+  const cad = getCadenciaDetalhada(l);
+  const feitos = cad.filter((c) => c.status === "concluido").length;
+  return { feitos, total: cad.length, pct: Math.round((feitos / cad.length) * 100) };
+}
+type CanalKind = "whatsapp" | "ligacao" | "visita" | "ia" | "sistema" | "proposta";
+function getCanalKind(tipo: string): CanalKind {
+  const t = tipo.toLowerCase();
+  if (t.includes("whats")) return "whatsapp";
+  if (t.includes("liga") || t.includes("telefone")) return "ligacao";
+  if (t.includes("visit")) return "visita";
+  if (t.includes("ia") || t.includes("bot")) return "ia";
+  if (t.includes("propos")) return "proposta";
+  return "sistema";
+}
+const canalDot: Record<CanalKind, string> = {
+  whatsapp: "bg-emerald-500",
+  ligacao: "bg-amber-500",
+  visita: "bg-blue-500",
+  ia: "bg-violet-500",
+  proposta: "bg-rose-500",
+  sistema: "bg-slate-400",
+};
+const canalBadge: Record<CanalKind, string> = {
+  whatsapp: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  ligacao: "bg-amber-50 text-amber-800 border-amber-100",
+  visita: "bg-blue-50 text-blue-700 border-blue-100",
+  ia: "bg-violet-50 text-violet-700 border-violet-100",
+  proposta: "bg-rose-50 text-rose-700 border-rose-100",
+  sistema: "bg-slate-50 text-slate-600 border-slate-200",
+};
+function CanalIcon({ kind, className }: { kind: CanalKind; className?: string }) {
+  const map: Record<CanalKind, JSX.Element> = {
+    whatsapp: <MessageCircle className={className} />,
+    ligacao: <Phone className={className} />,
+    visita: <Calendar className={className} />,
+    ia: <Sparkles className={className} />,
+    proposta: <ClipboardCheck className={className} />,
+    sistema: <Activity className={className} />,
+  };
+  return map[kind];
+}
+function getMicroContexto(tipo: string, indexFromTop: number): string | null {
+  const k = getCanalKind(tipo);
+  if (indexFromTop === 0) {
+    if (k === "whatsapp") return "Lead respondeu em 12min";
+    if (k === "ligacao") return "Conversa de 6min";
+    if (k === "ia") return "Score +5";
+    if (k === "visita") return "Confirmada";
+  }
+  if (indexFromTop === 1) return "Follow-up em 1h";
+  return null;
+}
+
 type StatusOp = { icon: string; label: string; tone: "neutral" | "warn" | "danger" | "good" };
 function getStatusOperacional(l: Lead): StatusOp[] {
   const out: StatusOp[] = [];
