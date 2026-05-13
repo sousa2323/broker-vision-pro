@@ -1150,43 +1150,175 @@ function LeadsPage() {
 
                 {/* CADÊNCIA */}
                 <TabsContent value="cadencia" className="mt-0 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-semibold">Cadência: Qualificação Premium</div>
-                      <div className="text-xs text-muted-foreground">Jornada operacional do lead</div>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button className="rounded-md border border-border px-2 py-1 text-[11px]">Pausar</button>
-                      <button className="rounded-md border border-border px-2 py-1 text-[11px]">Reiniciar</button>
-                      <button className="rounded-md border border-border px-2 py-1 text-[11px]">Trocar</button>
-                    </div>
-                  </div>
+                  {(() => {
+                    const prog = getProgressoCadencia(selected);
+                    return (
+                      <div className="rounded-xl border border-border bg-card p-5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold">Cadência: Qualificação Premium</div>
+                            <div className="text-xs text-muted-foreground">{prog.feitos} de {prog.total} etapas concluídas</div>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <button className="rounded-md border border-border px-2 py-1 text-[11px] transition-colors hover:bg-surface">Pausar</button>
+                            <button className="rounded-md border border-border px-2 py-1 text-[11px] transition-colors hover:bg-surface">Reiniciar</button>
+                            <button className="rounded-md border border-border px-2 py-1 text-[11px] transition-colors hover:bg-surface">Trocar</button>
+                          </div>
+                        </div>
+                        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${prog.pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {[1, 2, 3, 4].map((d) => {
                     const itens = getCadenciaDetalhada(selected).filter((c) => c.dia === d);
                     if (itens.length === 0) return null;
+                    const feitos = itens.filter((i) => i.status === "concluido").length;
+                    const objetivoDia = d === 1 ? "Primeiro contato" : d === 2 ? "Engajamento" : d === 3 ? "Avanço" : "Conversão";
                     return (
-                      <div key={d} className="rounded-xl border border-border p-3">
-                        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Dia {d}</div>
-                        <ul className="mt-2 space-y-1.5">
-                          {itens.map((c, i) => (
-                            <li key={i} className="rounded-md border border-border bg-surface/50 px-3 py-2 text-sm">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium">{c.titulo}</div>
-                                <span className={cn(
-                                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                                  c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
-                                  c.status === "atrasado" ? "bg-red-50 text-red-700" :
-                                  c.status === "hoje" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600"
-                                )}>{c.status === "concluido" ? "Concluído" : c.status === "atrasado" ? "Atrasado" : c.status === "hoje" ? "Hoje" : "Pendente"}</span>
-                              </div>
-                              <div className="mt-0.5 text-[11px] text-muted-foreground">{c.canal} · {c.objetivo} · SLA {c.sla}</div>
-                              {c.script && <div className="mt-1 text-[11px] italic text-muted-foreground">Script: {c.script}</div>}
-                            </li>
-                          ))}
+                      <div key={d} className="rounded-xl border border-border bg-card p-5 transition-all hover:border-foreground/20">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Dia {d} · {objetivoDia}</div>
+                          </div>
+                          <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] text-muted-foreground">{feitos}/{itens.length} concluídas</span>
+                        </div>
+                        <ul className="mt-4 space-y-2">
+                          {itens.map((c, i) => {
+                            const StatusIcon = c.status === "concluido" ? CheckCircle2 : c.status === "atrasado" ? AlertCircle : c.status === "hoje" ? Clock : Activity;
+                            const iconColor = c.status === "concluido" ? "text-emerald-600" : c.status === "atrasado" ? "text-red-600" : c.status === "hoje" ? "text-amber-600" : "text-slate-400";
+                            return (
+                              <li key={i} className={cn(
+                                "rounded-md border border-border bg-background px-3 py-2.5 text-sm transition-colors hover:bg-surface/40",
+                                c.status === "atrasado" && "border-l-2 border-l-red-400 bg-red-50/30",
+                                c.status === "concluido" && "opacity-70"
+                              )}>
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex min-w-0 items-center gap-2.5">
+                                    <StatusIcon className={cn("h-4 w-4 shrink-0", iconColor)} />
+                                    <div className={cn("font-medium", c.status === "concluido" && "line-through")}>{c.titulo}</div>
+                                  </div>
+                                  <span className={cn(
+                                    "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                    c.status === "concluido" ? "bg-emerald-50 text-emerald-700" :
+                                    c.status === "atrasado" ? "bg-red-50 text-red-700" :
+                                    c.status === "hoje" ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600"
+                                  )}>{c.status === "concluido" ? "Concluído" : c.status === "atrasado" ? "Atrasado" : c.status === "hoje" ? "Hoje" : "Pendente"}</span>
+                                </div>
+                                <div className="mt-1 pl-6 text-[11px] text-muted-foreground">{c.canal} · {c.objetivo} · SLA {c.sla}</div>
+                                {c.script && <div className="mt-1 pl-6 text-[11px] italic text-muted-foreground">Script: {c.script}</div>}
+                              </li>
+                            );
+                          })}
                         </ul>
                       </div>
                     );
                   })}
+                </TabsContent>
+
+                {/* INTERAÇÕES */}
+                <TabsContent value="interacoes" className="mt-0 space-y-4">
+                  <div className="flex justify-end">
+                    <button onClick={() => setRegistroOpen(true)} className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background transition-transform active:scale-[0.98]">
+                      <Plus className="h-3 w-3" /> Registrar interação
+                    </button>
+                  </div>
+                  <ol className="space-y-3">
+                    {selected.historico.map((h, i) => {
+                      const kind = getCanalKind(h.tipo);
+                      const micro = getMicroContexto(h.tipo, i);
+                      return (
+                        <li key={i} className="rounded-xl border border-border bg-card p-4 text-sm transition-all hover:border-foreground/20 hover:shadow-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <span className={cn("grid h-7 w-7 place-items-center rounded-full text-white", canalDot[kind])}>
+                                <CanalIcon kind={kind} className="h-3.5 w-3.5" />
+                              </span>
+                              <div>
+                                <div className="text-sm font-medium">{h.tipo}</div>
+                                <div className="text-[11px] text-muted-foreground">{h.data} · Você</div>
+                              </div>
+                            </div>
+                            {micro && (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-700">
+                                <Zap className="h-2.5 w-2.5" />{micro}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-3 text-foreground">{h.texto}</div>
+                          <div className="mt-3 flex items-start gap-2 rounded-md border-l-2 border-l-primary/40 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+                            <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+                            <div><span className="text-foreground">Próxima ação sugerida: </span>{getSugestaoPosInteracao(h.tipo, selected)}</div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </TabsContent>
+
+                {/* WHATSAPP */}
+                <TabsContent value="whatsapp" className="mt-0 space-y-4">
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-center justify-between text-[11px] uppercase tracking-widest text-muted-foreground">
+                      <span>Última conversa</span>
+                      <span className="normal-case tracking-normal">{selected.historico.find((h) => h.tipo.includes("WhatsApp"))?.data ?? "—"}</span>
+                    </div>
+                    <div className="mt-2 text-sm text-foreground/80">{selected.historico.find((h) => h.tipo.includes("WhatsApp"))?.texto ?? "Sem conversa registrada."}</div>
+                  </div>
+                  <div className="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-background p-5 transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between">
+                      <div className="inline-flex items-center gap-2">
+                        <span className="grid h-7 w-7 place-items-center rounded-full bg-violet-600 text-white">
+                          <Bot className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <div className="text-sm font-semibold text-violet-900">Assistente IA</div>
+                          <div className="text-[10px] uppercase tracking-widest text-violet-700/80">Sugestão personalizada</div>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-800">+12% conversão</span>
+                    </div>
+                    <div className="mt-3 rounded-md bg-background/60 p-3 text-sm text-foreground">{`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou sobre ${inferTipo(selected.interesse).toLowerCase()} em ${inferRegiao(selected.interesse).split(" ")[0]}.`}</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button onClick={() => setWaTexto(`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou.`)} className="inline-flex h-9 items-center gap-1.5 rounded-md bg-violet-600 px-3 text-xs font-medium text-white transition-colors hover:bg-violet-700"><Sparkles className="h-3.5 w-3.5" /> Usar sugestão</button>
+                      <button className="inline-flex h-9 items-center rounded-md border border-border bg-background px-3 text-xs transition-colors hover:bg-surface">Editar</button>
+                      <button onClick={() => navigator.clipboard?.writeText(waTexto)} className="inline-flex h-9 items-center gap-1 rounded-md border border-border bg-background px-3 text-xs transition-colors hover:bg-surface"><Copy className="h-3 w-3" /> Copiar</button>
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Mensagem</div>
+                      <div className="text-[10px] text-muted-foreground">{waTexto.length} caracteres</div>
+                    </div>
+                    <textarea
+                      value={waTexto}
+                      onChange={(e) => setWaTexto(e.target.value)}
+                      placeholder="Escreva uma mensagem..."
+                      className="mt-2 min-h-[140px] w-full rounded-md border border-border bg-background p-3 text-sm focus:border-foreground/30 focus:outline-none"
+                    />
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                      <button className="inline-flex h-9 items-center gap-1 rounded-md px-3 text-xs text-muted-foreground transition-colors hover:bg-surface hover:text-foreground">Salvar como template</button>
+                      <button className="inline-flex h-9 items-center gap-1.5 rounded-md bg-emerald-600 px-4 text-xs font-medium text-white transition-colors hover:bg-emerald-700"><Send className="h-3.5 w-3.5" /> Enviar</button>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Templates rápidos</div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-3">
+                      {TEMPLATES_WA.map((t) => {
+                        const txt = t.texto.replace("{nome}", primeiroNome).replace("{tipo}", inferTipo(selected.interesse).toLowerCase()).replace("{regiao}", inferRegiao(selected.interesse).split(" ")[0]);
+                        return (
+                          <button key={t.titulo} onClick={() => setWaTexto(txt)} className="group rounded-md border border-border bg-card p-3 text-left text-xs transition-all hover:border-foreground/20 hover:shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs font-semibold">{t.titulo}</div>
+                              <span className="text-[10px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">Usar →</span>
+                            </div>
+                            <div className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{txt}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </TabsContent>
 
                 {/* INTERAÇÕES */}
