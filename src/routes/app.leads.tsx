@@ -953,7 +953,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* CADÊNCIA */}
-                <TabsContent value="cadencia" className="space-y-4">
+                <TabsContent value="cadencia" className="mt-0 space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="text-sm font-semibold">Cadência: Qualificação Premium</div>
@@ -994,7 +994,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* INTERAÇÕES */}
-                <TabsContent value="interacoes" className="space-y-3">
+                <TabsContent value="interacoes" className="mt-0 space-y-4">
                   <div className="flex justify-end">
                     <button onClick={() => setRegistroOpen(true)} className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background">
                       <Plus className="h-3 w-3" /> Registrar interação
@@ -1020,7 +1020,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* WHATSAPP */}
-                <TabsContent value="whatsapp" className="space-y-3">
+                <TabsContent value="whatsapp" className="mt-0 space-y-4">
                   <div className="rounded-xl border border-border p-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>Última conversa</span>
@@ -1062,7 +1062,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* VISITAS */}
-                <TabsContent value="visitas" className="space-y-3">
+                <TabsContent value="visitas" className="mt-0 space-y-4">
                   {(() => {
                     const v = getVisitaInfo(selected);
                     if (!v) return (
@@ -1092,7 +1092,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* QUALIFICAÇÃO */}
-                <TabsContent value="qualificacao" className="space-y-3">
+                <TabsContent value="qualificacao" className="mt-0">
                   {QUALIF_BLOCOS(selected).map((b) => (
                     <div key={b.titulo} className="rounded-xl border border-border p-4">
                       <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{b.titulo}</div>
@@ -1109,7 +1109,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* SCRIPTS */}
-                <TabsContent value="scripts" className="space-y-2">
+                <TabsContent value="scripts" className="mt-0 space-y-4">
                   {SCRIPTS_LIB.map((s) => {
                     const texto = s.texto
                       .replace("{nome}", primeiroNome)
@@ -1137,7 +1137,7 @@ function LeadsPage() {
                 </TabsContent>
 
                 {/* HISTÓRICO */}
-                <TabsContent value="historico">
+                <TabsContent value="historico" className="mt-0">
                   <ol className="space-y-2.5 border-l border-border pl-4">
                     <li className="relative text-sm">
                       <span className="absolute -left-[19px] top-1 h-2 w-2 rounded-full bg-emerald-500" />
