@@ -140,6 +140,105 @@ function getScoreIA(u: AdminBroker): number {
   return Math.max(8, Math.min(99, Math.round(raw)));
 }
 
+// ─── Inteligência operacional (derivados) ─────────────────────────────────────
+
+function getOrigemLeads(u: AdminBroker): { plataforma: number; propria: number } {
+  const total = getLeadsAtivos(u);
+  const pctPlataforma = 30 + rng(u.id, 71, 0, 40); // 30–70%
+  const plataforma = Math.round((total * pctPlataforma) / 100);
+  return { plataforma, propria: Math.max(0, total - plataforma) };
+}
+
+function getNegligenciaPlataforma(u: AdminBroker): number {
+  const neg = getNegligencia(u);
+  const { plataforma } = getOrigemLeads(u);
+  const total = getLeadsAtivos(u) || 1;
+  return Math.min(plataforma, Math.round((neg * plataforma) / total));
+}
+
+function getPipelineComposicao(u: AdminBroker): {
+  novos: number; qualificados: number; visitas: number; propostas: number; criticos: number;
+} {
+  const total = getLeadsAtivos(u);
+  if (total === 0) return { novos: 0, qualificados: 0, visitas: 0, propostas: 0, criticos: 0 };
+  // pesos determinísticos
+  const novos = Math.max(1, Math.round(total * 0.18));
+  const qualificados = Math.max(1, Math.round(total * 0.32));
+  const visitas = Math.max(0, Math.round(total * 0.18));
+  const propostas = Math.max(0, Math.round(total * 0.20));
+  const criticos = Math.max(0, total - novos - qualificados - visitas - propostas);
+  return { novos, qualificados, visitas, propostas, criticos };
+}
+
+type Direcao = "up" | "down" | "flat";
+type MetricaTendencia = "execucao" | "conversao" | "negligencia" | "tempoResposta";
+
+function getTendencia(u: AdminBroker, m: MetricaTendencia): { atual: string; delta: number; direcao: Direcao } {
+  const seed = m === "execucao" ? 81 : m === "conversao" ? 82 : m === "negligencia" ? 83 : 84;
+  const delta = rng(u.id, seed, -18, 18);
+  const direcao: Direcao = delta > 1 ? "up" : delta < -1 ? "down" : "flat";
+  let atual = "";
+  if (m === "execucao") atual = `${getExecucao(u)}%`;
+  else if (m === "conversao") atual = `${getConversao(u)}%`;
+  else if (m === "negligencia") atual = `${getNegligencia(u)} leads`;
+  else atual = `${rng(u.id, 85, 1, 9)}h`;
+  return { atual, delta, direcao };
+}
+
+// Em "negligencia" e "tempoResposta", subir é ruim
+function tonDelta(direcao: Direcao, m: MetricaTendencia): string {
+  if (direcao === "flat") return "text-muted-foreground";
+  const piorAoSubir = m === "negligencia" || m === "tempoResposta";
+  const ruim = (direcao === "up" && piorAoSubir) || (direcao === "down" && !piorAoSubir);
+  return ruim ? "text-red-700" : "text-emerald-700";
+}
+
+type AlertaInteligente = { tom: "red" | "amber" | "yellow" | "emerald"; texto: string };
+
+function getAlertasInteligentes(u: AdminBroker): AlertaInteligente[] {
+  const out: AlertaInteligente[] = [];
+  const negPlat = getNegligenciaPlataforma(u);
+  const exec = getExecucao(u);
+  const dias = getDiasSemLogin(u);
+  const conv = getConversao(u);
+  const tendExec = getTendencia(u, "execucao");
+
+  if (negPlat >= 3) out.push({ tom: "red", texto: `${negPlat} leads da plataforma sem follow-up há mais de 5 dias` });
+  if (tendExec.direcao === "down" && Math.abs(tendExec.delta) >= 8)
+    out.push({ tom: "amber", texto: `Execução caiu ${Math.abs(tendExec.delta)}% nesta semana` });
+  if (dias >= 7) out.push({ tom: "yellow", texto: `Sem login há ${dias} dias — vale um contato de acompanhamento` });
+  if (conv >= 25) out.push({ tom: "emerald", texto: `Conversão acima da média da rede (${conv}%)` });
+  if (exec < 50 && out.length < 4) out.push({ tom: "amber", texto: `Execução abaixo do ideal (${exec}%) — priorizar suporte` });
+  return out.slice(0, 4);
+}
+
+function getAcaoRecomendada(u: AdminBroker): { titulo: string; motivos: string[] } {
+  const exec = getExecucao(u);
+  const neg = getNegligencia(u);
+  const dias = getDiasSemLogin(u);
+  const negPlat = getNegligenciaPlataforma(u);
+  const motivos: string[] = [];
+  if (neg > 0) motivos.push(`${neg} leads negligenciados (${negPlat} da plataforma)`);
+  if (dias >= 4) motivos.push(`${dias} dias sem login`);
+  if (exec < 60) motivos.push(`execução em ${exec}%`);
+  const tendConv = getTendencia(u, "conversao");
+  if (tendConv.direcao === "down") motivos.push(`conversão caindo ${Math.abs(tendConv.delta)}%`);
+
+  let titulo = `Acompanhar ${u.nome.split(" ")[0]}`;
+  if (negPlat >= 3) titulo = `Priorizar contato com ${u.nome.split(" ")[0]} — leads da plataforma em risco`;
+  else if (dias >= 7) titulo = `Reativar ${u.nome.split(" ")[0]} — operação parada`;
+  else if (exec < 50) titulo = `Apoiar ${u.nome.split(" ")[0]} a retomar execução`;
+  else if (tendConv.direcao === "up" && tendConv.delta > 5) titulo = `Reconhecer ${u.nome.split(" ")[0]} pela melhora de conversão`;
+
+  return { titulo, motivos: motivos.slice(0, 4) };
+}
+
+function getSaudeMicrocopy(r: Risco): string {
+  if (r === "saudavel") return "Execução alta · baixa negligência · resposta rápida";
+  if (r === "atencao") return "Queda operacional · follow-ups atrasados · atenção recomendada";
+  return "Sem login recente · leads negligenciados · suporte imediato";
+}
+
 // ─── Tons visuais ─────────────────────────────────────────────────────────────
 
 function tonExecucao(n: number): string {
