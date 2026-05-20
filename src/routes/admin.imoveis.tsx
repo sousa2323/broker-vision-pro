@@ -1158,50 +1158,62 @@ function ImovelDrawer({
         </Tabs>
 
         <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/admin/leads">Ver leads vinculados</Link>
-          </Button>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    size="sm"
-                    disabled={invasivasBloqueadas}
-                    onClick={() => toast.success("Anúncio priorizado no marketplace")}
-                  >
-                    Priorizar anúncio
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {invasivasBloqueadas && (
-                <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-          <Button variant="outline" size="sm" onClick={onSolicitar}>Solicitar atualização</Button>
-          <Button variant="ghost" size="sm" onClick={() => toast.success("Risco sinalizado para revisão da governança")}>
-            Sinalizar risco
-          </Button>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={invasivasBloqueadas}
-                    onClick={onSuspender}
-                  >
-                    Suspender marketplace
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {invasivasBloqueadas && (
-                <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          {(() => {
+            const isPrimary = (k: AcaoKey) => acao.key === k;
+            const verLeadsV: "default" | "outline" = isPrimary("atendimento") ? "default" : "outline";
+            const priorV: "default" | "outline" = (isPrimary("priorizar") || isPrimary("reativar")) ? "default" : "outline";
+            const solicitarV: "default" | "outline" = (isPrimary("fotos") || isPrimary("atualizar")) ? "default" : "outline";
+            const suspenderV: "default" | "outline" = isPrimary("suspender") ? "default" : "outline";
+            return (
+              <>
+                <Button variant={verLeadsV} size="sm" asChild>
+                  <Link to="/admin/leads">Ver leads vinculados</Link>
+                </Button>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant={priorV}
+                          size="sm"
+                          disabled={invasivasBloqueadas}
+                          onClick={() => toast.success("Anúncio priorizado no marketplace")}
+                        >
+                          Priorizar anúncio
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {invasivasBloqueadas && (
+                      <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+                <Button variant={solicitarV} size="sm" onClick={onSolicitar}>Solicitar atualização</Button>
+                <Button variant="ghost" size="sm" onClick={() => toast.success("Risco sinalizado para revisão da governança")}>
+                  Sinalizar risco
+                </Button>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant={suspenderV === "default" ? "destructive" : "outline"}
+                          size="sm"
+                          disabled={invasivasBloqueadas}
+                          onClick={onSuspender}
+                        >
+                          Suspender marketplace
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {invasivasBloqueadas && (
+                      <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            );
+          })()}
         </div>
       </SheetContent>
     </Sheet>
