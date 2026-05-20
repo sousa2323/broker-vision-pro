@@ -943,10 +943,26 @@ function ImovelDrawer({
           </div>
           <div className="flex flex-wrap items-center gap-2 pt-3">
             <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonOrigem[imovel.origem])}>{imovel.origem}</span>
-            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", tonRisco[imovel.risco])}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", dotRisco[imovel.risco])} />
-              {labelRisco[imovel.risco]}
-            </span>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={cn("inline-flex cursor-help items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", tonRisco[saude.nivel])}>
+                    <span className={cn("h-1.5 w-1.5 rounded-full", dotRisco[saude.nivel])} />
+                    Saúde: {labelRisco[saude.nivel]}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-xs">
+                  <ul className="space-y-0.5">
+                    {saude.pontos.map((p) => (
+                      <li key={p.label} className="flex items-center gap-1.5">
+                        {p.ok ? <Check className="h-3 w-3 text-emerald-600" /> : <XIcon className="h-3 w-3 text-red-600" />}
+                        <span>{p.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonDemanda[imovel.demanda])}>Demanda {imovel.demanda}</span>
             <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonStatus[imovel.status])}>{imovel.status}</span>
             <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonMarketplace[imovel.marketplaceStatus])}>{imovel.marketplaceStatus}</span>
@@ -954,7 +970,28 @@ function ImovelDrawer({
           </div>
         </SheetHeader>
 
+        {/* Ação recomendada pela Ubroker IA */}
+        <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+            <Sparkles className="h-3 w-3" /> Ação recomendada pela Ubroker IA
+          </div>
+          <div className="mt-1 text-sm font-medium">{acao.titulo}</div>
+          <div className="text-xs text-muted-foreground">{acao.racional}</div>
+          {insights.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {insights.map((s) => (
+                <span key={s} className="rounded-full bg-card px-2 py-0.5 text-[10px] text-muted-foreground border border-border">
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
         <Tabs defaultValue="resumo" className="mt-6">
+          <TabsList className="flex w-full flex-wrap h-auto">
+            <TabsTrigger value="resumo">Resumo</TabsTrigger>
+            <TabsTrigger value="leads">Leads</TabsTrigger>
           <TabsList className="flex w-full flex-wrap h-auto">
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
