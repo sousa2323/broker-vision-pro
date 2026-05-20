@@ -1011,6 +1011,19 @@ function ImovelDrawer({
               <Info label="Tempo anunciado" value={`${imovel.dias} dias`} />
               <Info label="Tipo" value={imovel.tipo} sub={`${imovel.area}m² · ${imovel.quartos}q`} />
             </div>
+
+            {/* Operação do imóvel */}
+            <div className="rounded-xl border border-border bg-card p-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Operação do imóvel</div>
+              <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+                <OpStat label="Leads" value={operacao.leads} />
+                <OpStat label="Visitas" value={operacao.visitas} />
+                <OpStat label="Propostas" value={operacao.propostas} />
+                <OpStat label="Negligenciados" value={operacao.negligenciados} tone={operacao.negligenciados > 0 ? "red" : "neutral"} />
+              </div>
+              <div className="mt-2 text-[11px] text-muted-foreground">{operacao.leitura}</div>
+            </div>
+
             <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraResumo}</div>
           </TabsContent>
 
