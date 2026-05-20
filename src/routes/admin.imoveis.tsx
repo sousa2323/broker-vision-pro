@@ -992,9 +992,6 @@ function ImovelDrawer({
           <TabsList className="flex w-full flex-wrap h-auto">
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
-          <TabsList className="flex w-full flex-wrap h-auto">
-            <TabsTrigger value="resumo">Resumo</TabsTrigger>
-            <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
             <TabsTrigger value="atualizacoes">Atualizações</TabsTrigger>
