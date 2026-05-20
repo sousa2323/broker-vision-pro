@@ -840,20 +840,160 @@ function racionalRelacao(r: Relacao): string {
   if (r.conversao >= 30) partes.push("conversão acima da média da rede");
   return partes.length ? partes.join(" · ") : "Sem sinais relevantes nas últimas semanas.";
 }
-function opsExemplo(r: Relacao) {
-  const base = [
-    { imovel: "Cobertura Linear · Icaraí", etapa: "Proposta", resp: r.a, resultado: "Em análise" },
-    { imovel: "Apto Charitas · 3q", etapa: "Visita", resp: r.b, resultado: "Agendada" },
-    { imovel: "Casa Camboinhas Beach", etapa: "Fechamento", resp: r.a, resultado: "Aprovada" },
-    { imovel: "Sala Centro Empresarial", etapa: "Lead", resp: r.b, resultado: "Qualificando" },
+function opsExemplo(r: Relacao): Operacao[] {
+  const s = seed(r.id);
+  const base: Operacao[] = [
+    { imovel: "Cobertura Linear · Icaraí", etapa: "Proposta", resp: r.a, prioridade: "Alta", slaH: 8, ultima: "há 2h", risco: "atencao", proxima: "Follow-up de decisão", previsao: "7 dias", ticket: 1_950_000 },
+    { imovel: "Apto Charitas · 3q", etapa: "Visita", resp: r.b, prioridade: "Média", slaH: 22, ultima: "há 6h", risco: "ok", proxima: "Confirmar visita", previsao: "14 dias", ticket: 980_000 },
+    { imovel: "Casa Camboinhas Beach", etapa: "Fechamento", resp: r.a, prioridade: "Alta", slaH: 3, ultima: "há 45min", risco: "atencao", proxima: "Coleta de assinaturas", previsao: "2 dias", ticket: 3_400_000 },
+    { imovel: "Sala Centro Empresarial", etapa: "Lead", resp: r.b, prioridade: "Baixa", slaH: 36, ultima: "há 1d", risco: "ok", proxima: "Qualificar perfil", previsao: "30 dias", ticket: 620_000 },
+    { imovel: "Lançamento Vista Bay", etapa: "Negociação", resp: r.a, prioridade: "Média", slaH: 14, ultima: "há 4h", risco: r.saude === "critica" ? "critico" : "ok", proxima: "Revisar contraproposta", previsao: "10 dias", ticket: 1_280_000 },
   ];
-  return base.slice(0, 2 + (seed(r.id) % 3));
+  return base.slice(0, 2 + (s % 3));
 }
-function auditoria(r: Relacao) {
-  return [
-    { titulo: "Parceria registrada", detalhe: `Origem: ${r.origem}`, data: `${r.desde}` },
-    { titulo: "Redistribuição de lead", detalhe: `${r.b} assumiu atendimento de lead premium`, data: "12/05" },
-    { titulo: "Comissão compartilhada liquidada", detalhe: formatBRL(r.comissaoTotal || 12_400), data: "03/05" },
-    ...(r.saude === "critica" ? [{ titulo: "Conflito sinalizado", detalhe: "Divergência sobre atribuição de lead", data: "28/04" }] : []),
+
+type AuditoriaTipo = "registro" | "redistribuicao" | "conflito" | "comissao" | "pausa" | "alteracao";
+type AuditoriaItem = { titulo: string; detalhe: string; data: string; tipo: AuditoriaTipo };
+
+function auditoria(r: Relacao): AuditoriaItem[] {
+  const items: AuditoriaItem[] = [
+    { tipo: "registro", titulo: "Parceria registrada", detalhe: `Origem: ${r.origem}`, data: r.desde },
+    { tipo: "redistribuicao", titulo: "Redistribuição de lead", detalhe: `${r.b} assumiu atendimento de lead premium`, data: "12/05" },
+    { tipo: "comissao", titulo: "Comissão compartilhada liquidada", detalhe: formatBRL(r.comissaoTotal || 12_400), data: "03/05" },
+    { tipo: "alteracao", titulo: "Alteração de responsável", detalhe: `Operação transferida para ${r.a}`, data: "21/04" },
   ];
+  if (r.saude === "critica") items.push({ tipo: "conflito", titulo: "Conflito sinalizado", detalhe: "Divergência sobre atribuição de lead", data: "28/04" });
+  if (r.saude === "inativa") items.push({ tipo: "pausa", titulo: "Parceria pausada", detalhe: "Sem operações ativas há 45 dias", data: "10/04" });
+  return items;
+}
+
+// ============ Inteligência da relação ============
+
+function compatRationale(r: Relacao): string[] {
+  const out: string[] = [];
+  out.push(`Atuam na mesma região (${r.regiao})`);
+  out.push(`Ticket médio compatível (${formatBRLcompact(r.ticket)})`);
+  if (r.tipoImovel === "Luxo" || r.ticket > 1_200_000) out.push("Convertem bem em imóveis premium");
+  if (r.tempoResposta < 12) out.push("Velocidade operacional compatível");
+  if (r.perfil === "Investidor") out.push("Perfil de cliente alinhado (investidor)");
+  if (r.conversao >= 25) out.push("Histórico de conversão acima da média");
+  return out.slice(0, 5);
+}
+
+function complementaridade(r: Relacao): string[] {
+  const out: string[] = [];
+  if (r.leadsA_B > r.leadsB_A * 1.3) {
+    out.push(`${r.a} gera mais captação`);
+    out.push(`${r.b} converte melhor visitas`);
+  } else if (r.leadsB_A > r.leadsA_B * 1.3) {
+    out.push(`${r.b} gera mais captação`);
+    out.push(`${r.a} converte melhor visitas`);
+  } else {
+    out.push("Boa divisão operacional entre captação e atendimento");
+    out.push("Parceria equilibrada em fechamento");
+  }
+  if (r.recip === "unilateral") out.push("Fluxo concentrado — revisar contrapartida");
+  return out;
+}
+
+function potencialExpansao(r: Relacao): string[] {
+  const out: string[] = [];
+  if (r.ticket > 1_200_000) out.push("Alto potencial em imóveis acima de R$ 1,5M");
+  else out.push("Oportunidade em imóveis compactos e médio padrão");
+  if (r.regiao.includes("Niterói") || r.regiao.includes("Rio")) out.push(`Possibilidade de expansão em ${r.regiao.split("/")[0]}`);
+  if (r.origem !== "Match IA") out.push("Baixa exploração do marketplace — ativar matchmaking");
+  if (r.tipoImovel !== "Lançamento") out.push("Espaço para entrar em lançamentos da rede");
+  return out.slice(0, 4);
+}
+
+function matchEngine(r: Relacao): string[] {
+  const out: string[] = [];
+  if (r.ticket > 1_200_000) out.push("Perfil forte para imóveis premium");
+  if (r.origem === "Indicação" || r.conversao >= 25) out.push("Dupla performa acima da média em leads de indicação");
+  out.push(`Recomendada para operações em ${r.regiao.split("/")[0]}`);
+  if (r.perfil === "Investidor" || r.perfil === "Alto padrão") out.push(`Compatível com clientes ${r.perfil.toLowerCase()}`);
+  return out.slice(0, 4);
+}
+
+type PerfInsight = { tag: string; text: string; tone: "good" | "warn" | "neutral" };
+function performanceInsights(r: Relacao): PerfInsight[] {
+  const out: PerfInsight[] = [];
+  if (r.ticket > 1_200_000)
+    out.push({ tag: "Origem", text: `Conversão mais forte em imóveis acima de ${formatBRLcompact(r.ticket)}.`, tone: "good" });
+  out.push({ tag: "Tipo", text: `${r.tipoImovel} é o tipo mais eficiente desta dupla.`, tone: "good" });
+  out.push({ tag: "Região", text: `${r.regiao} concentra o melhor desempenho.`, tone: "neutral" });
+  if (r.tempoResposta > 18)
+    out.push({ tag: "Gargalo", text: "Atraso na resposta inicial compromete leads quentes.", tone: "warn" });
+  else
+    out.push({ tag: "Etapa", text: "Maior perda ocorre após a visita — reforçar follow-up.", tone: "warn" });
+  return out;
+}
+
+function financeiroHistorico(r: Relacao) {
+  const base = Math.round((r.comissaoTotal || 18_000) / 3);
+  return [
+    { data: "20/05", descricao: "Comissão liquidada · Cobertura Linear", valor: formatBRL(base + 4_200) },
+    { data: "08/05", descricao: "Split aprovado · Apto Charitas", valor: formatBRL(base) },
+    { data: "22/04", descricao: "Comissão liquidada · Casa Camboinhas", valor: formatBRL(base + 9_800) },
+    { data: "05/04", descricao: "Split aprovado · Sala Empresarial", valor: formatBRL(base - 1_400) },
+  ];
+}
+
+// ============ Operação Card ============
+
+type Operacao = {
+  imovel: string;
+  etapa: string;
+  resp: string;
+  prioridade: "Alta" | "Média" | "Baixa";
+  slaH: number;
+  ultima: string;
+  risco: "ok" | "atencao" | "critico";
+  proxima: string;
+  previsao: string;
+  ticket: number;
+};
+
+function OperacaoCard({ o }: { o: Operacao }) {
+  const riscoTone =
+    o.risco === "critico" ? "text-red-700 bg-red-50"
+    : o.risco === "atencao" ? "text-amber-700 bg-amber-50"
+    : "text-emerald-700 bg-emerald-50";
+  const riscoLabel = o.risco === "critico" ? "Risco" : o.risco === "atencao" ? "Atenção" : "Estável";
+  const prioTone =
+    o.prioridade === "Alta" ? "border-red-200 text-red-700"
+    : o.prioridade === "Média" ? "border-amber-200 text-amber-700"
+    : "border-border text-muted-foreground";
+  const slaTone = o.slaH <= 6 ? "text-red-700" : o.slaH <= 18 ? "text-amber-700" : "text-muted-foreground";
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-[13px] font-medium">
+            <span className="truncate">{o.imovel}</span>
+            <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">{o.etapa}</span>
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{o.resp}</span>
+            <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{formatBRLcompact(o.ticket)}</span>
+            <span>Última interação {o.ultima}</span>
+          </div>
+        </div>
+        <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider", riscoTone)}>{riscoLabel}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+        <span className={cn("rounded-full border px-2 py-0.5", prioTone)}>Prioridade {o.prioridade}</span>
+        <span className={cn("inline-flex items-center gap-1 rounded-full bg-surface px-2 py-0.5", slaTone)}>
+          <Clock className="h-3 w-3" /> SLA: {o.slaH}h restantes
+        </span>
+        <span className="rounded-full bg-surface px-2 py-0.5 text-muted-foreground">Previsão: {o.previsao}</span>
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 rounded-md border border-dashed border-border bg-surface/40 px-2 py-1.5 text-[11px]">
+        <Zap className="h-3 w-3 text-foreground/70" />
+        <span className="text-muted-foreground">Próxima ação:</span>
+        <span className="font-medium">{o.proxima}</span>
+      </div>
+    </div>
+  );
 }
