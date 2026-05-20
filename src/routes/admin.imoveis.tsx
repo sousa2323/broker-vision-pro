@@ -1073,37 +1073,54 @@ function ImovelDrawer({
             <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraPerformance}</div>
           </TabsContent>
 
-          <TabsContent value="marketplace" className="mt-4 space-y-3 text-sm">
+          <TabsContent value="marketplace" className="mt-4 space-y-4 text-sm">
+            {/* Scores */}
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Canais publicados</div>
-              <ul className="mt-2 space-y-1 text-xs">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Saúde comercial do ativo</div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <ScoreCard label="SEO" value={scores.seo} />
+                <ScoreCard label="Mídia" value={scores.midia} />
+                <ScoreCard label="Atendimento" value={scores.atendimento} />
+                <ScoreCard label="Conversão" value={scores.conversao} />
+              </div>
+            </div>
+
+            {/* Indicadores */}
+            <div className="rounded-xl border border-border bg-card p-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Indicadores do anúncio</div>
+              <ul className="grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2">
+                {indicadores.map((ind) => (
+                  <li key={ind.label} className="flex items-center gap-1.5">
+                    {ind.ok
+                      ? <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      : <XIcon className="h-3.5 w-3.5 text-amber-600" />}
+                    <span className={cn(!ind.ok && "text-muted-foreground")}>{ind.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Canais */}
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Canais publicados</div>
+              <ul className="space-y-1 text-xs">
                 {canais.map((c, i) => <li key={i} className="rounded-md border border-border bg-card px-3 py-1.5">{c}</li>)}
               </ul>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Mini label="Fotos" value={String(imovel.midia.fotos)} />
-              <Mini label="Qualidade" value={`${imovel.midia.qualidadePct}%`} />
-              <Mini label="SEO/descritivo" value={imovel.midia.qualidadePct > 60 ? "Ok" : "Revisar"} />
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Score de mídia</div>
-              <div className="h-2 w-full rounded-full bg-muted">
-                <div
-                  className={cn(
-                    "h-2 rounded-full",
-                    imovel.midia.qualidadePct >= 70 ? "bg-emerald-500" : imovel.midia.qualidadePct >= 50 ? "bg-amber-500" : "bg-red-500",
-                  )}
-                  style={{ width: `${imovel.midia.qualidadePct}%` }}
-                />
-              </div>
-            </div>
-            <div>
+
+            {/* Leitura operacional */}
+            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraMkt}</div>
+
+            {/* Previsão */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Previsão de performance</span>
               <span className={cn(
                 "rounded-full px-2 py-0.5 text-[11px]",
-                qualidadeAnuncio.tone === "emerald" ? "bg-emerald-50 text-emerald-700" :
-                qualidadeAnuncio.tone === "amber" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700",
+                previsao.tone === "emerald" ? "bg-emerald-50 text-emerald-700" :
+                previsao.tone === "amber" ? "bg-amber-50 text-amber-700" :
+                previsao.tone === "red" ? "bg-red-50 text-red-700" : "bg-muted text-muted-foreground",
               )}>
-                {qualidadeAnuncio.label}
+                {previsao.label}
               </span>
             </div>
           </TabsContent>
