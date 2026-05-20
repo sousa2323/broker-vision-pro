@@ -1027,7 +1027,18 @@ function ImovelDrawer({
             <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraResumo}</div>
           </TabsContent>
 
-          <TabsContent value="leads" className="mt-4">
+          <TabsContent value="leads" className="mt-4 space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              <QuickPill tone="red" label="em risco" value={leadEmRisco} />
+              <QuickPill tone="amber" label="sem resposta" value={leadSemResposta} />
+              <QuickPill tone="blue" label="em proposta" value={leadEmProposta} />
+              <QuickPill tone="emerald" label="convertidos" value={leadConvertidos} />
+            </div>
+            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">
+              {imovel.demanda === "Alta" && leadEmProposta === 0
+                ? "Alta procura com baixa evolução para visita."
+                : "Leads avançando normalmente no funil."}
+            </div>
             {leadsVinculados.length === 0 ? (
               <div className="rounded-lg border border-border bg-card p-6 text-center text-xs text-muted-foreground">
                 Nenhum lead vinculado identificado nesta região.
