@@ -176,6 +176,102 @@ function getTipoImovel(nome: string): string {
   return "Outro";
 }
 
+// ============ Camada de inteligência ============
+
+type AcaoKey =
+  | "fotos" | "suspender" | "atendimento" | "priorizar"
+  | "atualizar" | "reativar" | "nenhuma";
+
+function getInsightsImovel(i: {
+  demanda: Demanda; conversao: number; dias: number;
+  midia: { completo: boolean; qualidadePct: number };
+  leadsInfo: { total: number; semana: number };
+  marketplaceStatus: MarketplaceStatus; destaque?: boolean;
+}): string[] {
+  const out: string[] = [];
+  if (i.demanda === "Alta" && i.conversao < 10) out.push("Alta demanda com baixa conversão");
+  if (!i.midia.completo) out.push("Anúncio com mídia insuficiente");
+  if (i.dias > 45 && i.destaque) out.push("Imóvel premium sem atualização recente");
+  if (i.leadsInfo.total > 10 && i.conversao >= 20) out.push("Boa taxa de resposta operacional");
+  if (i.leadsInfo.total === 0 && i.dias > 30) out.push("Sem leads há mais de 30 dias");
+  if (i.demanda === "Alta" && i.leadsInfo.semana === 0) out.push("Procura alta, atendimento parado esta semana");
+  return out.slice(0, 3);
+}
+
+function getScoresMarketplace(i: {
+  midia: { qualidadePct: number; completo: boolean; fotos: number };
+  leadsInfo: { total: number; semana: number };
+  conversao: number; dias: number;
+}): { seo: number; midia: number; atendimento: number; conversao: number } {
+  const seo = Math.max(20, Math.min(100, i.midia.qualidadePct - (i.dias > 30 ? 15 : 0)));
+  const midia = Math.max(10, Math.min(100, i.midia.qualidadePct + (i.midia.fotos >= 10 ? 10 : -10)));
+  const atendimento = Math.max(10, Math.min(100, 40 + i.leadsInfo.semana * 8));
+  const conversao = Math.max(0, Math.min(100, i.conversao * 4));
+  return { seo, midia, atendimento, conversao };
+}
+
+function getAcaoRecomendada(i: {
+  midia: { completo: boolean }; risco: Risco; marketplaceStatus: MarketplaceStatus;
+  demanda: Demanda; conversao: number; dias: number; leadsInfo: { total: number };
+  origem: Origem;
+}): { key: AcaoKey; titulo: string; racional: string } {
+  if (!i.midia.completo)
+    return { key: "fotos", titulo: "Solicitar novas fotos", racional: "Mídia incompleta está reduzindo CTR no marketplace." };
+  if (i.risco === "critico" && i.marketplaceStatus !== "Bloqueado" && i.origem !== "Próprio")
+    return { key: "suspender", titulo: "Suspender marketplace", racional: "Risco crítico combinado a baixo desempenho operacional." };
+  if (i.demanda === "Alta" && i.conversao < 8)
+    return { key: "atendimento", titulo: "Reforçar atendimento dos leads", racional: "Procura alta sem conversão correspondente." };
+  if (i.demanda === "Alta" && i.marketplaceStatus !== "Publicado" && i.origem !== "Próprio")
+    return { key: "priorizar", titulo: "Priorizar no marketplace", racional: "Imóvel com tração que ainda não está em vitrine." };
+  if (i.dias > 30)
+    return { key: "atualizar", titulo: "Atualizar descrição e preço", racional: "Anúncio sem manutenção há mais de 30 dias." };
+  if (i.leadsInfo.total === 0 && i.dias > 45)
+    return { key: "reativar", titulo: "Reativar anúncio", racional: "Sem leads e sem atualização — perdendo relevância." };
+  return { key: "nenhuma", titulo: "Sem ação prioritária", racional: "Imóvel operando dentro do esperado." };
+}
+
+function getPrevisaoPerformance(i: {
+  demanda: Demanda; conversao: number; leadsInfo: { total: number };
+}): { label: string; tone: "emerald" | "amber" | "red" | "neutral" } {
+  if (i.demanda === "Alta" && i.conversao >= 15) return { label: "Potencial alto de conversão", tone: "emerald" };
+  if (i.demanda === "Alta") return { label: "Alta disputa no marketplace", tone: "amber" };
+  if (i.demanda === "Baixa" && i.leadsInfo.total < 3) return { label: "Baixa competitividade na região", tone: "neutral" };
+  return { label: "Desempenho dentro da média", tone: "neutral" };
+}
+
+function getOperacaoImovel(p: Property, leadsTotal: number, demanda: Demanda, conversao: number): {
+  leads: number; visitas: number; propostas: number; negligenciados: number; leitura: string;
+} {
+  const s = seedFromId(p.id + "op");
+  const visitas = Math.max(0, Math.floor(leadsTotal / 4) + (s % 4));
+  const propostas = Math.max(0, Math.floor(leadsTotal / 8));
+  const negligenciados = leadsTotal === 0 ? 0 : 1 + (s % 3);
+  const leitura =
+    demanda === "Alta" && propostas === 0
+      ? "Alta procura com baixa evolução para visita."
+      : conversao >= 20
+        ? "Conversão acima da média da região."
+        : "Leads avançando normalmente no funil.";
+  return { leads: leadsTotal, visitas, propostas, negligenciados, leitura };
+}
+
+function getSaudeImovel(i: {
+  dias: number; conversao: number; demanda: Demanda;
+  midia: { completo: boolean }; leadsInfo: { total: number; semana: number };
+}): { nivel: Risco; pontos: { label: string; ok: boolean }[] } {
+  const pontos = [
+    { label: "Atualização recente", ok: i.dias <= 30 },
+    { label: "Conversão saudável", ok: i.conversao >= 10 },
+    { label: "Demanda compatível", ok: i.demanda !== "Baixa" },
+    { label: "Qualidade do anúncio", ok: i.midia.completo },
+    { label: "Resposta operacional", ok: i.leadsInfo.semana > 0 || i.leadsInfo.total === 0 },
+    { label: "Sem leads negligenciados", ok: i.leadsInfo.total === 0 || i.leadsInfo.semana > 0 },
+  ];
+  const falhas = pontos.filter((p) => !p.ok).length;
+  const nivel: Risco = falhas === 0 ? "saudavel" : falhas <= 2 ? "atencao" : "critico";
+  return { nivel, pontos };
+}
+
 const tonRisco: Record<Risco, string> = {
   saudavel: "bg-emerald-50 text-emerald-700",
   atencao: "bg-amber-50 text-amber-700",
