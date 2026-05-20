@@ -1,112 +1,117 @@
-## Plano — Evoluir `/admin/imoveis` para Central Operacional do Inventário
+# Plano — Refinamento estratégico de `/admin/imoveis`
 
-Escopo: somente `src/routes/admin.imoveis.tsx`. Sem nova rota, sem mudança na sidebar, sem novas dependências. Reuso dos mesmos padrões já consolidados em `admin.leads.tsx` e `admin.usuarios.tsx` (KPIs em grid, faixa de alertas, filtros `Select`, tabela densa, `Sheet` com `Tabs`, `DropdownMenu`, `AlertDialog`, `Dialog`, `sonner`). Toda inteligência derivada deterministicamente de `properties` (`@/data/mock`) + `adminBrokers`/`corretorRisco` (`@/data/admin-mock`) — sem novos mocks, sem alterar fontes.
-
-Princípio de tom: **supervisão do inventário**, não cadastro. Verbos: supervisionar, sinalizar, priorizar, suspender, solicitar atualização. Nenhum formulário de edição de imóvel.
+Escopo: somente `src/routes/admin.imoveis.tsx`. Sem novas rotas, dependências ou alteração de sidebar/tokens. Toda inteligência derivada deterministicamente do `Property` + helpers já existentes (`getLeads`, `getRisco`, `getMidia`, `getDemanda`, `getConversao`, `getDiasAtualizacao`). Tom: supervisão e leitura estratégica — nada de ERP ou formulários.
 
 ---
 
-### 1. Modelo derivado por imóvel (helpers no topo)
+## 1. Camada de inteligência (novos helpers no topo)
 
-Hash determinístico de `p.id` gera atributos estáveis:
+Adicionar funções puras reutilizáveis:
 
-- `getCorretor(p) → AdminBroker` (usa `p.brokerId` quando existir; senão mod sobre ativos).
-- `getOrigem(p) → "Plataforma" | "Próprio" | "Proprietário" | "Construtora" | "Parceiro"` — Marketplace ⇒ Plataforma; demais via seed.
-- `getLeads(p) → { total, semana }` — derivado por seed.
-- `getConversao(p) → number` (0–35%).
-- `getDiasAtualizacao(p) → number` — 1–80 dias.
-- `getDemanda(p) → "Alta" | "Média" | "Baixa"` — função de leads + visualizações derivadas.
-- `getMarketplaceStatus(p) → "Publicado" | "Oculto" | "Pendente" | "Bloqueado"` — usa `p.marketplace` + seed.
-- `getStatus(p) → "Ativo" | "Vendido" | "Suspenso" | "Removido"`.
-- `getRisco(p) → "saudavel" | "atencao" | "critico"` — regras: atualização > 30d, demanda Baixa + 0 leads, mídia incompleta, anúncio incompleto.
-- `getVGV(p) → p.valor`.
-- `getScoreImovel(p) → 0–100` — leads × conversão − idade do anúncio.
-- `getMidiaScore(p) → { fotos, qualidadePct, completo }`.
-- `getMotivosRisco(p) → string[]` — lista textual para o drawer.
+- `getInsightsImovel(i) → string[]` — combina demanda/conversão/dias/mídia/risco e retorna 1–3 frases curtas. Exemplos: "Alta demanda com baixa conversão", "Preço acima da média da região", "Anúncio com mídia insuficiente", "Boa taxa de resposta operacional", "Imóvel premium sem atualização recente".
+- `getSaudeImovel(i) → { nivel: "saudavel"|"atencao"|"critico"; pontos: { label, ok }[] }` — score consolidado com 6 critérios: atualização, conversão, demanda, qualidade do anúncio, resposta operacional, leads negligenciados. Reusa `risco` mas adiciona detalhamento por ponto.
+- `getScoresMarketplace(i) → { seo, midia, atendimento, conversao }` (0–100, derivados de mídia/leads/conversão/dias).
+- `getAcaoRecomendada(i) → { titulo, racional, key }` — regras encadeadas por prioridade:
+  1. `midia.completo === false` → "Solicitar novas fotos"
+  2. `risco === "critico" && marketplaceStatus !== "Bloqueado"` → "Suspender marketplace"
+  3. `demanda === "Alta" && conversao < 8` → "Reforçar atendimento dos leads"
+  4. `demanda === "Alta" && marketplaceStatus !== "Publicado"` → "Priorizar no marketplace"
+  5. `dias > 30` → "Atualizar descrição/preço"
+  6. `leadsInfo.total === 0 && dias > 45` → "Reativar anúncio"
+  7. fallback → "Sem ação prioritária"
+- `getPrevisaoPerformance(i) → string` — "Potencial alto de conversão" / "Alta disputa no marketplace" / "Baixa competitividade na região".
+- `getOperacaoImovel(i) → { leads, visitas, propostas, negligenciados, leitura }` — derivado de seed estável.
 
-Helpers visuais: `tonRisco`, `tonDemanda`, `pillAtualizacao`.
+## 2. Inteligência discreta na tabela e KPIs
 
-### 2. Camada 1 — 7 KPIs operacionais (topo)
+- Coluna **Insight** (nova, opcional via truncate) ou linha secundária sob "Imóvel" com 1 insight prioritário em `text-[11px] text-muted-foreground italic`. Não adiciona coluna nova se quebrar layout — preferir microcopy sob o nome do imóvel.
+- Sob cada KPI, manter texto atual mas trocar `hint` por leitura interpretativa quando relevante (ex.: "Sem leads" → "3 com alta demanda represada").
 
-Grid `grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3`. Card `rounded-xl bg-card border p-4`, label uppercase 10px, valor 22px, subtexto muted:
+## 3. Drawer — bloco "Ação recomendada pela Ubroker IA"
 
-1. Imóveis ativos (status === Ativo)
-2. Alta demanda (demanda === Alta)
-3. Sem atualização > 30 dias
-4. Sem leads (leads.total === 0)
-5. Vendas do mês (status === Vendido, derivado)
-6. VGV ativo da rede (soma valor dos ativos)
-7. Imóveis em risco (risco !== saudavel)
+Inserir logo abaixo da linha de badges do `SheetHeader`, antes das Tabs:
 
-### 3. Camada 2 — Faixa de alertas inteligentes
+```
+┌──────────────────────────────────────────┐
+│ ✦ Ação recomendada pela Ubroker IA       │
+│ Solicitar novas fotos                    │
+│ Mídia incompleta está reduzindo CTR no   │
+│ marketplace.                             │
+└──────────────────────────────────────────┘
+```
 
-`flex flex-wrap gap-2` abaixo dos KPIs. Pills clicáveis (`bg-red-50/50`, `bg-amber-50/50`, `bg-yellow-50/50`) que setam `alertaAtivo` e filtram a tabela:
+`rounded-xl border bg-surface p-3` com ícone Sparkles, título 11px uppercase muted, ação em `text-sm font-medium`, racional em `text-xs text-muted-foreground`. Reage à mudança do imóvel selecionado.
 
-- 🟡 N imóveis sem atualização há mais de 30 dias
-- 🔴 N marketplace com alta demanda sem atendimento
-- 🟡 N anúncios premium sem fotos completas
-- 🟠 N imóveis sem leads há mais de 45 dias
-- 🔴 N imóveis com alteração brusca de preço (derivado)
+## 4. Aba **Resumo** — bloco "Operação do imóvel"
 
-Clicar de novo limpa o filtro.
+Adicionar após o grid de Info, antes do parágrafo de leitura:
 
-### 4. Camada 3 — Busca + filtros
+- 4 mini-indicadores horizontais: Leads vinculados / Visitas em andamento / Propostas abertas / Leads negligenciados.
+- Linha de leitura: "Conversão acima da média da região." (de `getOperacaoImovel().leitura`).
 
-Linha 1: input full width "Buscar imóvel, corretor, bairro ou código".
-Linha 2: `flex flex-wrap gap-2` com `Select` shadcn: Região (cidade/bairro), Tipo (derivado do nome), Status, Marketplace, Demanda, Atualização (Recente / >30d / >60d), Risco, Faixa de valor, Corretor. Botão **Limpar filtros** quando algo ativo. Mesmos componentes/tons usados em `admin.leads.tsx`.
+## 5. Aba **Leads** — indicadores rápidos + leitura
 
-### 5. Camada 4 — Tabela operacional
+Acima da mini-tabela já existente:
 
-Substitui a tabela simples atual. Colunas:
+- 4 pills compactas: "em risco N", "sem resposta N", "em proposta N", "convertidos N".
+- Frase interpretativa abaixo: "Alta procura com baixa evolução para visita." ou "Leads avançando normalmente no funil." (regra: se `convertidos/total < 0.1` e `demanda === "Alta"` → alerta).
 
-| Imóvel | Corretor | Origem | Leads | Conversão | Atualização | Demanda | Marketplace | Status | Risco | Ações |
+## 6. Aba **Marketplace** — Saúde comercial do ativo
 
-Detalhes:
-- **Imóvel**: thumb 64×48 + nome + `id` · `area`m² · bairro.
-- **Corretor**: nome + cidade.
-- **Origem**: badge (Plataforma azul suave; Próprio cinza; demais neutros) — tooltip com regra de governança.
-- **Leads**: número grande + subtexto "N esta semana".
-- **Conversão**: % + micro-barra (`h-1 rounded-full bg-muted` + fill emerald/amber/red).
-- **Atualização**: "há Nd"; > SLA ⇒ pill vermelha.
-- **Demanda**: badge Alta/Média/Baixa.
-- **Marketplace**: pill Publicado/Oculto/Pendente/Bloqueado.
-- **Status**: pill Ativo/Vendido/Suspenso/Removido.
-- **Risco**: bullet + label.
-- **Ações**: `DropdownMenu` com — Ver operação (abre drawer), Ver leads vinculados (drawer aba Leads), Ver histórico (drawer aba Atualizações), Sinalizar risco (toast), Suspender anúncio (`AlertDialog`), Priorizar no marketplace (toast). Itens invasivos (suspender/priorizar) desabilitados quando `origem === "Próprio"`.
+Reestruturar conteúdo atual em 4 sub-blocos:
 
-Linha clicável abre drawer; ações usam `stopPropagation`.
+1. **Scores** (`grid-cols-4 gap-2`): mini cards horizontais com SEO / Mídia / Atendimento / Conversão — número grande + micro-barra colorida.
+2. **Indicadores** (lista checklist): qualidade das fotos · quantidade ideal de fotos · presença de vídeo · descrição completa · atualização recente · destaque premium ativo. Cada item com check verde / x âmbar.
+3. **Leitura operacional**: parágrafo curto derivado dos scores (ex.: "Boa geração de leads, porém anúncio com baixa qualidade visual.").
+4. **Previsão de performance**: pill única — "Potencial alto de conversão" / "Alta disputa no marketplace" / "Baixa competitividade na região".
 
-### 6. Drawer supervisório (Sheet) — Painel operacional do ativo
+## 7. Footer contextual do drawer
 
-Header: thumb + nome + código + badges (Origem, Risco, Demanda, Status, VGV).
+Hoje os 5 botões aparecem iguais. Lógica nova:
 
-Tabs (`Tabs` shadcn) — 6 abas:
+- `acaoRecomendada.key` determina o botão **primary** (cor `default`, posição mais à direita ou destacada).
+- Demais ficam `variant="outline"` ou `ghost`.
+- Mapeamento key → botão: `fotos|descricao|preco` → "Solicitar atualização"; `priorizar` → "Priorizar anúncio"; `suspender` → "Suspender marketplace"; `atendimento|leads` → "Ver leads vinculados"; `reativar` → "Priorizar anúncio".
+- Mantém regra atual: imóveis "Próprio" continuam com Priorizar/Suspender desabilitados.
 
-- **Resumo** — cards: corretor responsável, origem, VGV, score, status, demanda, leads gerados, conversão, tempo anunciado. Parágrafo de leitura operacional gerado por regras ("Imóvel com alta procura em {bairro}. Boa conversão, porém sem atualização há Nd.").
-- **Leads** — mini-tabela: leads vinculados (derivados de `leads` por bairro/corretor), estágio, responsável, risco operacional.
-- **Performance** — cards: visualizações, leads, visitas, propostas, conversão, tempo médio de venda. Linha de leitura ("Conversão acima da média da região." / "Alta demanda com baixa conversão.").
-- **Marketplace** — canais publicados (lista), score de mídia (barra), nº de fotos, qualidade %, status SEO/descritivo. Indicador: Premium / Incompleto / Mídia insuficiente.
-- **Atualizações** — timeline derivada: alteração de preço, troca de fotos, mudança de descrição, mudança de status, republicação.
-- **Auditoria** — log "quem · quando · o quê" (preço alterado por X; marketplace suspenso por Admin; etc.).
+## 8. Indicador consolidado "Saúde do imóvel"
 
-Footer fixo: **Ver leads vinculados** · **Priorizar anúncio** · **Solicitar atualização** · **Sinalizar risco** · **Suspender marketplace**. Quando `origem === "Próprio"`: Priorizar e Suspender ficam desabilitados com tooltip ("Imóvel próprio do corretor — supervisão apenas").
+No header do drawer, adicionar pill ao lado dos badges existentes:
 
-### 7. Estado e interações
+`● Saudável` / `● Atenção` / `● Crítico` com `Tooltip` mostrando os 6 pontos (`✓ Atualização recente`, `✗ Mídia incompleta`, …). Reusa `getSaudeImovel`.
 
-`useState`: `busca`, `filtros`, `alertaAtivo`, `selecionado`, `suspenderOpen`, `solicitarAtualizacaoOpen`. Filtros + alerta + busca combinam via `useMemo`. Toasts via `sonner`. Sem mutação de dados.
+Também aparecer como bullet color na coluna **Risco** da tabela (já existe — apenas renomear visualmente para "Saúde" no header da coluna mantendo a mesma escala).
 
-### 8. Tom & restrições visuais
+## 9. Alertas inteligentes adicionais na faixa
 
-- Sem botão "Editar imóvel" / "Novo imóvel" / formulários de cadastro.
-- Vermelho restrito a: risco crítico, SLA de atualização quebrado, alertas 🔴, marketplace bloqueado.
-- Mantém tipografia, espaçamentos, radii e tokens (`bg-card`, `bg-surface`, `border-border`) atuais. Densidade controlada — KPIs + alertas ocupam ~30% da viewport inicial.
-- Nenhuma alteração fora de `src/routes/admin.imoveis.tsx`.
+Acrescentar 1–2 pills aos alertas já existentes (sem poluir):
 
-### 9. Critérios de aceite
+- 🟠 N imóveis com alta demanda atribuídos a corretores de baixa execução
+- 🟡 N imóveis premium sem interação recente
 
-- 7 KPIs no topo refletem números derivados consistentes.
-- Faixa de alertas filtra a tabela ao clicar; toggle limpa.
-- Busca + 9 filtros combinam corretamente.
-- Tabela exibe todas as 11 colunas com Origem, Demanda, Marketplace, Status, Risco.
-- Drawer abre com 6 abas e footer contextual; ações invasivas bloqueadas em imóveis "Próprio".
-- Tom 100% supervisão; visual permanece premium/clean alinhado a Leads/Usuários Admin.
+(Filtram a tabela igual aos atuais.)
+
+## 10. Restrições
+
+- Sem novos cards gigantes, sem gráficos, sem novas libs.
+- Insights em `text-[11px]–text-xs text-muted-foreground`, ícones Lucide já importados (`Sparkles`, `TrendingUp`, `AlertTriangle`).
+- Vermelho restrito a crítico/SLA quebrado/suspender.
+- Nenhuma mudança fora de `src/routes/admin.imoveis.tsx`.
+
+## Detalhes técnicos
+
+- Novos helpers ficam entre os helpers existentes (linhas ~100–200).
+- `acaoRecomendada` e `saude` são calculados dentro do componente do drawer via `useMemo` sobre `imovel`.
+- Footer: substituir array fixo de botões por render baseado em `acaoRecomendada.key` decidindo `variant`.
+- Aba Marketplace: substituir bloco atual por 4 sub-seções; reutiliza `getMidia` + `getScoresMarketplace`.
+- Aba Resumo/Leads: adicionar componentes locais `OperacaoBloco` e `LeadsQuickStats` no mesmo arquivo.
+
+## Critérios de aceite
+
+- Drawer mostra "Ação recomendada pela Ubroker IA" que muda conforme imóvel.
+- Footer destaca 1 botão primário coerente com a recomendação.
+- Aba Marketplace exibe 4 scores + checklist + leitura + previsão.
+- Aba Resumo mostra bloco "Operação do imóvel"; aba Leads mostra 4 pills + leitura.
+- Header do drawer mostra pill "Saúde" com tooltip detalhado.
+- Tabela ganha 1 insight curto sob o nome do imóvel quando aplicável.
+- Visual permanece clean/minimal, sem novas dependências.

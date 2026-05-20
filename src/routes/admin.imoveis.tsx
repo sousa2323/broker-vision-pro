@@ -58,7 +58,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MoreHorizontal, Search } from "lucide-react";
+import { MoreHorizontal, Search, Sparkles, Check, X as XIcon } from "lucide-react";
 
 export const Route = createFileRoute("/admin/imoveis")({
   component: ImoveisAdmin,
@@ -174,6 +174,102 @@ function getTipoImovel(nome: string): string {
   if (n.includes("sala") || n.includes("comerc")) return "Comercial";
   if (n.includes("terreno") || n.includes("lote")) return "Terreno";
   return "Outro";
+}
+
+// ============ Camada de inteligência ============
+
+type AcaoKey =
+  | "fotos" | "suspender" | "atendimento" | "priorizar"
+  | "atualizar" | "reativar" | "nenhuma";
+
+function getInsightsImovel(i: {
+  demanda: Demanda; conversao: number; dias: number;
+  midia: { completo: boolean; qualidadePct: number };
+  leadsInfo: { total: number; semana: number };
+  marketplaceStatus: MarketplaceStatus; destaque?: boolean;
+}): string[] {
+  const out: string[] = [];
+  if (i.demanda === "Alta" && i.conversao < 10) out.push("Alta demanda com baixa conversão");
+  if (!i.midia.completo) out.push("Anúncio com mídia insuficiente");
+  if (i.dias > 45 && i.destaque) out.push("Imóvel premium sem atualização recente");
+  if (i.leadsInfo.total > 10 && i.conversao >= 20) out.push("Boa taxa de resposta operacional");
+  if (i.leadsInfo.total === 0 && i.dias > 30) out.push("Sem leads há mais de 30 dias");
+  if (i.demanda === "Alta" && i.leadsInfo.semana === 0) out.push("Procura alta, atendimento parado esta semana");
+  return out.slice(0, 3);
+}
+
+function getScoresMarketplace(i: {
+  midia: { qualidadePct: number; completo: boolean; fotos: number };
+  leadsInfo: { total: number; semana: number };
+  conversao: number; dias: number;
+}): { seo: number; midia: number; atendimento: number; conversao: number } {
+  const seo = Math.max(20, Math.min(100, i.midia.qualidadePct - (i.dias > 30 ? 15 : 0)));
+  const midia = Math.max(10, Math.min(100, i.midia.qualidadePct + (i.midia.fotos >= 10 ? 10 : -10)));
+  const atendimento = Math.max(10, Math.min(100, 40 + i.leadsInfo.semana * 8));
+  const conversao = Math.max(0, Math.min(100, i.conversao * 4));
+  return { seo, midia, atendimento, conversao };
+}
+
+function getAcaoRecomendada(i: {
+  midia: { completo: boolean }; risco: Risco; marketplaceStatus: MarketplaceStatus;
+  demanda: Demanda; conversao: number; dias: number; leadsInfo: { total: number };
+  origem: Origem;
+}): { key: AcaoKey; titulo: string; racional: string } {
+  if (!i.midia.completo)
+    return { key: "fotos", titulo: "Solicitar novas fotos", racional: "Mídia incompleta está reduzindo CTR no marketplace." };
+  if (i.risco === "critico" && i.marketplaceStatus !== "Bloqueado" && i.origem !== "Próprio")
+    return { key: "suspender", titulo: "Suspender marketplace", racional: "Risco crítico combinado a baixo desempenho operacional." };
+  if (i.demanda === "Alta" && i.conversao < 8)
+    return { key: "atendimento", titulo: "Reforçar atendimento dos leads", racional: "Procura alta sem conversão correspondente." };
+  if (i.demanda === "Alta" && i.marketplaceStatus !== "Publicado" && i.origem !== "Próprio")
+    return { key: "priorizar", titulo: "Priorizar no marketplace", racional: "Imóvel com tração que ainda não está em vitrine." };
+  if (i.dias > 30)
+    return { key: "atualizar", titulo: "Atualizar descrição e preço", racional: "Anúncio sem manutenção há mais de 30 dias." };
+  if (i.leadsInfo.total === 0 && i.dias > 45)
+    return { key: "reativar", titulo: "Reativar anúncio", racional: "Sem leads e sem atualização — perdendo relevância." };
+  return { key: "nenhuma", titulo: "Sem ação prioritária", racional: "Imóvel operando dentro do esperado." };
+}
+
+function getPrevisaoPerformance(i: {
+  demanda: Demanda; conversao: number; leadsInfo: { total: number };
+}): { label: string; tone: "emerald" | "amber" | "red" | "neutral" } {
+  if (i.demanda === "Alta" && i.conversao >= 15) return { label: "Potencial alto de conversão", tone: "emerald" };
+  if (i.demanda === "Alta") return { label: "Alta disputa no marketplace", tone: "amber" };
+  if (i.demanda === "Baixa" && i.leadsInfo.total < 3) return { label: "Baixa competitividade na região", tone: "neutral" };
+  return { label: "Desempenho dentro da média", tone: "neutral" };
+}
+
+function getOperacaoImovel(p: Property, leadsTotal: number, demanda: Demanda, conversao: number): {
+  leads: number; visitas: number; propostas: number; negligenciados: number; leitura: string;
+} {
+  const s = seedFromId(p.id + "op");
+  const visitas = Math.max(0, Math.floor(leadsTotal / 4) + (s % 4));
+  const propostas = Math.max(0, Math.floor(leadsTotal / 8));
+  const negligenciados = leadsTotal === 0 ? 0 : 1 + (s % 3);
+  const leitura =
+    demanda === "Alta" && propostas === 0
+      ? "Alta procura com baixa evolução para visita."
+      : conversao >= 20
+        ? "Conversão acima da média da região."
+        : "Leads avançando normalmente no funil.";
+  return { leads: leadsTotal, visitas, propostas, negligenciados, leitura };
+}
+
+function getSaudeImovel(i: {
+  dias: number; conversao: number; demanda: Demanda;
+  midia: { completo: boolean }; leadsInfo: { total: number; semana: number };
+}): { nivel: Risco; pontos: { label: string; ok: boolean }[] } {
+  const pontos = [
+    { label: "Atualização recente", ok: i.dias <= 30 },
+    { label: "Conversão saudável", ok: i.conversao >= 10 },
+    { label: "Demanda compatível", ok: i.demanda !== "Baixa" },
+    { label: "Qualidade do anúncio", ok: i.midia.completo },
+    { label: "Resposta operacional", ok: i.leadsInfo.semana > 0 || i.leadsInfo.total === 0 },
+    { label: "Sem leads negligenciados", ok: i.leadsInfo.total === 0 || i.leadsInfo.semana > 0 },
+  ];
+  const falhas = pontos.filter((p) => !p.ok).length;
+  const nivel: Risco = falhas === 0 ? "saudavel" : falhas <= 2 ? "atencao" : "critico";
+  return { nivel, pontos };
 }
 
 const tonRisco: Record<Risco, string> = {
@@ -511,11 +607,19 @@ function ImoveisAdmin() {
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-3">
                         <img src={i.foto} alt="" className="h-10 w-14 rounded-md object-cover" />
-                        <div>
+                        <div className="min-w-0">
                           <div className="font-medium leading-tight">{i.nome}</div>
                           <div className="font-mono text-[10px] text-muted-foreground">
                             {i.id} · {i.area}m² · {i.bairro}
                           </div>
+                          {(() => {
+                            const ins = getInsightsImovel(i)[0];
+                            return ins ? (
+                              <div className="mt-0.5 flex items-center gap-1 text-[10px] italic text-muted-foreground">
+                                <Sparkles className="h-2.5 w-2.5" /> {ins}
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     </td>
@@ -795,6 +899,37 @@ function ImovelDrawer({
     { data: "Há 14 dias", autor: imovel.corretor.nome, acao: "Publicou o imóvel na rede" },
   ];
 
+  // Camada de inteligência
+  const acao = getAcaoRecomendada(imovel);
+  const saude = getSaudeImovel(imovel);
+  const scores = getScoresMarketplace(imovel);
+  const previsao = getPrevisaoPerformance(imovel);
+  const operacao = getOperacaoImovel(imovel, imovel.leadsInfo.total, imovel.demanda, imovel.conversao);
+  const insights = getInsightsImovel(imovel);
+  const temVideo = seedFromId(imovel.id + "vd") % 3 === 0;
+  const descricaoCompleta = imovel.midia.qualidadePct >= 60;
+  const indicadores = [
+    { label: "Qualidade das fotos", ok: imovel.midia.qualidadePct >= 70 },
+    { label: "Quantidade ideal de fotos (≥10)", ok: imovel.midia.fotos >= 10 },
+    { label: "Vídeo do imóvel", ok: temVideo },
+    { label: "Descrição completa", ok: descricaoCompleta },
+    { label: "Atualização recente (≤30d)", ok: imovel.dias <= 30 },
+    { label: "Destaque premium ativo", ok: !!imovel.destaque },
+  ];
+  const leituraMkt =
+    !imovel.midia.completo && imovel.leadsInfo.total > 5
+      ? "Boa geração de leads, porém anúncio com baixa qualidade visual."
+      : !descricaoCompleta
+        ? "Descrição incompleta impactando performance no marketplace."
+        : imovel.demanda === "Alta"
+          ? "Imóvel acima da média de procura da região."
+          : "Anúncio saudável dentro do padrão da rede.";
+  // Leads quick stats
+  const leadEmRisco = Math.max(0, Math.floor(imovel.leadsInfo.total * 0.18));
+  const leadSemResposta = Math.max(0, Math.floor(imovel.leadsInfo.total * 0.22));
+  const leadEmProposta = operacao.propostas;
+  const leadConvertidos = Math.max(0, Math.floor(imovel.leadsInfo.total * (imovel.conversao / 100)));
+
   return (
     <Sheet open={!!imovel} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
@@ -808,16 +943,50 @@ function ImovelDrawer({
           </div>
           <div className="flex flex-wrap items-center gap-2 pt-3">
             <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonOrigem[imovel.origem])}>{imovel.origem}</span>
-            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", tonRisco[imovel.risco])}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", dotRisco[imovel.risco])} />
-              {labelRisco[imovel.risco]}
-            </span>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={cn("inline-flex cursor-help items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", tonRisco[saude.nivel])}>
+                    <span className={cn("h-1.5 w-1.5 rounded-full", dotRisco[saude.nivel])} />
+                    Saúde: {labelRisco[saude.nivel]}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs text-xs">
+                  <ul className="space-y-0.5">
+                    {saude.pontos.map((p) => (
+                      <li key={p.label} className="flex items-center gap-1.5">
+                        {p.ok ? <Check className="h-3 w-3 text-emerald-600" /> : <XIcon className="h-3 w-3 text-red-600" />}
+                        <span>{p.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonDemanda[imovel.demanda])}>Demanda {imovel.demanda}</span>
             <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonStatus[imovel.status])}>{imovel.status}</span>
             <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonMarketplace[imovel.marketplaceStatus])}>{imovel.marketplaceStatus}</span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">VGV {formatBRLcompact(imovel.valor)}</span>
           </div>
         </SheetHeader>
+
+        {/* Ação recomendada pela Ubroker IA */}
+        <div className="mt-4 rounded-xl border border-border bg-surface p-3">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-muted-foreground">
+            <Sparkles className="h-3 w-3" /> Ação recomendada pela Ubroker IA
+          </div>
+          <div className="mt-1 text-sm font-medium">{acao.titulo}</div>
+          <div className="text-xs text-muted-foreground">{acao.racional}</div>
+          {insights.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {insights.map((s) => (
+                <span key={s} className="rounded-full bg-card px-2 py-0.5 text-[10px] text-muted-foreground border border-border">
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
         <Tabs defaultValue="resumo" className="mt-6">
           <TabsList className="flex w-full flex-wrap h-auto">
@@ -842,10 +1011,34 @@ function ImovelDrawer({
               <Info label="Tempo anunciado" value={`${imovel.dias} dias`} />
               <Info label="Tipo" value={imovel.tipo} sub={`${imovel.area}m² · ${imovel.quartos}q`} />
             </div>
+
+            {/* Operação do imóvel */}
+            <div className="rounded-xl border border-border bg-card p-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Operação do imóvel</div>
+              <div className="mt-2 grid grid-cols-4 gap-2 text-center">
+                <OpStat label="Leads" value={operacao.leads} />
+                <OpStat label="Visitas" value={operacao.visitas} />
+                <OpStat label="Propostas" value={operacao.propostas} />
+                <OpStat label="Negligenciados" value={operacao.negligenciados} tone={operacao.negligenciados > 0 ? "red" : "neutral"} />
+              </div>
+              <div className="mt-2 text-[11px] text-muted-foreground">{operacao.leitura}</div>
+            </div>
+
             <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraResumo}</div>
           </TabsContent>
 
-          <TabsContent value="leads" className="mt-4">
+          <TabsContent value="leads" className="mt-4 space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              <QuickPill tone="red" label="em risco" value={leadEmRisco} />
+              <QuickPill tone="amber" label="sem resposta" value={leadSemResposta} />
+              <QuickPill tone="blue" label="em proposta" value={leadEmProposta} />
+              <QuickPill tone="emerald" label="convertidos" value={leadConvertidos} />
+            </div>
+            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">
+              {imovel.demanda === "Alta" && leadEmProposta === 0
+                ? "Alta procura com baixa evolução para visita."
+                : "Leads avançando normalmente no funil."}
+            </div>
             {leadsVinculados.length === 0 ? (
               <div className="rounded-lg border border-border bg-card p-6 text-center text-xs text-muted-foreground">
                 Nenhum lead vinculado identificado nesta região.
@@ -880,37 +1073,54 @@ function ImovelDrawer({
             <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraPerformance}</div>
           </TabsContent>
 
-          <TabsContent value="marketplace" className="mt-4 space-y-3 text-sm">
+          <TabsContent value="marketplace" className="mt-4 space-y-4 text-sm">
+            {/* Scores */}
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Canais publicados</div>
-              <ul className="mt-2 space-y-1 text-xs">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Saúde comercial do ativo</div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <ScoreCard label="SEO" value={scores.seo} />
+                <ScoreCard label="Mídia" value={scores.midia} />
+                <ScoreCard label="Atendimento" value={scores.atendimento} />
+                <ScoreCard label="Conversão" value={scores.conversao} />
+              </div>
+            </div>
+
+            {/* Indicadores */}
+            <div className="rounded-xl border border-border bg-card p-3">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Indicadores do anúncio</div>
+              <ul className="grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2">
+                {indicadores.map((ind) => (
+                  <li key={ind.label} className="flex items-center gap-1.5">
+                    {ind.ok
+                      ? <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      : <XIcon className="h-3.5 w-3.5 text-amber-600" />}
+                    <span className={cn(!ind.ok && "text-muted-foreground")}>{ind.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Canais */}
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Canais publicados</div>
+              <ul className="space-y-1 text-xs">
                 {canais.map((c, i) => <li key={i} className="rounded-md border border-border bg-card px-3 py-1.5">{c}</li>)}
               </ul>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Mini label="Fotos" value={String(imovel.midia.fotos)} />
-              <Mini label="Qualidade" value={`${imovel.midia.qualidadePct}%`} />
-              <Mini label="SEO/descritivo" value={imovel.midia.qualidadePct > 60 ? "Ok" : "Revisar"} />
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Score de mídia</div>
-              <div className="h-2 w-full rounded-full bg-muted">
-                <div
-                  className={cn(
-                    "h-2 rounded-full",
-                    imovel.midia.qualidadePct >= 70 ? "bg-emerald-500" : imovel.midia.qualidadePct >= 50 ? "bg-amber-500" : "bg-red-500",
-                  )}
-                  style={{ width: `${imovel.midia.qualidadePct}%` }}
-                />
-              </div>
-            </div>
-            <div>
+
+            {/* Leitura operacional */}
+            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraMkt}</div>
+
+            {/* Previsão */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Previsão de performance</span>
               <span className={cn(
                 "rounded-full px-2 py-0.5 text-[11px]",
-                qualidadeAnuncio.tone === "emerald" ? "bg-emerald-50 text-emerald-700" :
-                qualidadeAnuncio.tone === "amber" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700",
+                previsao.tone === "emerald" ? "bg-emerald-50 text-emerald-700" :
+                previsao.tone === "amber" ? "bg-amber-50 text-amber-700" :
+                previsao.tone === "red" ? "bg-red-50 text-red-700" : "bg-muted text-muted-foreground",
               )}>
-                {qualidadeAnuncio.label}
+                {previsao.label}
               </span>
             </div>
           </TabsContent>
@@ -948,50 +1158,62 @@ function ImovelDrawer({
         </Tabs>
 
         <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-4">
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/admin/leads">Ver leads vinculados</Link>
-          </Button>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    size="sm"
-                    disabled={invasivasBloqueadas}
-                    onClick={() => toast.success("Anúncio priorizado no marketplace")}
-                  >
-                    Priorizar anúncio
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {invasivasBloqueadas && (
-                <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
-          <Button variant="outline" size="sm" onClick={onSolicitar}>Solicitar atualização</Button>
-          <Button variant="ghost" size="sm" onClick={() => toast.success("Risco sinalizado para revisão da governança")}>
-            Sinalizar risco
-          </Button>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={invasivasBloqueadas}
-                    onClick={onSuspender}
-                  >
-                    Suspender marketplace
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {invasivasBloqueadas && (
-                <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          {(() => {
+            const isPrimary = (k: AcaoKey) => acao.key === k;
+            const verLeadsV: "default" | "outline" = isPrimary("atendimento") ? "default" : "outline";
+            const priorV: "default" | "outline" = (isPrimary("priorizar") || isPrimary("reativar")) ? "default" : "outline";
+            const solicitarV: "default" | "outline" = (isPrimary("fotos") || isPrimary("atualizar")) ? "default" : "outline";
+            const suspenderV: "default" | "outline" = isPrimary("suspender") ? "default" : "outline";
+            return (
+              <>
+                <Button variant={verLeadsV} size="sm" asChild>
+                  <Link to="/admin/leads">Ver leads vinculados</Link>
+                </Button>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant={priorV}
+                          size="sm"
+                          disabled={invasivasBloqueadas}
+                          onClick={() => toast.success("Anúncio priorizado no marketplace")}
+                        >
+                          Priorizar anúncio
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {invasivasBloqueadas && (
+                      <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+                <Button variant={solicitarV} size="sm" onClick={onSolicitar}>Solicitar atualização</Button>
+                <Button variant="ghost" size="sm" onClick={() => toast.success("Risco sinalizado para revisão da governança")}>
+                  Sinalizar risco
+                </Button>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant={suspenderV === "default" ? "destructive" : "outline"}
+                          size="sm"
+                          disabled={invasivasBloqueadas}
+                          onClick={onSuspender}
+                        >
+                          Suspender marketplace
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {invasivasBloqueadas && (
+                      <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            );
+          })()}
         </div>
       </SheetContent>
     </Sheet>
@@ -1013,6 +1235,42 @@ function Mini({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-border bg-card p-3">
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
       <div className="mt-1 text-base font-medium">{value}</div>
+    </div>
+  );
+}
+
+function OpStat({ label, value, tone = "neutral" }: { label: string; value: number; tone?: "neutral" | "red" }) {
+  return (
+    <div className="rounded-lg bg-surface p-2">
+      <div className={cn("text-lg font-medium leading-none", tone === "red" ? "text-red-700" : "text-foreground")}>{value}</div>
+      <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function QuickPill({ label, value, tone }: { label: string; value: number; tone: "red" | "amber" | "blue" | "emerald" }) {
+  const cls =
+    tone === "red" ? "bg-red-50 text-red-700" :
+    tone === "amber" ? "bg-amber-50 text-amber-700" :
+    tone === "blue" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700";
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", cls)}>
+      <span className="font-medium">{value}</span> {label}
+    </span>
+  );
+}
+
+function ScoreCard({ label, value }: { label: string; value: number }) {
+  const tone = value >= 70 ? "bg-emerald-500" : value >= 45 ? "bg-amber-500" : "bg-red-500";
+  return (
+    <div className="rounded-lg border border-border bg-card p-2.5">
+      <div className="flex items-baseline justify-between">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+        <div className="text-sm font-medium">{value}</div>
+      </div>
+      <div className="mt-1.5 h-1 w-full rounded-full bg-muted">
+        <div className={cn("h-1 rounded-full", tone)} style={{ width: `${value}%` }} />
+      </div>
     </div>
   );
 }
