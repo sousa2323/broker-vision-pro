@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  TrendingUp, TrendingDown, Minus, AlertTriangle, Users, Building2, Handshake, BadgeDollarSign,
-  Filter, Wallet, Receipt, PiggyBank, Percent, MapPin, Home, Tags, Target, Trophy, AlertCircle,
+  TrendingUp, TrendingDown, AlertTriangle, Users, Building2, Handshake, BadgeDollarSign,
+  Filter, Wallet, Percent, Trophy, Sparkles, Activity, Timer, Clock, ShieldAlert,
+  ArrowUpRight, ArrowDownRight, Flame, MapPin, Tags, Target, Zap, LineChart, Gauge,
 } from "lucide-react";
 import {
   adminKpis, adminKpisExtra, despesasMock, inteligenciaMercado, performanceCorretores,
 } from "@/data/admin-mock";
 import { formatBRLcompact, formatBRL } from "@/data/mock";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboard,
@@ -14,394 +16,346 @@ export const Route = createFileRoute("/admin/")({
 
 function AdminDashboard() {
   const k = adminKpis;
-  const totalOrigem = k.receitaPorOrigem.comissao + k.receitaPorOrigem.saas + k.receitaPorOrigem.indicacoes;
-  const pct = (n: number) => Math.round((n / totalOrigem) * 100);
+  const ex = adminKpisExtra;
 
-  const slices = [
-    { label: "Comissão de imóveis", value: k.receitaPorOrigem.comissao, color: "oklch(0.55 0.22 262)" },
-    { label: "SaaS", value: k.receitaPorOrigem.saas, color: "oklch(0.72 0.18 50)" },
-    { label: "Indicações", value: k.receitaPorOrigem.indicacoes, color: "oklch(0.65 0.18 145)" },
-  ];
-  const maxSlice = slices.reduce((a, b) => (b.value > a.value ? b : a), slices[0]);
-
-  // Resultado do mês
+  // ===== Derivações executivas (mock determinístico) =====
   const despesasMes = despesasMock.reduce((s, d) => s + d.valor, 0);
   const resultadoMes = k.receitaMes - despesasMes;
   const margemPct = k.receitaMes > 0 ? (resultadoMes / k.receitaMes) * 100 : 0;
-  const resultadoCor = resultadoMes >= 0 ? "text-emerald-600" : "text-red-600";
-  const margemBadge =
-    margemPct < 0 ? "bg-red-50 text-red-700 border-red-200"
-    : margemPct > 20 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-    : "bg-amber-50 text-amber-700 border-amber-200";
+  const variacaoMes = ((k.receitaMes - ex.receitaMesAnterior) / ex.receitaMesAnterior) * 100;
+  const execucaoMedia = 72;        // execução média da rede (0-100)
+  const tempoRespostaMin = 14;     // min
+  const crescimentoSemanal = 6.4;  // %
+  const vgvAtivo = 184_500_000;
+  const receitaPrevista = k.receitaMes * 1.18;
+  const receitaCompartilhada = k.receitaPorOrigem.comissao * 0.42;
+  const comissaoEstimada = k.receitaMes * 0.34;
 
-  // Tendência da receita
-  const variacaoMes = ((k.receitaMes - adminKpisExtra.receitaMesAnterior) / adminKpisExtra.receitaMesAnterior) * 100;
-  const tendencia = variacaoMes > 3
-    ? { Icon: TrendingUp, label: "Crescimento", classe: "text-emerald-600 bg-emerald-50 border-emerald-200" }
-    : variacaoMes < -3
-      ? { Icon: TrendingDown, label: "Queda", classe: "text-red-600 bg-red-50 border-red-200" }
-      : { Icon: Minus, label: "Estabilidade", classe: "text-muted-foreground bg-muted border-border" };
-
-  // Donut
-  const r = 60, c = 2 * Math.PI * r;
-  let acc = 0;
-
-  // Alertas dinâmicos (estratégicos)
-  type AlertaItem = { cor: "red" | "amber"; titulo: string; sub: string };
-  const alertasDinamicos: AlertaItem[] = [];
-  if (resultadoMes < 0) {
-    alertasDinamicos.push({ cor: "red", titulo: "Resultado negativo no mês", sub: `Despesas (${formatBRLcompact(despesasMes)}) superaram a receita (${formatBRLcompact(k.receitaMes)}).` });
-  }
-  if (adminKpisExtra.margemMesAnteriorPct - margemPct > 5) {
-    alertasDinamicos.push({ cor: "amber", titulo: "Margem em queda vs mês anterior", sub: `${margemPct.toFixed(1)}% agora · ${adminKpisExtra.margemMesAnteriorPct.toFixed(1)}% no mês anterior.` });
-  }
-  if (adminKpisExtra.inadimplenciaAtualPct > adminKpisExtra.inadimplenciaMesAnteriorPct + 1) {
-    alertasDinamicos.push({ cor: "amber", titulo: "Inadimplência crescente", sub: `${adminKpisExtra.inadimplenciaAtualPct}% agora · ${adminKpisExtra.inadimplenciaMesAnteriorPct}% no mês anterior.` });
-  }
-  if (adminKpisExtra.conversaoMesPct < adminKpisExtra.conversaoMesAnteriorPct - 1) {
-    alertasDinamicos.push({ cor: "amber", titulo: "Queda de conversão", sub: `${adminKpisExtra.conversaoMesPct}% agora · ${adminKpisExtra.conversaoMesAnteriorPct}% no mês anterior.` });
-  }
-  if (despesasMes > k.receitaMes * 0.7) {
-    alertasDinamicos.push({ cor: "amber", titulo: "Aumento de despesas vs receita", sub: `Despesas representam ${((despesasMes / k.receitaMes) * 100).toFixed(0)}% da receita do mês.` });
-  }
+  // Pipeline consolidado (5 etapas)
+  const pipeline = [
+    { etapa: "Novo",         qtd: 1284, vgv:  92_000_000, trend:  +8 },
+    { etapa: "Qualificado",  qtd:  742, vgv:  78_000_000, trend:  +5 },
+    { etapa: "Visita",       qtd:  318, vgv:  54_000_000, trend:  -2 },
+    { etapa: "Proposta",     qtd:  124, vgv:  31_000_000, trend:  +3 },
+    { etapa: "Fechado",      qtd:   38, vgv:   9_400_000, trend: +11 },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl">Painel estratégico</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Visão consolidada da operação Ubroker.</p>
-      </div>
+    <div className="space-y-8">
+      {/* Cabeçalho executivo */}
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Central executiva · Outubro/2025</div>
+          <h1 className="mt-1 font-display text-2xl">Visão da rede</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Supervisão estratégica da operação Ubroker em tempo real.</p>
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-muted-foreground">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          Rede operando — {k.corretoresAtivos} corretores online
+        </div>
+      </header>
 
-      {/* RESULTADO REAL — Linha 1 (curto prazo) */}
+      {/* BLOCO 1 — RESUMO EXECUTIVO */}
       <section>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Visão operacional · Outubro/2025</div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <BigKPI label="Receita do mês" value={formatBRLcompact(k.receitaMes)} sub="Faturamento bruto" icon={BadgeDollarSign} valueClass="text-emerald-600" />
-          <BigKPI label="Despesas do mês" value={formatBRLcompact(despesasMes)} sub={`${despesasMock.length} lançamentos`} icon={Receipt} />
-          <BigKPI
-            label="Resultado líquido"
-            value={`${resultadoMes < 0 ? "-" : ""}${formatBRLcompact(Math.abs(resultadoMes))}`}
-            sub={resultadoMes >= 0 ? "Receita − Despesas" : "Operação no vermelho"}
-            icon={PiggyBank}
-            valueClass={resultadoCor}
-          />
-          <BigKPI
-            label="Margem"
-            value={`${margemPct.toFixed(1)}%`}
-            sub="Resultado / Receita"
-            icon={Percent}
-            badge={<span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${margemBadge}`}>{margemPct < 0 ? "Crítica" : margemPct > 20 ? "Saudável" : "Atenção"}</span>}
-          />
+        <SectionTitle eyebrow="Bloco 01" title="Resumo executivo" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ExecKPI label="Corretores ativos" value={k.corretoresAtivos.toString()} hint={`${performanceCorretores.baixaPerformance.length} em risco operacional`} trend={+3.2} />
+          <ExecKPI label="Leads ativos" value={k.leadsGerados.toLocaleString("pt-BR")} hint="Distribuídos na rede" trend={+5.8} />
+          <ExecKPI label="Execução média" value={`${execucaoMedia}%`} hint="Índice de cadência da rede" trend={+1.4} />
+          <ExecKPI label="Conversão média" value={`${ex.conversaoMesPct}%`} hint={`vs ${ex.conversaoMesAnteriorPct}% mês anterior`} trend={ex.conversaoMesPct - ex.conversaoMesAnteriorPct} />
+          <ExecKPI label="Tempo médio de resposta" value={`${tempoRespostaMin} min`} hint="SLA da rede" trend={-2.1} />
+          <ExecKPI label="Receita prevista" value={formatBRLcompact(receitaPrevista)} hint="Projeção fim do mês" trend={+variacaoMes} icon={BadgeDollarSign} />
+          <ExecKPI label="VGV ativo" value={formatBRLcompact(vgvAtivo)} hint="Em negociação na rede" trend={+4.2} icon={Building2} />
+          <ExecKPI label="Crescimento semanal" value={`${crescimentoSemanal}%`} hint="vs semana anterior" trend={+crescimentoSemanal} icon={Activity} />
         </div>
       </section>
 
-      {/* Linha 2 (longo prazo) */}
+      {/* BLOCO 2 — ALERTAS OPERACIONAIS (torre de controle) */}
       <section>
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Visão de escala · Acumulado</div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <BigKPI label="Receita total da plataforma" value={formatBRLcompact(k.receitaTotal)} sub="Acumulado histórico" icon={Wallet} />
-          <BigKPI label="MRR SaaS" value={formatBRLcompact(k.mrrSaas)} sub="Receita recorrente mensal" icon={Users} />
+        <SectionTitle eyebrow="Bloco 02" title="Torre de controle" hint="Sinais operacionais da rede" />
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex flex-wrap gap-2">
+            <SignalPill tone="red"   label="12 propostas sem follow-up" />
+            <SignalPill tone="amber" label="8 visitas sem confirmação" />
+            <SignalPill tone="red"   label="5 leads premium sem interação" />
+            <SignalPill tone="red"   label="3 parcerias críticas" />
+            <SignalPill tone="amber" label="7 imóveis sem atualização" />
+            <SignalPill tone="amber" label="4 corretores sem login recente" />
+            <SignalPill tone="neutral" label="2 conciliações divergentes" />
+            <SignalPill tone="neutral" label="3 cobranças em atraso" />
+          </div>
         </div>
       </section>
 
-      {/* RECEITA POR ORIGEM + EVOLUÇÃO */}
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Card title="Receita por origem">
-          <div className="flex items-center gap-8">
-            <svg viewBox="0 0 160 160" className="h-40 w-40 -rotate-90">
-              <circle cx="80" cy="80" r={r} fill="none" stroke="oklch(0.92 0.01 260)" strokeWidth="20" />
-              {slices.map((s, i) => {
-                const len = (s.value / totalOrigem) * c;
-                const dasharray = `${len} ${c - len}`;
-                const offset = -acc;
-                acc += len;
-                const isMax = s.label === maxSlice.label;
-                return (
-                  <circle key={i} cx="80" cy="80" r={r} fill="none" stroke={s.color} strokeWidth={isMax ? 24 : 20} strokeDasharray={dasharray} strokeDashoffset={offset} />
-                );
-              })}
-            </svg>
-            <ul className="flex-1 space-y-3 text-sm">
-              {slices.map((s, i) => {
-                const isMax = s.label === maxSlice.label;
-                return (
-                  <li key={i} className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2">
-                      <span className={`rounded-full ${isMax ? "h-3 w-3" : "h-2.5 w-2.5"}`} style={{ background: s.color }} />
-                      <span className={isMax ? "font-medium" : ""}>{s.label}</span>
-                      {isMax && <span className="rounded-full border border-border bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Principal</span>}
-                    </span>
-                    <span className="num font-medium">
-                      {formatBRLcompact(s.value)} <span className="text-muted-foreground">· {pct(s.value)}%</span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </Card>
-
-        <Card title="Evolução de receita (R$ mil)">
-          <div className="mb-3 flex items-center justify-between">
-            <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${tendencia.classe}`}>
-              <tendencia.Icon className="h-3.5 w-3.5" />
-              {tendencia.label}
-              <span className="num">{variacaoMes >= 0 ? "+" : ""}{variacaoMes.toFixed(1)}%</span>
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              vs mês anterior <span className="num">({formatBRLcompact(adminKpisExtra.receitaMesAnterior)})</span>
-            </div>
-          </div>
-          <svg viewBox="0 0 400 140" className="h-40 w-full">
-            <polyline
-              fill="none"
-              stroke="oklch(0.55 0.22 262)"
-              strokeWidth="2.5"
-              points={k.receitaEvolucao.map((p, i) => `${(i / (k.receitaEvolucao.length - 1)) * 380 + 10},${130 - (p.v / 700) * 110}`).join(" ")}
-            />
-            <polyline
-              fill="oklch(0.55 0.22 262 / 12%)"
-              stroke="none"
-              points={`${k.receitaEvolucao.map((p, i) => `${(i / (k.receitaEvolucao.length - 1)) * 380 + 10},${130 - (p.v / 700) * 110}`).join(" ")} 390,140 10,140`}
-            />
-          </svg>
-          <div className="mt-2 flex justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
-            {k.receitaEvolucao.map((p) => <span key={p.mes}>{p.mes}</span>)}
-          </div>
-        </Card>
+      {/* BLOCO 3 — SAÚDE DA REDE */}
+      <section>
+        <SectionTitle eyebrow="Bloco 03" title="Saúde da rede" hint="Diagnóstico operacional" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <HealthCard icon={Filter}      label="Leads negligenciados"   value="42" tone="red"     sub="Sem interação 72h+" />
+          <HealthCard icon={Timer}       label="SLA quebrados"          value="18" tone="red"     sub="Resposta acima de 30min" />
+          <HealthCard icon={Clock}       label="Cadências atrasadas"    value="27" tone="amber"   sub="Passo programado vencido" />
+          <HealthCard icon={Activity}    label="Tempo médio parado"     value="3.4d" tone="amber" sub="Leads sem evolução" />
+          <HealthCard icon={Gauge}       label="Execução por plano"     value="Pro 81% · Free 49%" tone="ok" sub="Cadência média" />
+          <HealthCard icon={ShieldAlert} label="Corretores em risco"    value={performanceCorretores.baixaPerformance.length.toString()} tone="red" sub="Inatividade + baixa conversão" />
+        </div>
       </section>
 
-      {/* INTELIGÊNCIA DE MERCADO */}
-      <Card title="Inteligência de mercado">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Regiões */}
-          <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" /> Regiões com maior demanda
+      {/* BLOCO 4 — LEITURA IA DA REDE */}
+      <section>
+        <div className="rounded-2xl border border-border bg-gradient-to-br from-card via-card to-surface p-6">
+          <div className="flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-foreground text-background">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Bloco 04 · IA executiva</div>
+              <div className="font-display text-lg leading-tight">Leitura IA da rede</div>
             </div>
-            <ul className="space-y-2">
-              {inteligenciaMercado.regioesDemanda.map((r0, i) => {
-                const max = inteligenciaMercado.regioesDemanda[0].leads;
-                const w = Math.round((r0.leads / max) * 100);
-                return (
-                  <li key={i} className="text-sm">
-                    <div className="flex items-center justify-between">
-                      <span>{r0.regiao}</span>
-                      <span className="num text-xs text-muted-foreground">{r0.leads} leads · {r0.visitas} visitas</span>
-                    </div>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-[oklch(0.55_0.22_262)]" style={{ width: `${w}%` }} />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
           </div>
-
-          {/* Tipos de imóvel */}
-          <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Home className="h-3.5 w-3.5" /> Tipos de imóvel mais buscados
-            </div>
-            <ul className="space-y-2">
-              {inteligenciaMercado.tiposImovel.map((t, i) => {
-                const max = inteligenciaMercado.tiposImovel[0].buscas;
-                const w = Math.round((t.buscas / max) * 100);
-                return (
-                  <li key={i} className="text-sm">
-                    <div className="flex items-center justify-between">
-                      <span>{t.label}</span>
-                      <span className="num text-xs text-muted-foreground">{t.buscas.toLocaleString("pt-BR")} buscas</span>
-                    </div>
-                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-[oklch(0.72_0.18_50)]" style={{ width: `${w}%` }} />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          {/* Faixa de preço */}
-          <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Tags className="h-3.5 w-3.5" /> Faixa de preço dominante
-            </div>
-            <div className="rounded-lg border border-border bg-muted/30 p-4">
-              <div className="num font-display text-2xl">
-                {formatBRLcompact(inteligenciaMercado.faixaPrecoDominante.min)} – {formatBRLcompact(inteligenciaMercado.faixaPrecoDominante.max)}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                <span className="font-medium text-emerald-600">{inteligenciaMercado.faixaPrecoDominante.share}%</span> das buscas
-              </div>
-            </div>
-            <ul className="mt-3 space-y-1.5 text-sm">
-              {inteligenciaMercado.faixasPrecoSecundarias.map((f, i) => (
-                <li key={i} className="flex items-center justify-between text-muted-foreground">
-                  <span>{formatBRLcompact(f.min)} – {formatBRLcompact(f.max)}</span>
-                  <span className="num">{f.share}%</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Conversão por origem */}
-          <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Target className="h-3.5 w-3.5" /> Conversão por origem
-            </div>
-            <ul className="space-y-3">
-              {inteligenciaMercado.conversaoPorOrigem.map((o, i) => (
-                <li key={i} className="text-sm">
-                  <div className="flex items-center justify-between">
-                    <span>{o.origem}</span>
-                    <span className="num font-medium">{o.pct}%</span>
-                  </div>
-                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-[oklch(0.65_0.18_145)]" style={{ width: `${o.pct * 2}%` }} />
-                  </div>
-                </li>
-              ))}
-            </ul>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            <IAInsight tag="Conversão" text="Leads de indicação convertem 12% acima da média da rede nas últimas 4 semanas." />
+            <IAInsight tag="Região"    text="A região oceânica (Camboinhas · Itaipu) apresentou crescimento operacional consistente." />
+            <IAInsight tag="Ticket"    text="Imóveis acima de R$ 2M operam com baixa velocidade — ciclo médio 38 dias." />
+            <IAInsight tag="Parcerias" text="Parcerias premium converteram 1.7x acima da média e devem ser priorizadas." />
+            <IAInsight tag="Plano"     text="Corretores Free concentram 68% dos leads negligenciados da rede." tone="warn" />
+            <IAInsight tag="Mercado"   text="Apartamentos de 2 quartos lideram demanda — alinhar inventário e captação." />
           </div>
         </div>
-      </Card>
+      </section>
 
-      {/* PERFORMANCE DE CORRETORES */}
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Card title="Top corretores">
-          <ul className="divide-y divide-border">
-            {performanceCorretores.top.map((c, i) => (
-              <li key={c.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground">{i + 1}</span>
-                <img src={c.avatar} alt={c.nome} className="h-8 w-8 rounded-full object-cover" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{c.nome}</div>
-                  <div className="text-xs text-muted-foreground">Conversão <span className="num">{c.conversaoPct}%</span></div>
-                </div>
-                <div className="text-right">
-                  <div className="num text-sm font-medium">{formatBRLcompact(c.receita)}</div>
-                  {i === 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-emerald-700">
-                      <Trophy className="h-2.5 w-2.5" /> Top
-                    </span>
+      {/* BLOCO 5 — PIPELINE CONSOLIDADO */}
+      <section>
+        <SectionTitle eyebrow="Bloco 05" title="Pipeline consolidado" hint="Visão executiva por etapa" />
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="grid grid-cols-2 divide-y divide-border md:grid-cols-5 md:divide-x md:divide-y-0">
+            {pipeline.map((p, i) => {
+              const next = pipeline[i + 1];
+              const conv = next ? Math.round((next.qtd / p.qtd) * 100) : null;
+              return (
+                <div key={p.etapa} className="relative p-5">
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{p.etapa}</div>
+                  <div className="mt-2 num font-display text-3xl">{p.qtd.toLocaleString("pt-BR")}</div>
+                  <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="num">{formatBRLcompact(p.vgv)}</span>
+                    <TrendChip value={p.trend} compact />
+                  </div>
+                  {conv !== null && (
+                    <div className="mt-3 inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      <ArrowUpRight className="h-3 w-3" /> {conv}% → {next!.etapa}
+                    </div>
                   )}
                 </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card title="Corretores em baixa performance">
-          <ul className="divide-y divide-border">
-            {performanceCorretores.baixaPerformance.map((c) => (
-              <li key={c.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                <img src={c.avatar} alt={c.nome} className="h-8 w-8 rounded-full object-cover" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium">{c.nome}</div>
-                  <div className="text-xs text-muted-foreground">{c.motivo}</div>
-                </div>
-                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                  c.severidade === "red" ? "border-red-200 bg-red-50 text-red-700" : "border-amber-200 bg-amber-50 text-amber-700"
-                }`}>
-                  {c.severidade === "red" ? "Crítico" : "Atenção"}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 border-t border-border pt-3">
-            <Link to="/admin/usuarios" className="text-xs font-medium text-[oklch(0.55_0.22_262)] hover:underline">
-              Ver no admin de usuários →
-            </Link>
+              );
+            })}
           </div>
-        </Card>
+        </div>
       </section>
 
-      {/* INDICADORES OPERACIONAIS */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MiniKPI label="Corretores ativos" value={k.corretoresAtivos} icon={Users} />
-        <MiniKPI label="Leads gerados" value={k.leadsGerados.toLocaleString("pt-BR")} icon={Filter} />
-        <MiniKPI label="Parcerias ativas" value={k.parceriasAtivas} icon={Handshake} />
-        <MiniKPI label="Vendas registradas" value={k.vendasRegistradas} icon={Building2} />
+      {/* BLOCO 6 — PERFORMANCE DA REDE */}
+      <section>
+        <SectionTitle eyebrow="Bloco 06" title="Performance da rede" hint="Destaques estratégicos da semana" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <HighlightCard
+            icon={Trophy}
+            eyebrow="Melhor corretor"
+            title={performanceCorretores.top[0].nome}
+            metric={`${performanceCorretores.top[0].conversaoPct}% conversão`}
+            sub={formatBRLcompact(performanceCorretores.top[0].receita)}
+          />
+          <HighlightCard
+            icon={Handshake}
+            eyebrow="Melhor dupla"
+            title="Denise · Aldemar"
+            metric="R$ 207k em comissão"
+            sub="Camboinhas · 3 fechamentos"
+          />
+          <HighlightCard
+            icon={MapPin}
+            eyebrow="Região mais quente"
+            title={inteligenciaMercado.regioesDemanda[0].regiao}
+            metric={`${inteligenciaMercado.regioesDemanda[0].leads} leads`}
+            sub={`${inteligenciaMercado.regioesDemanda[0].visitas} visitas agendadas`}
+          />
+          <HighlightCard
+            icon={Target}
+            eyebrow="Origem que mais converte"
+            title={inteligenciaMercado.conversaoPorOrigem[0].origem}
+            metric={`${inteligenciaMercado.conversaoPorOrigem[0].pct}%`}
+            sub="Acima da média da rede"
+          />
+          <HighlightCard
+            icon={Tags}
+            eyebrow="Tipo mais eficiente"
+            title={inteligenciaMercado.tiposImovel[0].label}
+            metric={`${inteligenciaMercado.tiposImovel[0].buscas.toLocaleString("pt-BR")} buscas`}
+            sub="Ciclo curto · alta liquidez"
+          />
+          <HighlightCard
+            icon={Flame}
+            eyebrow="Operação em destaque"
+            title="Cobertura Linear · Jardim Icaraí"
+            metric="VGV R$ 2.35M"
+            sub="Proposta em negociação"
+          />
+        </div>
       </section>
 
-      {/* ALERTAS */}
-      <Card title="Alertas estratégicos">
-        <ul className="divide-y divide-border">
-          {alertasDinamicos.map((a, i) => (
-            <Alerta key={`din-${i}`} cor={a.cor} titulo={a.titulo} sub={a.sub} icon={AlertCircle} />
-          ))}
-          <Alerta cor="red" titulo="3 cobranças em atraso totalizando R$ 17.420" sub="CB-2041, CB-2037, CB-2032 — vencidas há mais de 5 dias." />
-          <Alerta cor="amber" titulo="8 parcerias ativas sem atualização há 14+ dias" sub="Pipeline parado. Risco de perder a janela comercial." />
-          <Alerta cor="red" titulo="3 possíveis bypass detectados pelo sistema" sub="Vendas externas em leads recebidos pela Ubroker. Investigar em Suporte / Disputas." />
-          <Alerta cor="amber" titulo="2 conciliações divergentes" sub="VD-117 com R$ 1.800 a menos do que o esperado." />
-        </ul>
-      </Card>
+      {/* BLOCO 7 — ECONOMIA DA REDE */}
+      <section>
+        <SectionTitle eyebrow="Bloco 07" title="Economia da rede" hint="Fluxo financeiro consolidado" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <MoneyCard icon={Wallet}        label="Receita prevista"      value={formatBRLcompact(receitaPrevista)} sub={`${variacaoMes >= 0 ? "+" : ""}${variacaoMes.toFixed(1)}% vs mês anterior`} trend={variacaoMes} />
+          <MoneyCard icon={Handshake}     label="Receita compartilhada" value={formatBRLcompact(receitaCompartilhada)} sub="Splits entre corretores parceiros" trend={+8.2} />
+          <MoneyCard icon={BadgeDollarSign} label="Comissão estimada"   value={formatBRLcompact(comissaoEstimada)} sub="Fee Ubroker do mês" trend={+4.1} />
+          <MoneyCard icon={LineChart}     label="Crescimento mensal"    value={`${variacaoMes.toFixed(1)}%`} sub="Receita do mês vs anterior" trend={variacaoMes} />
+          <MoneyCard icon={Zap}           label="Marketplace performance" value="CTR 4.8% · CR 2.1%" sub="Anúncios da rede" trend={+1.6} />
+          <MoneyCard icon={Building2}     label="VGV em negociação"     value={formatBRLcompact(vgvAtivo)} sub="Pipeline ativo" trend={+4.2} />
+        </div>
+        <div className="mt-2 flex items-center justify-between rounded-2xl border border-border bg-surface/60 px-4 py-3 text-xs text-muted-foreground">
+          <span>Resultado do mês <span className={cn("num font-medium", resultadoMes >= 0 ? "text-emerald-600" : "text-red-600")}>{formatBRLcompact(resultadoMes)}</span> · margem <span className="num">{margemPct.toFixed(1)}%</span></span>
+          <Link to="/admin/financeiro" className="font-medium text-foreground hover:underline">Abrir financeiro →</Link>
+        </div>
+      </section>
     </div>
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{title}</div>
-      {children}
-    </div>
-  );
-}
+/* =============== COMPONENTES =============== */
 
-function BigKPI({
-  label, value, sub, icon: Icon, valueClass, badge,
-}: {
-  label: string; value: string; sub: string;
-  icon: React.ComponentType<{ className?: string }>;
-  valueClass?: string;
-  badge?: React.ReactNode;
-}) {
+function SectionTitle({ eyebrow, title, hint }: { eyebrow: string; title: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-start justify-between">
-        <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+    <div className="mb-3 flex items-end justify-between gap-3">
+      <div>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</div>
+        <div className="font-display text-base">{title}</div>
       </div>
-      <div className={`mt-3 num font-display text-3xl ${valueClass ?? ""}`}>{value}</div>
+      {hint && <div className="text-[11px] text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+function ExecKPI({
+  label, value, hint, trend, icon: Icon,
+}: { label: string; value: string; hint: string; trend: number; icon?: React.ComponentType<{ className?: string }> }) {
+  const up = trend >= 0;
+  return (
+    <div className="group rounded-2xl border border-border bg-card p-4 transition hover:border-foreground/20">
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
+        {Icon ? <Icon className="h-3.5 w-3.5 text-muted-foreground" /> : null}
+      </div>
+      <div className="mt-2 num font-display text-2xl tracking-tight">{value}</div>
       <div className="mt-1 flex items-center justify-between gap-2">
-        <div className="text-xs text-muted-foreground">{sub}</div>
-        {badge}
+        <div className="truncate text-[11px] text-muted-foreground">{hint}</div>
+        <TrendChip value={trend} compact />
       </div>
     </div>
   );
 }
 
-function MiniKPI({ label, value, icon: Icon }: { label: string; value: number | string; icon: React.ComponentType<{ className?: string }> }) {
+function TrendChip({ value, compact }: { value: number; compact?: boolean }) {
+  const up = value >= 0;
+  const Icon = up ? ArrowUpRight : ArrowDownRight;
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="mt-2 num font-display text-2xl">{value}</div>
-    </div>
+    <span className={cn(
+      "inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] font-medium num",
+      up ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700",
+      compact && "leading-none",
+    )}>
+      <Icon className="h-2.5 w-2.5" />
+      {up ? "+" : ""}{value.toFixed(1)}%
+    </span>
   );
 }
 
-function Alerta({
-  cor, titulo, sub, icon: Icon = AlertTriangle,
+function SignalPill({ tone, label }: { tone: "red" | "amber" | "neutral"; label: string }) {
+  const cls =
+    tone === "red"   ? "border-red-200 bg-red-50 text-red-700"
+    : tone === "amber" ? "border-amber-200 bg-amber-50 text-amber-700"
+    : "border-border bg-surface text-muted-foreground";
+  return (
+    <button className={cn(
+      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition hover:translate-y-[-1px]",
+      cls,
+    )}>
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+      {label}
+    </button>
+  );
+}
+
+function HealthCard({
+  icon: Icon, label, value, sub, tone,
 }: {
-  cor: "red" | "amber"; titulo: string; sub: string;
   icon?: React.ComponentType<{ className?: string }>;
+  label: string; value: string; sub: string; tone: "ok" | "amber" | "red";
 }) {
-  const bg = cor === "red" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700";
+  const dot =
+    tone === "red" ? "bg-red-500"
+    : tone === "amber" ? "bg-amber-500"
+    : "bg-emerald-500";
   return (
-    <li className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-      <span className={`mt-0.5 grid h-7 w-7 place-items-center rounded-full ${bg}`}>
-        <Icon className="h-3.5 w-3.5" />
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        <span className={cn("inline-block h-1.5 w-1.5 rounded-full", dot)} />
+        {label}
+      </div>
+      <div className="mt-2 num font-display text-xl tracking-tight">{value}</div>
+      <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <span className="truncate">{sub}</span>
+        {Icon ? <Icon className="h-3.5 w-3.5 opacity-60" /> : null}
+      </div>
+    </div>
+  );
+}
+
+function IAInsight({ tag, text, tone }: { tag: string; text: string; tone?: "warn" }) {
+  return (
+    <div className="flex gap-3 rounded-xl border border-border/70 bg-card/60 p-3 backdrop-blur">
+      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-foreground/5 text-foreground">
+        <Sparkles className="h-3 w-3" />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium">{titulo}</div>
-        <div className="text-xs text-muted-foreground">{sub}</div>
+        <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{tag}</div>
+        <div className={cn("mt-0.5 text-sm leading-snug", tone === "warn" && "text-amber-800")}>{text}</div>
       </div>
-    </li>
+    </div>
   );
 }
+
+function HighlightCard({
+  icon: Icon, eyebrow, title, metric, sub,
+}: { icon: React.ComponentType<{ className?: string }>; eyebrow: string; title: string; metric: string; sub: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5">
+      <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        {eyebrow}
+      </div>
+      <div className="mt-2 truncate font-display text-base">{title}</div>
+      <div className="mt-1 num text-sm font-medium">{metric}</div>
+      <div className="mt-1 text-[11px] text-muted-foreground">{sub}</div>
+    </div>
+  );
+}
+
+function MoneyCard({
+  icon: Icon, label, value, sub, trend,
+}: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; sub: string; trend: number }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </div>
+        <TrendChip value={trend} compact />
+      </div>
+      <div className="mt-2 num font-display text-2xl tracking-tight">{value}</div>
+      <div className="mt-1 truncate text-[11px] text-muted-foreground">{sub}</div>
+    </div>
+  );
+}
+
 void formatBRL;
+void TrendingUp; void TrendingDown; void AlertTriangle; void Users; void Percent;
