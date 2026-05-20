@@ -94,7 +94,7 @@ function AdminDashboard() {
           <HealthCard icon={Filter}      label="Leads negligenciados"   value="42" tone="red"     sub="Sem interação 72h+" />
           <HealthCard icon={Timer}       label="SLA quebrados"          value="18" tone="red"     sub="Resposta acima de 30min" />
           <HealthCard icon={Clock}       label="Cadências atrasadas"    value="27" tone="amber"   sub="Passo programado vencido" />
-          <HealthCard icon{...{}}        label="Tempo médio parado"     value="3.4d" tone="amber" sub="Leads sem evolução" />
+          <HealthCard icon={Activity}    label="Tempo médio parado"     value="3.4d" tone="amber" sub="Leads sem evolução" />
           <HealthCard icon={Gauge}       label="Execução por plano"     value="Pro 81% · Free 49%" tone="ok" sub="Cadência média" />
           <HealthCard icon={ShieldAlert} label="Corretores em risco"    value={performanceCorretores.baixaPerformance.length.toString()} tone="red" sub="Inatividade + baixa conversão" />
         </div>
