@@ -899,6 +899,37 @@ function ImovelDrawer({
     { data: "Há 14 dias", autor: imovel.corretor.nome, acao: "Publicou o imóvel na rede" },
   ];
 
+  // Camada de inteligência
+  const acao = getAcaoRecomendada(imovel);
+  const saude = getSaudeImovel(imovel);
+  const scores = getScoresMarketplace(imovel);
+  const previsao = getPrevisaoPerformance(imovel);
+  const operacao = getOperacaoImovel(imovel, imovel.leadsInfo.total, imovel.demanda, imovel.conversao);
+  const insights = getInsightsImovel(imovel);
+  const temVideo = seedFromId(imovel.id + "vd") % 3 === 0;
+  const descricaoCompleta = imovel.midia.qualidadePct >= 60;
+  const indicadores = [
+    { label: "Qualidade das fotos", ok: imovel.midia.qualidadePct >= 70 },
+    { label: "Quantidade ideal de fotos (≥10)", ok: imovel.midia.fotos >= 10 },
+    { label: "Vídeo do imóvel", ok: temVideo },
+    { label: "Descrição completa", ok: descricaoCompleta },
+    { label: "Atualização recente (≤30d)", ok: imovel.dias <= 30 },
+    { label: "Destaque premium ativo", ok: !!imovel.destaque },
+  ];
+  const leituraMkt =
+    !imovel.midia.completo && imovel.leadsInfo.total > 5
+      ? "Boa geração de leads, porém anúncio com baixa qualidade visual."
+      : !descricaoCompleta
+        ? "Descrição incompleta impactando performance no marketplace."
+        : imovel.demanda === "Alta"
+          ? "Imóvel acima da média de procura da região."
+          : "Anúncio saudável dentro do padrão da rede.";
+  // Leads quick stats
+  const leadEmRisco = Math.max(0, Math.floor(imovel.leadsInfo.total * 0.18));
+  const leadSemResposta = Math.max(0, Math.floor(imovel.leadsInfo.total * 0.22));
+  const leadEmProposta = operacao.propostas;
+  const leadConvertidos = Math.max(0, Math.floor(imovel.leadsInfo.total * (imovel.conversao / 100)));
+
   return (
     <Sheet open={!!imovel} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
