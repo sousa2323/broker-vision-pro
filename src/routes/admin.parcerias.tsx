@@ -625,9 +625,52 @@ function DrawerBody({ r }: { r: Relacao }) {
             <Field label="Histórico operacional" value={`${r.operacoes} operações`} />
             <Field label="Tempo médio de parceria" value={`${3 + (seed(r.id) % 14)} meses`} />
           </Grid>
-          <Block title="Reciprocidade operacional">
-            <ReciprocidadeBar r={r} />
+
+          <Block title="Por que essa compatibilidade?">
+            <ul className="space-y-1 text-[12px] text-muted-foreground">
+              {compatRationale(r).map((p, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-foreground/40" />
+                  {p}
+                </li>
+              ))}
+            </ul>
           </Block>
+
+          <Block title="Complementaridade operacional">
+            <ReciprocidadeBar r={r} />
+            <ul className="mt-3 space-y-1 text-[12px] text-muted-foreground">
+              {complementaridade(r).map((p, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-foreground/40" />
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </Block>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Block title="Potencial da parceria">
+              <ul className="space-y-1.5 text-[12px]">
+                {potencialExpansao(r).map((p, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <Target className="mt-0.5 h-3 w-3 shrink-0 text-sky-700" />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </Block>
+            <Block title="Sugestão IA · Match Engine">
+              <ul className="space-y-1.5 text-[12px]">
+                {matchEngine(r).map((p, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-foreground/70" />
+                    <span>{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </Block>
+          </div>
         </TabsContent>
 
         <TabsContent value="ops" className="space-y-3 pt-4">
@@ -637,22 +680,11 @@ function DrawerBody({ r }: { r: Relacao }) {
             <Mini label="Em proposta" value={Math.max(0, Math.floor(r.leadsCompart * 0.15))} />
             <Mini label="Convertidos" value={Math.max(0, Math.floor(r.leadsCompart * (r.conversao / 100)))} />
           </div>
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-xs">
-              <thead className="bg-surface text-[10px] uppercase tracking-widest text-muted-foreground">
-                <tr><th className="px-3 py-2 text-left">Imóvel</th><th className="px-3 py-2">Etapa</th><th className="px-3 py-2">Responsável</th><th className="px-3 py-2 text-right">Resultado</th></tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {opsExemplo(r).map((o, i) => (
-                  <tr key={i}>
-                    <td className="px-3 py-2">{o.imovel}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{o.etapa}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{o.resp}</td>
-                    <td className="px-3 py-2 text-right num">{o.resultado}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          <div className="space-y-2">
+            {opsExemplo(r).map((o, i) => (
+              <OperacaoCard key={i} o={o} />
+            ))}
           </div>
         </TabsContent>
 
@@ -665,6 +697,18 @@ function DrawerBody({ r }: { r: Relacao }) {
             <Field label="Velocidade operacional" value={r.tempoResposta < 6 ? "Alta" : r.tempoResposta < 18 ? "Média" : "Baixa"} />
             <Field label="Operações concluídas" value={r.operacoes} />
           </Grid>
+          <Block title="Leitura de performance">
+            <ul className="space-y-1.5 text-[12px]">
+              {performanceInsights(r).map((p, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className={cn("mt-0.5 inline-flex h-4 items-center rounded px-1 text-[10px] font-semibold uppercase tracking-wider", p.tone === "good" ? "bg-emerald-50 text-emerald-700" : p.tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-surface text-muted-foreground")}>
+                    {p.tag}
+                  </span>
+                  <span>{p.text}</span>
+                </li>
+              ))}
+            </ul>
+          </Block>
         </TabsContent>
 
         <TabsContent value="fin" className="space-y-3 pt-4">
@@ -673,19 +717,46 @@ function DrawerBody({ r }: { r: Relacao }) {
             <Field label="Comissão histórica" value={formatBRL(r.comissaoTotal)} />
             <Field label="Split operacional" value="50 / 50" />
             <Field label="Volume movimentado" value={formatBRLcompact(r.vgv)} />
+            <Field label="Previsão comissão aberta" value={formatBRL(Math.round(r.receita * 0.22))} />
+            <Field label="Aguardando split" value={`${Math.max(0, (seed(r.id) % 4))} operações`} />
+            <Field label="Média receita / operação" value={formatBRL(Math.round(r.receita / Math.max(1, r.operacoes)))} />
+            <Field label="Crescimento mensal" value={`+${5 + (seed(r.id) % 18)}%`} />
           </Grid>
+          <Block title="Histórico operacional financeiro">
+            <div className="space-y-1.5 text-[12px]">
+              {financeiroHistorico(r).map((h, i) => (
+                <div key={i} className="flex items-center justify-between border-b border-border/60 pb-1.5 last:border-0">
+                  <span className="text-muted-foreground">{h.data} · {h.descricao}</span>
+                  <span className="num font-medium">{h.valor}</span>
+                </div>
+              ))}
+            </div>
+          </Block>
         </TabsContent>
 
-        <TabsContent value="aud" className="space-y-2 pt-4">
-          {auditoria(r).map((e, i) => (
-            <div key={i} className="flex items-start justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-xs">
-              <div>
-                <div className="font-medium">{e.titulo}</div>
-                <div className="text-[11px] text-muted-foreground">{e.detalhe}</div>
+        <TabsContent value="aud" className="pt-4">
+          <div className="relative pl-4">
+            <div className="absolute left-1 top-1 bottom-1 w-px bg-border" />
+            {auditoria(r).map((e, i) => (
+              <div key={i} className="relative pb-3 last:pb-0">
+                <div className={cn("absolute -left-3 top-1.5 h-2 w-2 rounded-full ring-2 ring-background",
+                  e.tipo === "conflito" ? "bg-red-500"
+                  : e.tipo === "pausa" ? "bg-amber-500"
+                  : e.tipo === "redistribuicao" ? "bg-sky-500"
+                  : e.tipo === "comissao" ? "bg-emerald-500"
+                  : "bg-muted-foreground/60")} />
+                <div className="rounded-lg border border-border bg-card px-3 py-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[12px] font-medium">{e.titulo}</div>
+                      <div className="text-[11px] text-muted-foreground">{e.detalhe}</div>
+                    </div>
+                    <span className="whitespace-nowrap text-[11px] text-muted-foreground">{e.data}</span>
+                  </div>
+                </div>
               </div>
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap">{e.data}</span>
-            </div>
-          ))}
+            ))}
+          </div>
         </TabsContent>
       </Tabs>
 
