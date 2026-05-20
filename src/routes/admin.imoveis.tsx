@@ -1238,3 +1238,39 @@ function Mini({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function OpStat({ label, value, tone = "neutral" }: { label: string; value: number; tone?: "neutral" | "red" }) {
+  return (
+    <div className="rounded-lg bg-surface p-2">
+      <div className={cn("text-lg font-medium leading-none", tone === "red" ? "text-red-700" : "text-foreground")}>{value}</div>
+      <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function QuickPill({ label, value, tone }: { label: string; value: number; tone: "red" | "amber" | "blue" | "emerald" }) {
+  const cls =
+    tone === "red" ? "bg-red-50 text-red-700" :
+    tone === "amber" ? "bg-amber-50 text-amber-700" :
+    tone === "blue" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700";
+  return (
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", cls)}>
+      <span className="font-medium">{value}</span> {label}
+    </span>
+  );
+}
+
+function ScoreCard({ label, value }: { label: string; value: number }) {
+  const tone = value >= 70 ? "bg-emerald-500" : value >= 45 ? "bg-amber-500" : "bg-red-500";
+  return (
+    <div className="rounded-lg border border-border bg-card p-2.5">
+      <div className="flex items-baseline justify-between">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+        <div className="text-sm font-medium">{value}</div>
+      </div>
+      <div className="mt-1.5 h-1 w-full rounded-full bg-muted">
+        <div className={cn("h-1 rounded-full", tone)} style={{ width: `${value}%` }} />
+      </div>
+    </div>
+  );
+}
