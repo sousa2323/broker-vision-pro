@@ -7,18 +7,22 @@ import {
   ArrowLeftRight,
   ArrowUpRight,
   ArrowDownRight,
+  Clock,
   Eye,
   FileText,
   Flag,
   GitBranch,
   HandCoins,
   Handshake,
+  MapPin,
   PauseCircle,
   Search,
   Sparkles,
   Star,
+  Target,
   TrendingUp,
   Users,
+  Zap,
 } from "lucide-react";
 import { adminParcerias } from "@/data/admin-mock";
 import { formatBRL, formatBRLcompact } from "@/data/mock";
