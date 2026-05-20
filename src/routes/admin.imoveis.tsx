@@ -607,11 +607,19 @@ function ImoveisAdmin() {
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-3">
                         <img src={i.foto} alt="" className="h-10 w-14 rounded-md object-cover" />
-                        <div>
+                        <div className="min-w-0">
                           <div className="font-medium leading-tight">{i.nome}</div>
                           <div className="font-mono text-[10px] text-muted-foreground">
                             {i.id} · {i.area}m² · {i.bairro}
                           </div>
+                          {(() => {
+                            const ins = getInsightsImovel(i)[0];
+                            return ins ? (
+                              <div className="mt-0.5 flex items-center gap-1 text-[10px] italic text-muted-foreground">
+                                <Sparkles className="h-2.5 w-2.5" /> {ins}
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       </div>
                     </td>
