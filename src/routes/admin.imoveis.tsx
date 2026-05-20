@@ -58,7 +58,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MoreHorizontal, Search } from "lucide-react";
+import { MoreHorizontal, Search, Sparkles, Check, X as XIcon } from "lucide-react";
 
 export const Route = createFileRoute("/admin/imoveis")({
   component: ImoveisAdmin,
