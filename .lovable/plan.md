@@ -1,117 +1,125 @@
-# Plano — Refinamento estratégico de `/admin/imoveis`
+# Plano — Reposicionamento do Dashboard `/admin`
 
-Escopo: somente `src/routes/admin.imoveis.tsx`. Sem novas rotas, dependências ou alteração de sidebar/tokens. Toda inteligência derivada deterministicamente do `Property` + helpers já existentes (`getLeads`, `getRisco`, `getMidia`, `getDemanda`, `getConversao`, `getDiasAtualizacao`). Tom: supervisão e leitura estratégica — nada de ERP ou formulários.
+Escopo: **somente** `src/routes/admin.index.tsx`. Sem novas rotas, libs, mudanças no sidebar ou em tokens. Reusa dados já disponíveis em `adminKpis`, `adminKpisExtra`, `inteligenciaMercado`, `performanceCorretores`, `disputas`, `bypassAlertas`, `despesasMock`. Mantém estilo visual atual (mesmos `Card`, `BigKPI`, `MiniKPI`, espaçamentos).
+
+A tela responde apenas 4 perguntas: **Rede saudável? Marketplace funcionando? Colaboração acontecendo? Há risco sistêmico?**
 
 ---
 
-## 1. Camada de inteligência (novos helpers no topo)
+## 1. Cabeçalho
 
-Adicionar funções puras reutilizáveis:
+- Renomear título: `Painel estratégico` → **`Saúde do ecossistema`**.
+- Subtítulo novo: *"Supervisão da rede de corretores independentes da Ubroker."*
 
-- `getInsightsImovel(i) → string[]` — combina demanda/conversão/dias/mídia/risco e retorna 1–3 frases curtas. Exemplos: "Alta demanda com baixa conversão", "Preço acima da média da região", "Anúncio com mídia insuficiente", "Boa taxa de resposta operacional", "Imóvel premium sem atualização recente".
-- `getSaudeImovel(i) → { nivel: "saudavel"|"atencao"|"critico"; pontos: { label, ok }[] }` — score consolidado com 6 critérios: atualização, conversão, demanda, qualidade do anúncio, resposta operacional, leads negligenciados. Reusa `risco` mas adiciona detalhamento por ponto.
-- `getScoresMarketplace(i) → { seo, midia, atendimento, conversao }` (0–100, derivados de mídia/leads/conversão/dias).
-- `getAcaoRecomendada(i) → { titulo, racional, key }` — regras encadeadas por prioridade:
-  1. `midia.completo === false` → "Solicitar novas fotos"
-  2. `risco === "critico" && marketplaceStatus !== "Bloqueado"` → "Suspender marketplace"
-  3. `demanda === "Alta" && conversao < 8` → "Reforçar atendimento dos leads"
-  4. `demanda === "Alta" && marketplaceStatus !== "Publicado"` → "Priorizar no marketplace"
-  5. `dias > 30` → "Atualizar descrição/preço"
-  6. `leadsInfo.total === 0 && dias > 45` → "Reativar anúncio"
-  7. fallback → "Sem ação prioritária"
-- `getPrevisaoPerformance(i) → string` — "Potencial alto de conversão" / "Alta disputa no marketplace" / "Baixa competitividade na região".
-- `getOperacaoImovel(i) → { leads, visitas, propostas, negligenciados, leitura }` — derivado de seed estável.
+## 2. Substituir a linha 1 (financeiro) por **Saúde da Rede** (4 KPIs)
 
-## 2. Inteligência discreta na tabela e KPIs
+Remove os 4 `BigKPI` financeiros (Receita / Despesas / Resultado / Margem) do topo. No lugar, manter o mesmo grid `lg:grid-cols-4` com:
 
-- Coluna **Insight** (nova, opcional via truncate) ou linha secundária sob "Imóvel" com 1 insight prioritário em `text-[11px] text-muted-foreground italic`. Não adiciona coluna nova se quebrar layout — preferir microcopy sob o nome do imóvel.
-- Sob cada KPI, manter texto atual mas trocar `hint` por leitura interpretativa quando relevante (ex.: "Sem leads" → "3 com alta demanda represada").
+1. **Corretores ativos** — `adminKpis.corretoresAtivos` + variação derivada de `adminKpisExtra` (novo helper local `crescimentoBaseAtiva()` que compara contra um valor anterior fixo: ex. 720, com indicador `TrendingUp`).
+2. **Execução média da rede** — média de `performanceCorretores.top[*].conversaoPct` ponderada; rotular "Execução média" com `Activity` icon.
+3. **Conversão média** — `adminKpisExtra.conversaoMesPct` + delta vs `conversaoMesAnteriorPct` (componente `tendencia` já existe — reusar).
+4. **Crescimento mensal** — variação % da base ativa (mesmo helper acima), badge "Crescimento / Estável / Queda".
 
-## 3. Drawer — bloco "Ação recomendada pela Ubroker IA"
+Acima da seção: eyebrow `Rede · Outubro/2025`.
 
-Inserir logo abaixo da linha de badges do `SheetHeader`, antes das Tabs:
+## 3. Nova linha 2 — **Visão institucional** (apenas 2 KPIs financeiros)
 
-```
-┌──────────────────────────────────────────┐
-│ ✦ Ação recomendada pela Ubroker IA       │
-│ Solicitar novas fotos                    │
-│ Mídia incompleta está reduzindo CTR no   │
-│ marketplace.                             │
-└──────────────────────────────────────────┘
-```
+Mantém o bloco "Visão de escala · Acumulado" já existente, mas reduzido e renomeado para **"Visão institucional"**:
+- `Receita total da plataforma`
+- `MRR SaaS`
 
-`rounded-xl border bg-surface p-3` com ícone Sparkles, título 11px uppercase muted, ação em `text-sm font-medium`, racional em `text-xs text-muted-foreground`. Reage à mudança do imóvel selecionado.
+Os antigos KPIs de Despesas/Resultado/Margem **são removidos** do dashboard (continuam disponíveis em `/admin/financeiro`).
 
-## 4. Aba **Resumo** — bloco "Operação do imóvel"
+## 4. Bloco **Marketplace funcionando?** (novo, substitui "Receita por origem" + "Evolução")
 
-Adicionar após o grid de Info, antes do parágrafo de leitura:
+Mantém o mesmo grid 2 colunas, mas com leitura nova:
 
-- 4 mini-indicadores horizontais: Leads vinculados / Visitas em andamento / Propostas abertas / Leads negligenciados.
-- Linha de leitura: "Conversão acima da média da região." (de `getOperacaoImovel().leitura`).
+- **Coluna esquerda — Atividade do marketplace**: 4 indicadores em lista compacta:
+  - Leads gerados (`adminKpis.leadsGerados`)
+  - VGV movimentado (derivar somando `inteligenciaMercado.faixaPrecoDominante` × `vendasRegistradas`, ou usar um helper `vgvMovimentado()` derivado de mocks de imóveis).
+  - Vendas registradas (`vendasRegistradas`)
+  - Imóveis em destaque (top 3 — derivar dos mocks de imóveis em `src/data/mock.ts`).
+- **Coluna direita — Evolução de receita**: manter o gráfico atual (é leitura de tendência, não cobrança).
 
-## 5. Aba **Leads** — indicadores rápidos + leitura
+## 5. Inteligência de Mercado
 
-Acima da mini-tabela já existente:
+**Preservar integralmente.** Sem alterações.
 
-- 4 pills compactas: "em risco N", "sem resposta N", "em proposta N", "convertidos N".
-- Frase interpretativa abaixo: "Alta procura com baixa evolução para visita." ou "Leads avançando normalmente no funil." (regra: se `convertidos/total < 0.1` e `demanda === "Alta"` → alerta).
+## 6. Bloco **Colaboração acontecendo?** (novo)
 
-## 6. Aba **Marketplace** — Saúde comercial do ativo
+Acima/abaixo de Inteligência de Mercado, novo `Card title="Colaboração da rede"` com grid 4 colunas:
+- Parcerias ativas (`adminKpis.parceriasAtivas`)
+- Receita compartilhada (derivar % do `receitaPorOrigem.comissao`)
+- Matches relevantes do mês (helper determinístico contando entradas em `adminParcerias` com status "Ativa" recente)
+- Crescimento da colaboração (variação MoM — helper local)
 
-Reestruturar conteúdo atual em 4 sub-blocos:
+Visual: mesmos `MiniKPI`, ícone `Handshake`.
 
-1. **Scores** (`grid-cols-4 gap-2`): mini cards horizontais com SEO / Mídia / Atendimento / Conversão — número grande + micro-barra colorida.
-2. **Indicadores** (lista checklist): qualidade das fotos · quantidade ideal de fotos · presença de vídeo · descrição completa · atualização recente · destaque premium ativo. Cada item com check verde / x âmbar.
-3. **Leitura operacional**: parágrafo curto derivado dos scores (ex.: "Boa geração de leads, porém anúncio com baixa qualidade visual.").
-4. **Previsão de performance**: pill única — "Potencial alto de conversão" / "Alta disputa no marketplace" / "Baixa competitividade na região".
+## 7. **Destaques da Rede** (renomear "Top corretores")
 
-## 7. Footer contextual do drawer
+- Renomear título do `Card`: `Top corretores` → **`Destaques da Rede`**.
+- Trocar a coluna direita de "Receita" por **destaque qualitativo rotativo**:
+  - 1º: "Maior conversão" (badge `Trophy`)
+  - 2º: "Crescimento do mês" (`TrendingUp`)
+  - 3º: "Maior colaboração" (`Handshake`)
+  - 4º: "Melhor execução" (`Activity`)
+- Remover o valor monetário grande; manter foto, nome, região (adicionar `c.regiao` se disponível, senão `Conversão X%`).
+- Sem ranking competitivo agressivo: o `1, 2, 3` numérico vira ícone de destaque.
 
-Hoje os 5 botões aparecem iguais. Lógica nova:
+## 8. **Corretores que podem precisar de suporte** (renomear)
 
-- `acaoRecomendada.key` determina o botão **primary** (cor `default`, posição mais à direita ou destacada).
-- Demais ficam `variant="outline"` ou `ghost`.
-- Mapeamento key → botão: `fotos|descricao|preco` → "Solicitar atualização"; `priorizar` → "Priorizar anúncio"; `suspender` → "Suspender marketplace"; `atendimento|leads` → "Ver leads vinculados"; `reativar` → "Priorizar anúncio".
-- Mantém regra atual: imóveis "Próprio" continuam com Priorizar/Suspender desabilitados.
+- Título do `Card`: `Corretores em baixa performance` → **`Corretores que podem precisar de suporte`**.
+- Reescrever campo `motivo` em tom de apoio (helper local `motivoSuporte(c)`):
+  - "Baixa produção" → "Queda recente de atividade"
+  - "Sem leads" → "Poucos leads ativos"
+  - "Inativo" → "Sem login há X dias"
+  - "Baixa conversão" → "Baixa utilização da plataforma"
+- Substituir badges "Crítico/Atenção" (vermelho/âmbar) por badge neutra única **`Atenção`** em tom suave (`bg-muted text-muted-foreground border-border`). Sem vermelho aqui.
+- CTA mantém link para `/admin/usuarios`.
 
-## 8. Indicador consolidado "Saúde do imóvel"
+## 9. **Alertas Estratégicos** — focar em risco sistêmico
 
-No header do drawer, adicionar pill ao lado dos badges existentes:
+Reescrever a lista para refletir apenas risco da plataforma. Manter o `Card` existente com:
 
-`● Saudável` / `● Atenção` / `● Crítico` com `Tooltip` mostrando os 6 pontos (`✓ Atualização recente`, `✗ Mídia incompleta`, …). Reusa `getSaudeImovel`.
+- **Bypass detectados** — usar `bypassAlertas.length` (vermelho se algum "Alto").
+- **Disputas abertas** — contar `disputas.filter(d => d.status === "Aberta").length`.
+- **Inadimplência crescente** — alerta dinâmico já existe (manter).
+- **Divergências financeiras** — alerta de conciliação (manter, contando casos).
+- **Queda coletiva de conversão** — alerta dinâmico já existe (manter).
 
-Também aparecer como bullet color na coluna **Risco** da tabela (já existe — apenas renomear visualmente para "Saúde" no header da coluna mantendo a mesma escala).
+**Remover** do dashboard:
+- "8 parcerias ativas sem atualização há 14+ dias" (pertence a `/admin/parcerias`).
+- "3 cobranças em atraso" (pertence a `/admin/financeiro`).
+- Qualquer item operacional individual (visitas/propostas/tarefas).
 
-## 9. Alertas inteligentes adicionais na faixa
+## 10. Remoções explícitas (anti-microgerenciamento)
 
-Acrescentar 1–2 pills aos alertas já existentes (sem poluir):
-
-- 🟠 N imóveis com alta demanda atribuídos a corretores de baixa execução
-- 🟡 N imóveis premium sem interação recente
-
-(Filtram a tabela igual aos atuais.)
-
-## 10. Restrições
-
-- Sem novos cards gigantes, sem gráficos, sem novas libs.
-- Insights em `text-[11px]–text-xs text-muted-foreground`, ícones Lucide já importados (`Sparkles`, `TrendingUp`, `AlertTriangle`).
-- Vermelho restrito a crítico/SLA quebrado/suspender.
-- Nenhuma mudança fora de `src/routes/admin.imoveis.tsx`.
+- Bloco financeiro de Despesas/Resultado/Margem do topo.
+- "Receita por origem" donut (move-se para `/admin/financeiro` futuramente; aqui some).
+- Alertas de operação individual de leads.
+- Indicadores operacionais (`MiniKPI` Corretores ativos / Leads / Parcerias / Vendas) — substituídos pelo bloco "Marketplace" e "Colaboração" reformulados acima.
 
 ## Detalhes técnicos
 
-- Novos helpers ficam entre os helpers existentes (linhas ~100–200).
-- `acaoRecomendada` e `saude` são calculados dentro do componente do drawer via `useMemo` sobre `imovel`.
-- Footer: substituir array fixo de botões por render baseado em `acaoRecomendada.key` decidindo `variant`.
-- Aba Marketplace: substituir bloco atual por 4 sub-seções; reutiliza `getMidia` + `getScoresMarketplace`.
-- Aba Resumo/Leads: adicionar componentes locais `OperacaoBloco` e `LeadsQuickStats` no mesmo arquivo.
+- Helpers novos no topo do arquivo (puros): `execucaoMediaRede()`, `crescimentoBaseAtiva()`, `vgvMovimentado()`, `matchesRelevantes()`, `crescimentoColaboracao()`, `motivoSuporte(c)`, `destaqueQualitativo(idx)`.
+- Reusar `BigKPI`, `MiniKPI`, `Card`, `Alerta` já definidos no arquivo (sem alterar assinatura).
+- Vermelho restrito a: bypass de alto risco, inadimplência crescente, divergência financeira confirmada.
+- Sem novas dependências, sem alterações em `admin-mock.ts`.
+
+## Ordem final das seções
+
+1. Saúde da Rede (4 KPIs)
+2. Visão institucional (2 KPIs)
+3. Marketplace funcionando? (atividade + evolução)
+4. Inteligência de mercado *(preservada)*
+5. Colaboração da rede (4 KPIs)
+6. Destaques da Rede  |  Corretores que podem precisar de suporte
+7. Alertas estratégicos (risco sistêmico)
 
 ## Critérios de aceite
 
-- Drawer mostra "Ação recomendada pela Ubroker IA" que muda conforme imóvel.
-- Footer destaca 1 botão primário coerente com a recomendação.
-- Aba Marketplace exibe 4 scores + checklist + leitura + previsão.
-- Aba Resumo mostra bloco "Operação do imóvel"; aba Leads mostra 4 pills + leitura.
-- Header do drawer mostra pill "Saúde" com tooltip detalhado.
-- Tabela ganha 1 insight curto sob o nome do imóvel quando aplicável.
-- Visual permanece clean/minimal, sem novas dependências.
+- Topo do dashboard fala de **rede**, não de **caixa**.
+- Nenhuma menção a "baixa performance", "cobrar", "tarefa pendente".
+- Alertas só mostram risco sistêmico (bypass, disputas, inadimplência, divergência, queda coletiva).
+- Inteligência de Mercado intacta.
+- Visual idêntico ao atual: mesmos cards, mesmos espaçamentos, mesma tipografia.
