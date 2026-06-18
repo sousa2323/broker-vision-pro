@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Plus,
@@ -33,39 +33,21 @@ import {
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import {
+  STATUSES,
+  STATUS_STYLES,
+  INITIAL_STATUS,
+  getInteressados,
+  getVisitas,
+  getPropostas,
+  getComissao,
+  isAltaDemanda,
+  type Status,
+} from "@/lib/imoveis";
 
-export const Route = createFileRoute("/app/imoveis")({
+export const Route = createFileRoute("/app/imoveis/")({
   component: InventoryPage,
 });
-
-const STATUSES = ["Ativo", "Em negociação", "Vendido", "Inativo", "Excluído"] as const;
-type Status = (typeof STATUSES)[number];
-
-const STATUS_STYLES: Record<Status, string> = {
-  "Ativo": "bg-emerald-100 text-emerald-700",
-  "Em negociação": "bg-amber-100 text-amber-700",
-  "Vendido": "bg-sky-100 text-sky-700",
-  "Inativo": "bg-slate-200 text-slate-600",
-  "Excluído": "bg-rose-100 text-rose-700",
-};
-
-const INITIAL_STATUS: Record<string, Status> = {
-  "IM-002": "Em negociação",
-  "IM-005": "Inativo",
-};
-
-// deterministic pseudo-random from id
-function seed(id: string) {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return h;
-}
-const getInteressados = (id: string) => 6 + (seed(id) % 19); // 6..24
-const getVisitas = (id: string) => 1 + (seed(id + "v") % 8); // 1..8
-const getPropostas = (id: string) => seed(id + "p") % 4; // 0..3
-const getComissao = (valor: number) => valor * 0.03;
-const isAltaDemanda = (p: Property) =>
-  p.valor >= 1_500_000 || getInteressados(p.id) >= 18 || getVisitas(p.id) >= 6;
 
 type ModalState =
   | { kind: "none" }
@@ -192,11 +174,14 @@ function InventoryPage() {
 
                 {/* Ações rápidas */}
                 <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
-                  <CardAction
-                    icon={<Eye className="h-3.5 w-3.5" />}
-                    label="Ver"
-                    onClick={() => toast("Detalhes do imóvel", { description: p.nome })}
-                  />
+                  <Link
+                    to="/app/imoveis/$id"
+                    params={{ id: p.id }}
+                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>Ver</span>
+                  </Link>
                   <CardAction
                     icon={<Pencil className="h-3.5 w-3.5" />}
                     label="Editar"

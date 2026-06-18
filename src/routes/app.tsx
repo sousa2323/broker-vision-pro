@@ -61,7 +61,7 @@ function AppLayout() {
         <div className="px-6 py-6">
           <Link to="/" className="text-white"><UbrokerLogo /></Link>
         </div>
-        <nav className="flex-1 overflow-y-auto px-3 pb-6">
+        <nav className="flex-1 overflow-y-auto px-3 pb-6 sidebar-scroll">
           {groups.map((g) => (
             <div key={g.title} className="mb-6">
               <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-white/40">
