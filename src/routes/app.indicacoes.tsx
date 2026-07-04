@@ -1,14 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  Copy,
-  Share2,
-  Sparkles,
-  TrendingUp,
-  Gift,
-  CheckCircle2,
-  Users,
-} from "lucide-react";
+import { Copy, Share2, Sparkles, TrendingUp, Gift, CheckCircle2, Users } from "lucide-react";
+import { toast } from "sonner";
 import { referrals, formatBRL } from "@/data/mock";
+import { useBrokerProfile } from "@/lib/auth";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 
@@ -75,6 +69,18 @@ const indicadosCompletos: Indicado[] = [
 ];
 
 function ReferralsPage() {
+  const profile = useBrokerProfile();
+  const referralLink = profile?.referral_slug
+    ? `ubroker.com.br/r/${profile.referral_slug}`
+    : referrals.link;
+
+  function copyLink() {
+    navigator.clipboard
+      .writeText(referralLink)
+      .then(() => toast.success("Link copiado!"))
+      .catch(() => toast.error("Não foi possível copiar o link"));
+  }
+
   const mrrTotal = referrals.ativos.reduce((a, b) => a + b.mrr, 0);
   const mensalidade = 600;
   const totalAcumulado = mrrTotal * 4;
@@ -102,17 +108,22 @@ function ReferralsPage() {
           <Sparkles className="h-3.5 w-3.5 text-warm" /> Programa de indicações
         </div>
         <h2 className="mt-4 font-display text-4xl leading-tight">
-          Indique corretores e ganhe sobre as<br />assinaturas das ferramentas.
+          Indique corretores e ganhe sobre as
+          <br />
+          assinaturas das ferramentas.
         </h2>
         <p className="mt-3 max-w-xl text-white/70">
-          Indique corretores para a Ubroker e ganhe sobre as assinaturas das ferramentas.
-          Você recebe <span className="text-warm">30% recorrentes</span> sobre cada assinatura ativa.
+          Indique corretores para a Ubroker e ganhe sobre as assinaturas das ferramentas. Você
+          recebe <span className="text-warm">30% recorrentes</span> sobre cada assinatura ativa.
         </p>
 
         <div className="mt-8 flex flex-col gap-3 rounded-xl bg-white/10 p-4 backdrop-blur sm:flex-row sm:items-center">
-          <div className="flex-1 truncate font-mono text-sm">{referrals.link}</div>
+          <div className="flex-1 truncate font-mono text-sm">{referralLink}</div>
           <div className="flex gap-2">
-            <button className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm text-ink">
+            <button
+              onClick={copyLink}
+              className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm text-ink"
+            >
               <Copy className="h-4 w-4" /> Copiar link
             </button>
             <button className="inline-flex items-center gap-2 rounded-md bg-warm px-4 py-2 text-sm text-warm-foreground">
@@ -146,7 +157,8 @@ function ReferralsPage() {
                 Você está a {formatBRL(faltam)} de não pagar nada pelo sistema.
               </div>
               <div className="mt-1 text-sm text-muted-foreground">
-                Suas indicações já cobriram <span className="font-medium text-warm">{coberturaPct}%</span> da sua mensalidade.
+                Suas indicações já cobriram{" "}
+                <span className="font-medium text-warm">{coberturaPct}%</span> da sua mensalidade.
               </div>
               <div className="mt-3 max-w-md">
                 <Progress value={coberturaPct} className="h-2 bg-orange-100" />
@@ -162,9 +174,7 @@ function ReferralsPage() {
       {/* Como funciona */}
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center gap-2">
-          <div className="text-xs uppercase tracking-widest text-muted-foreground">
-            Modelo
-          </div>
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">Modelo</div>
         </div>
         <div className="font-display text-xl text-ink">Como funciona</div>
         <ol className="mt-5 space-y-4">
@@ -189,9 +199,7 @@ function ReferralsPage() {
       <div className="rounded-2xl border border-border bg-card">
         <div className="flex items-center justify-between border-b border-border p-5">
           <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">
-              Indicados
-            </div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">Indicados</div>
             <div className="font-display text-lg">Sua rede ativa</div>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -237,9 +245,7 @@ function ReferralsPage() {
                           : "inline-flex items-center gap-1 text-xs text-amber-700"
                       }
                     >
-                      {r.situacao === "Gerando receita" && (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      )}
+                      {r.situacao === "Gerando receita" && <CheckCircle2 className="h-3.5 w-3.5" />}
                       {r.situacao}
                     </span>
                   </td>
@@ -264,7 +270,8 @@ function ReferralsPage() {
               Ganho atual
             </div>
             <div className="num mt-1 font-display text-2xl text-ink">
-              {formatBRL(mrrTotal)}<span className="text-base text-muted-foreground">/mês</span>
+              {formatBRL(mrrTotal)}
+              <span className="text-base text-muted-foreground">/mês</span>
             </div>
           </div>
           <div>
@@ -272,7 +279,8 @@ function ReferralsPage() {
               Meta próxima
             </div>
             <div className="num mt-1 font-display text-2xl text-emerald-700">
-              {formatBRL(metaProxima)}<span className="text-base text-muted-foreground">/mês</span>
+              {formatBRL(metaProxima)}
+              <span className="text-base text-muted-foreground">/mês</span>
             </div>
           </div>
         </div>
@@ -303,7 +311,5 @@ function StatusChip({ status }: { status: "Ativo" | "Em teste" | "Cancelado" }) 
     "Em teste": "bg-amber-50 text-amber-700",
     Cancelado: "bg-muted text-muted-foreground",
   };
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs ${map[status]}`}>{status}</span>
-  );
+  return <span className={`rounded-full px-2 py-0.5 text-xs ${map[status]}`}>{status}</span>;
 }

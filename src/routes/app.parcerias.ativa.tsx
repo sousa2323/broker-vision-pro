@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import { broker, formatBRL } from "@/data/mock";
+import { useBrokerProfile } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -67,13 +68,10 @@ export const Route = createFileRoute("/app/parcerias/ativa")({
 // Dados fictícios
 // ───────────────────────────────────────────────────────────────────────────
 
-const corretorA = {
-  nome: broker.name,
-  agencia: "Ubroker · Niterói",
-  foto: broker.avatar,
-};
+// corretorA (o corretor logado) é montado dentro do componente com o perfil real
+type Corretor = { nome: string; agencia: string; foto: string };
 
-const corretorB = {
+const corretorB: Corretor = {
   nome: "Marina Tavares",
   agencia: "UpHouse Imóveis",
   foto: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=256&h=256&fit=crop&q=80",
@@ -99,12 +97,7 @@ const etapas = ["Lead recebido", "Qualificado", "Visita", "Proposta", "Fechado"]
 type Etapa = (typeof etapas)[number];
 
 type StatusParceria = "Ativa" | "Em negociação" | "Proposta enviada" | "Fechada";
-const statusOptions: StatusParceria[] = [
-  "Ativa",
-  "Em negociação",
-  "Proposta enviada",
-  "Fechada",
-];
+const statusOptions: StatusParceria[] = ["Ativa", "Em negociação", "Proposta enviada", "Fechada"];
 
 const statusBadge: Record<StatusParceria, string> = {
   Ativa: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -122,14 +115,37 @@ type Atividade = {
 };
 
 const atividadesIniciais: Atividade[] = [
-  { id: "a1", quando: "Hoje, 10:00", titulo: "Visita realizada", autor: "Corretor A", tipo: "visita" },
-  { id: "a2", quando: "Ontem, 18:00", titulo: "Proposta enviada", autor: "Corretor B", tipo: "proposta" },
-  { id: "a3", quando: "2 dias atrás", titulo: "Lead qualificado", autor: "IA Assistente", tipo: "ia" },
+  {
+    id: "a1",
+    quando: "Hoje, 10:00",
+    titulo: "Visita realizada",
+    autor: "Corretor A",
+    tipo: "visita",
+  },
+  {
+    id: "a2",
+    quando: "Ontem, 18:00",
+    titulo: "Proposta enviada",
+    autor: "Corretor B",
+    tipo: "proposta",
+  },
+  {
+    id: "a3",
+    quando: "2 dias atrás",
+    titulo: "Lead qualificado",
+    autor: "IA Assistente",
+    tipo: "ia",
+  },
 ];
 
 type Mensagem = { id: string; autor: "A" | "B"; texto: string; quando: string };
 const mensagensIniciais: Mensagem[] = [
-  { id: "m1", autor: "B", texto: "Cliente gostou muito da casa, vamos avançar.", quando: "Ontem 17:42" },
+  {
+    id: "m1",
+    autor: "B",
+    texto: "Cliente gostou muito da casa, vamos avançar.",
+    quando: "Ontem 17:42",
+  },
   { id: "m2", autor: "A", texto: "Perfeito. Que valor faz sentido propor?", quando: "Ontem 17:55" },
   { id: "m3", autor: "B", texto: "Vou enviar a proposta hoje.", quando: "Ontem 18:01" },
 ];
@@ -139,6 +155,12 @@ const mensagensIniciais: Mensagem[] = [
 // ───────────────────────────────────────────────────────────────────────────
 
 function ParceriaAtivaPage() {
+  const profile = useBrokerProfile();
+  const corretorA: Corretor = {
+    nome: profile?.full_name ?? broker.name,
+    agencia: "Ubroker · Niterói",
+    foto: profile?.avatar_url || broker.avatar,
+  };
   const [status, setStatus] = useState<StatusParceria>("Proposta enviada");
   const [etapaAtual, setEtapaAtual] = useState<Etapa>("Proposta");
   const [atividades, setAtividades] = useState<Atividade[]>(atividadesIniciais);
@@ -155,16 +177,17 @@ function ParceriaAtivaPage() {
   const [vendidoOpen, setVendidoOpen] = useState(false);
 
   function pushAtividade(a: Omit<Atividade, "id" | "quando">) {
-    setAtividades((prev) => [
-      { id: crypto.randomUUID(), quando: "Agora", ...a },
-      ...prev,
-    ]);
+    setAtividades((prev) => [{ id: crypto.randomUUID(), quando: "Agora", ...a }, ...prev]);
     setDiasSemAtualizacao(0);
   }
 
   function handleEtapa(novo: Etapa) {
     setEtapaAtual(novo);
-    pushAtividade({ titulo: `Etapa atualizada para "${novo}"`, autor: "Corretor A", tipo: "mensagem" });
+    pushAtividade({
+      titulo: `Etapa atualizada para "${novo}"`,
+      autor: "Corretor A",
+      tipo: "mensagem",
+    });
     toast.success(`Etapa atualizada para ${novo}`);
   }
 
@@ -191,17 +214,18 @@ function ParceriaAtivaPage() {
         <ArrowLeft className="h-4 w-4" /> Voltar para parcerias
       </Link>
 
-      <HeaderBlock status={status} onStatusChange={setStatus} />
+      <HeaderBlock status={status} onStatusChange={setStatus} corretorA={corretorA} />
 
       <NextActionBanner
         proximaAcao={proximaAcao}
         diasSemAtualizacao={diasSemAtualizacao}
         onConcluir={handleConcluirProxima}
+        corretorA={corretorA}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <FinanceCard />
+          <FinanceCard corretorA={corretorA} />
         </div>
         <AcoesCard
           etapaAtual={etapaAtual}
@@ -214,10 +238,7 @@ function ParceriaAtivaPage() {
       <PipelineStepper etapaAtual={etapaAtual} onChangeEtapa={handleEtapa} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ActivityTimeline
-          atividades={atividades}
-          onRegistrar={() => setRegistrarOpen(true)}
-        />
+        <ActivityTimeline atividades={atividades} onRegistrar={() => setRegistrarOpen(true)} />
         <ChatBlock
           mensagens={mensagens}
           onSend={(t) =>
@@ -281,10 +302,12 @@ function NextActionBanner({
   proximaAcao,
   diasSemAtualizacao,
   onConcluir,
+  corretorA,
 }: {
   proximaAcao: { titulo: string; responsavel: "A" | "B"; prazo: string };
   diasSemAtualizacao: number;
   onConcluir: () => void;
+  corretorA: Corretor;
 }) {
   const isMine = proximaAcao.responsavel === "A";
   const responsavelNome = isMine ? `${corretorA.nome} (você)` : corretorB.nome;
@@ -358,9 +381,11 @@ function NextActionBanner({
 function HeaderBlock({
   status,
   onStatusChange,
+  corretorA,
 }: {
   status: StatusParceria;
   onStatusChange: (s: StatusParceria) => void;
+  corretorA: Corretor;
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
@@ -439,7 +464,7 @@ function BrokerChip({ nome, foto, legenda }: { nome: string; foto: string; legen
   );
 }
 
-function FinanceCard() {
+function FinanceCard({ corretorA }: { corretorA: Corretor }) {
   const comissao = imovel.valor * COMISSAO_PCT;
   const parteCorretor = comissao / 2;
   const fee = parteCorretor * FEE_UBROKER_PCT;
@@ -477,8 +502,7 @@ function FinanceCard() {
       <div className="flex flex-col gap-3 border-t border-white/10 bg-white/5 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1 text-xs text-white/70">
           <div>
-            Fee Ubroker · 12% sobre sua comissão ·{" "}
-            <span className="num">{formatBRL(fee)}</span>
+            Fee Ubroker · 12% sobre sua comissão · <span className="num">{formatBRL(fee)}</span>
           </div>
           <div className="text-[10px] text-white/50">
             Simulação baseada no valor atual do imóvel.
@@ -488,9 +512,7 @@ function FinanceCard() {
           <div className="text-[10px] uppercase tracking-widest text-orange-200">
             Seu ganho estimado
           </div>
-          <div className="num font-display text-xl text-orange-300">
-            {formatBRL(ganhoLiquido)}
-          </div>
+          <div className="num font-display text-xl text-orange-300">{formatBRL(ganhoLiquido)}</div>
         </div>
       </div>
     </div>
@@ -605,9 +627,7 @@ function PipelineStepper({
                   )}
                 >
                   {e}
-                  {e === etapaAtual && (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  )}
+                  {e === etapaAtual && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />}
                 </button>
               ))}
             </PopoverContent>
@@ -642,12 +662,7 @@ function PipelineStepper({
                 </div>
               </div>
               {i < etapas.length - 1 && (
-                <div
-                  className={cn(
-                    "h-0.5 flex-1",
-                    i < idx ? "bg-emerald-300" : "bg-border",
-                  )}
-                />
+                <div className={cn("h-0.5 flex-1", i < idx ? "bg-emerald-300" : "bg-border")} />
               )}
             </div>
           );
@@ -773,9 +788,7 @@ function ChatBlock({
               <div
                 className={cn(
                   "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-                  mine
-                    ? "bg-navy text-navy-foreground"
-                    : "border border-border bg-background",
+                  mine ? "bg-navy text-navy-foreground" : "border border-border bg-background",
                 )}
               >
                 <div>{m.texto}</div>
@@ -1075,9 +1088,7 @@ function FinalizarVendaModal({
                   onCheckedChange={(v) => setConfirmado(Boolean(v))}
                   className="mt-0.5"
                 />
-                <span>
-                  Ambas as partes confirmam que a venda seguiu os termos da parceria.
-                </span>
+                <span>Ambas as partes confirmam que a venda seguiu os termos da parceria.</span>
               </label>
             </div>
             <DialogFooter>

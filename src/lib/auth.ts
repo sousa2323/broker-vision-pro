@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { z } from "zod";
 import { supabase } from "@/lib/supabase";
+import { slugify } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Schemas do cadastro (uma etapa = um schema)
@@ -79,6 +80,8 @@ export type BrokerProfile = {
   availability: string | null;
   lead_limit: number | null;
   plan: "Free" | "Pro";
+  referral_slug: string | null;
+  client_profiles: string[];
 };
 
 /** Monta a linha de broker_profiles a partir do payload do cadastro. */
@@ -103,6 +106,39 @@ function profileRowFromPayload(
     plan: p.plan,
     terms_accepted_at: new Date().toISOString(),
   };
+}
+
+/**
+ * Gera o slug de indicação e executa `save` até conseguir um único.
+ * RLS é owner-only, então não dá para checar slugs existentes — a unicidade
+ * vem do índice único (broker_profiles_referral_slug_idx) + retry no 23505.
+ * Tenta base, base-2..base-4 e por fim um sufixo aleatório.
+ */
+async function withUniqueSlug(
+  fullName: string,
+  save: (
+    slug: string,
+  ) => PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }>,
+): Promise<BrokerProfile | null> {
+  const base = slugify(fullName) || "corretor";
+  for (let i = 0; i < 5; i++) {
+    const slug =
+      i === 0
+        ? base
+        : i < 4
+          ? `${base}-${i + 1}`
+          : `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    const { data, error } = await save(slug);
+    if (!error) return data as BrokerProfile | null;
+    // Só re-tenta em colisão de slug; 23505 na PK (linha já existe) não pode loopar
+    const isSlugCollision = error.code === "23505" && error.message.includes("referral_slug");
+    if (!isSlugCollision) {
+      console.error("Falha ao salvar perfil:", error.message);
+      return null;
+    }
+  }
+  console.error("Não foi possível gerar um slug único para:", fullName);
+  return null;
 }
 
 export type SignUpResult =
@@ -168,13 +204,16 @@ export async function signUpBroker(
       avatarUrl = (await uploadAvatar(data.user.id, avatarFile)) ?? avatarUrl;
     }
 
-    const { error: insertError } = await supabase
-      .from("broker_profiles")
-      .insert(profileRowFromPayload(data.user.id, { ...profile, avatarUrl: avatarUrl ?? "" }));
-    if (insertError) {
-      // Conta criada; o perfil será recriado via ensureProfile no próximo login
-      console.error("Falha ao salvar perfil no cadastro:", insertError.message);
-    }
+    const userId = data.user.id;
+    const row = profileRowFromPayload(userId, { ...profile, avatarUrl: avatarUrl ?? "" });
+    // Se falhar, a conta já existe; o perfil será recriado via ensureProfile no próximo login
+    await withUniqueSlug(payload.fullName, (slug) =>
+      supabase
+        .from("broker_profiles")
+        .insert({ ...row, referral_slug: slug })
+        .select()
+        .single(),
+    );
     return { status: "complete" };
   }
 
@@ -193,12 +232,28 @@ export async function ensureProfile(session: Session): Promise<BrokerProfile | n
     .eq("id", session.user.id)
     .maybeSingle();
 
-  if (existing) return existing as BrokerProfile;
+  if (existing) {
+    const profile = existing as BrokerProfile;
+    // Backfill: perfis criados antes do slug de indicação existir
+    if (!profile.referral_slug) {
+      const updated = await withUniqueSlug(profile.full_name, (slug) =>
+        supabase
+          .from("broker_profiles")
+          .update({ referral_slug: slug })
+          .eq("id", session.user.id)
+          .select()
+          .single(),
+      );
+      return updated ?? profile;
+    }
+    return profile;
+  }
 
   const m = session.user.user_metadata ?? {};
+  const fullName = m.fullName ?? session.user.email ?? "Corretor";
   const row = {
     id: session.user.id,
-    full_name: m.fullName ?? session.user.email ?? "Corretor",
+    full_name: fullName,
     phone: m.phone ?? "",
     creci: m.creci ?? "",
     avatar_url: m.avatarUrl || null,
@@ -214,17 +269,49 @@ export async function ensureProfile(session: Session): Promise<BrokerProfile | n
     terms_accepted_at: m.termsAcceptedAt ?? new Date().toISOString(),
   };
 
-  const { data: created, error } = await supabase
+  return withUniqueSlug(fullName, (slug) =>
+    supabase
+      .from("broker_profiles")
+      .insert({ ...row, referral_slug: slug })
+      .select()
+      .single(),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Atualização de perfil (página Perfil)
+// ---------------------------------------------------------------------------
+
+export type BrokerProfilePatch = Partial<
+  Pick<
+    BrokerProfile,
+    | "specialties"
+    | "property_types"
+    | "client_profiles"
+    | "ticket_range"
+    | "regions"
+    | "bio"
+    | "avatar_url"
+  >
+>;
+
+/** Atualiza o perfil do corretor logado e retorna a linha fresca. */
+export async function updateBrokerProfile(
+  userId: string,
+  patch: BrokerProfilePatch,
+): Promise<BrokerProfile | null> {
+  const { data, error } = await supabase
     .from("broker_profiles")
-    .insert(row)
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", userId)
     .select()
-    .maybeSingle();
+    .single();
 
   if (error) {
-    console.error("Falha ao criar perfil:", error.message);
+    console.error("Falha ao atualizar perfil:", error.message);
     return null;
   }
-  return created as BrokerProfile | null;
+  return data as BrokerProfile;
 }
 
 // ---------------------------------------------------------------------------
