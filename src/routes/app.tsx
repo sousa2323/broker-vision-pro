@@ -1,17 +1,51 @@
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Users, Kanban, Building2, Handshake, ListChecks,
-  Sparkles, Inbox, Wallet, UserPlus, User, Settings, Bell, Search,
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useLocation,
+  useNavigate,
+} from "@tanstack/react-router";
+import {
+  LayoutDashboard,
+  Users,
+  Kanban,
+  Building2,
+  Handshake,
+  ListChecks,
+  Sparkles,
+  Inbox,
+  Wallet,
+  UserPlus,
+  User,
+  Settings,
+  Bell,
+  Search,
+  LogOut,
 } from "lucide-react";
 import { UbrokerLogo } from "@/components/ubroker-logo";
 import { broker } from "@/data/mock";
+import { supabase } from "@/lib/supabase";
+import { useBrokerProfile } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app")({
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined") return; // SSR: sessão vive em localStorage, o client revalida
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      throw redirect({ to: "/login", search: { redirect: location.href } });
+    }
+  },
   component: AppLayout,
 });
 
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; exact?: boolean };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  exact?: boolean;
+};
 type NavGroup = { title: string; items: NavItem[] };
 
 const groups: NavGroup[] = [
@@ -51,15 +85,29 @@ const groups: NavGroup[] = [
 
 function AppLayout() {
   const loc = useLocation();
-  const current = groups.flatMap((g) => g.items).find((i) =>
-    i.exact ? loc.pathname === i.to : loc.pathname.startsWith(i.to)
-  );
+  const navigate = useNavigate();
+  const profile = useBrokerProfile();
+  const current = groups
+    .flatMap((g) => g.items)
+    .find((i) => (i.exact ? loc.pathname === i.to : loc.pathname.startsWith(i.to)));
+
+  // Perfil real com fallback no mock (protótipo) enquanto carrega / para campos vazios
+  const displayName = profile?.full_name ?? broker.name;
+  const displayPlan = profile?.plan ?? broker.plan;
+  const displayAvatar = profile?.avatar_url || broker.avatar;
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    navigate({ to: "/login" });
+  }
 
   return (
     <div className="flex min-h-screen bg-surface text-ink">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
         <div className="px-6 py-6">
-          <Link to="/" className="text-white"><UbrokerLogo /></Link>
+          <Link to="/" className="text-white">
+            <UbrokerLogo />
+          </Link>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 pb-6 sidebar-scroll">
           {groups.map((g) => (
@@ -78,7 +126,7 @@ function AppLayout() {
                           "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
                           active
                             ? "bg-sidebar-accent-active text-white"
-                            : "text-white/70 hover:bg-sidebar-accent hover:text-white"
+                            : "text-white/70 hover:bg-sidebar-accent hover:text-white",
                         )}
                       >
                         <it.icon className="h-4 w-4" strokeWidth={1.75} />
@@ -93,11 +141,19 @@ function AppLayout() {
         </nav>
         <div className="border-t border-sidebar-border px-4 py-4">
           <div className="flex items-center gap-3">
-            <img src={broker.avatar} alt="" className="h-9 w-9 rounded-full object-cover" />
-            <div className="min-w-0">
-              <div className="truncate text-sm text-white">{broker.name}</div>
-              <div className="text-xs text-white/50">Plano {broker.plan}</div>
+            <img src={displayAvatar} alt="" className="h-9 w-9 rounded-full object-cover" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm text-white">{displayName}</div>
+              <div className="text-xs text-white/50">Plano {displayPlan}</div>
             </div>
+            <button
+              onClick={handleLogout}
+              title="Sair"
+              aria-label="Sair"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-white/50 transition hover:bg-sidebar-accent hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -117,7 +173,11 @@ function AppLayout() {
             <button className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground">
               <Bell className="h-4 w-4" />
             </button>
-            <img src={broker.avatar} alt="" className="h-9 w-9 rounded-full object-cover ring-1 ring-border" />
+            <img
+              src={displayAvatar}
+              alt=""
+              className="h-9 w-9 rounded-full object-cover ring-1 ring-border"
+            />
           </div>
         </header>
         <main className="flex-1 px-6 py-8">

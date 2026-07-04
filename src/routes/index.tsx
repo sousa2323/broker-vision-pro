@@ -1,5 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, ArrowUpRight, Check, Plus, Sparkles, MessageSquare, Users, Zap, Shield, TrendingUp } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  Plus,
+  Sparkles,
+  MessageSquare,
+  Users,
+  Zap,
+  Shield,
+  TrendingUp,
+} from "lucide-react";
 import { UbrokerLogo } from "@/components/ubroker-logo";
 
 export const Route = createFileRoute("/")({
@@ -37,19 +48,34 @@ function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/5 bg-navy/85 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-        <Link to="/" className="text-navy-foreground"><UbrokerLogo /></Link>
-        <nav className="hidden items-center gap-10 text-sm text-white/70 md:flex">
-          <a href="#plataforma" className="hover:text-white">A plataforma</a>
-          <a href="#solucoes" className="hover:text-white">Soluções</a>
-          <a href="#parcerias" className="hover:text-white">Parcerias</a>
-          <a href="#imprensa" className="hover:text-white">Imprensa</a>
-        </nav>
-        <Link
-          to="/app"
-          className="inline-flex items-center gap-2 rounded-full bg-warm px-5 py-2.5 text-sm font-medium text-warm-foreground transition hover:brightness-110"
-        >
-          Ver demo <ArrowRight className="h-4 w-4" />
+        <Link to="/" className="text-navy-foreground">
+          <UbrokerLogo />
         </Link>
+        <nav className="hidden items-center gap-10 text-sm text-white/70 md:flex">
+          <a href="#plataforma" className="hover:text-white">
+            A plataforma
+          </a>
+          <a href="#solucoes" className="hover:text-white">
+            Soluções
+          </a>
+          <a href="#parcerias" className="hover:text-white">
+            Parcerias
+          </a>
+          <a href="#imprensa" className="hover:text-white">
+            Imprensa
+          </a>
+        </nav>
+        <div className="flex items-center gap-6">
+          <Link to="/login" className="text-sm text-white/70 transition hover:text-white">
+            Entrar
+          </Link>
+          <Link
+            to="/app"
+            className="inline-flex items-center gap-2 rounded-full bg-warm px-5 py-2.5 text-sm font-medium text-warm-foreground transition hover:brightness-110"
+          >
+            Ver demo <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
     </header>
   );
@@ -64,11 +90,13 @@ function Hero() {
             <Sparkles className="h-3.5 w-3.5 text-warm" /> Plataforma 2026
           </span>
           <h1 className="font-display text-[clamp(3rem,7vw,6.5rem)] leading-[0.95] tracking-tight">
-            Corretores<br />no controle.
+            Corretores
+            <br />
+            no controle.
           </h1>
           <p className="mt-8 max-w-lg text-lg leading-relaxed text-white/70">
-            A Ubroker dá ao corretor de alto padrão tudo que ele precisa em um único lugar:
-            leads, pipeline, IA, omnichannel, parcerias e monetização SaaS — sem depender da imobiliária.
+            A Ubroker dá ao corretor de alto padrão tudo que ele precisa em um único lugar: leads,
+            pipeline, IA, omnichannel, parcerias e monetização SaaS — sem depender da imobiliária.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <Link
@@ -77,7 +105,10 @@ function Hero() {
             >
               Ver demo da plataforma <ArrowRight className="h-4 w-4" />
             </Link>
-            <a href="#plataforma" className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white">
+            <a
+              href="#plataforma"
+              className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
+            >
               Falar com vendas <ArrowUpRight className="h-4 w-4" />
             </a>
           </div>
@@ -131,10 +162,23 @@ function StatsBand() {
 
 function ValueCards() {
   const cards = [
-    { title: "Construímos sua marca", body: "Site profissional, presença omnichannel e identidade visual de alto padrão para o corretor." },
-    { title: "Potencializamos seus ganhos", body: "Comissões compartilhadas em rede, recorrência SaaS por indicação e isenção de mensalidade." },
-    { title: "Aumentamos sua produtividade", body: "Leads, pipeline, agenda, IA e omnichannel em um único painel.", highlight: true },
-    { title: "Reduzimos seu risco", body: "Carteira diversificada via parcerias, contratos jurídicos prontos, suporte completo." },
+    {
+      title: "Construímos sua marca",
+      body: "Site profissional, presença omnichannel e identidade visual de alto padrão para o corretor.",
+    },
+    {
+      title: "Potencializamos seus ganhos",
+      body: "Comissões compartilhadas em rede, recorrência SaaS por indicação e isenção de mensalidade.",
+    },
+    {
+      title: "Aumentamos sua produtividade",
+      body: "Leads, pipeline, agenda, IA e omnichannel em um único painel.",
+      highlight: true,
+    },
+    {
+      title: "Reduzimos seu risco",
+      body: "Carteira diversificada via parcerias, contratos jurídicos prontos, suporte completo.",
+    },
   ];
   return (
     <section id="solucoes" className="px-6 py-24 md:py-32">
@@ -142,15 +186,25 @@ function ValueCards() {
         <div className="grid grid-cols-1 gap-16 md:grid-cols-2">
           <div>
             <h2 className="font-display text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.95]">
-              Trabalhe para<br />você sem precisar<br />trabalhar sozinho.
+              Trabalhe para
+              <br />
+              você sem precisar
+              <br />
+              trabalhar sozinho.
             </h2>
           </div>
           <div className="flex items-end">
             <p className="max-w-md text-white/70">
-              Cresça seu negócio com produtos e serviços especialmente pensados para corretores
-              de alta produtividade.
-              <br /><br />
-              <a href="#" className="inline-flex items-center gap-2 rounded-full bg-warm px-6 py-3 text-sm text-warm-foreground hover:brightness-110">Saiba mais</a>
+              Cresça seu negócio com produtos e serviços especialmente pensados para corretores de
+              alta produtividade.
+              <br />
+              <br />
+              <a
+                href="#"
+                className="inline-flex items-center gap-2 rounded-full bg-warm px-6 py-3 text-sm text-warm-foreground hover:brightness-110"
+              >
+                Saiba mais
+              </a>
             </p>
           </div>
         </div>
@@ -160,7 +214,9 @@ function ValueCards() {
             <div
               key={i}
               className={`group relative flex h-72 flex-col justify-between p-7 transition ${
-                c.highlight ? "bg-white text-ink" : "bg-navy text-white hover:bg-white hover:text-ink"
+                c.highlight
+                  ? "bg-white text-ink"
+                  : "bg-navy text-white hover:bg-white hover:text-ink"
               }`}
             >
               <div className="font-display text-2xl leading-tight">{c.title}</div>
@@ -185,10 +241,13 @@ function ProductShowcase() {
         <div className="mb-12 max-w-2xl">
           <span className="text-xs uppercase tracking-widest text-muted-foreground">O painel</span>
           <h2 className="mt-4 font-display text-[clamp(2.25rem,4.5vw,4rem)] leading-[1] tracking-tight">
-            Painel do corretor.<br />Dados em tempo real.
+            Painel do corretor.
+            <br />
+            Dados em tempo real.
           </h2>
           <p className="mt-6 max-w-lg text-muted-foreground">
-            Tudo que você precisa para fechar mais negócios, sem alternar entre 7 ferramentas diferentes.
+            Tudo que você precisa para fechar mais negócios, sem alternar entre 7 ferramentas
+            diferentes.
           </p>
         </div>
         <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
@@ -207,12 +266,16 @@ function ProductShowcase() {
                 { l: "Vendidos", v: "2 / mês" },
               ].map((k, i) => (
                 <div key={i} className="rounded-xl border border-border p-5">
-                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{k.l}</div>
+                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                    {k.l}
+                  </div>
                   <div className="mt-2 num font-display text-2xl">{k.v}</div>
                 </div>
               ))}
               <div className="col-span-2 rounded-xl border border-border p-6 md:col-span-4">
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Evolução de vendas</div>
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">
+                  Evolução de vendas
+                </div>
                 <svg viewBox="0 0 400 100" className="mt-4 h-32 w-full">
                   <polyline
                     fill="none"
@@ -230,20 +293,32 @@ function ProductShowcase() {
             </div>
             <div className="col-span-12 space-y-4 md:col-span-4">
               <div className="rounded-xl bg-navy p-6 text-navy-foreground">
-                <div className="text-xs uppercase tracking-widest text-white/50">Monetização SaaS</div>
+                <div className="text-xs uppercase tracking-widest text-white/50">
+                  Monetização SaaS
+                </div>
                 <div className="mt-3 num font-display text-3xl">R$ 480</div>
-                <div className="mt-2 text-sm text-white/70">Faltam R$ 120 para isentar sua mensalidade</div>
+                <div className="mt-2 text-sm text-white/70">
+                  Faltam R$ 120 para isentar sua mensalidade
+                </div>
                 <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
                   <div className="h-full w-[80%] bg-warm" />
                 </div>
               </div>
               <div className="rounded-xl border border-border p-5">
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Operação</div>
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">
+                  Operação
+                </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                  {[{ n: 18, l: "Novos" }, { n: 12, l: "Atend." }, { n: 5, l: "Propostas" }].map((o, i) => (
+                  {[
+                    { n: 18, l: "Novos" },
+                    { n: 12, l: "Atend." },
+                    { n: 5, l: "Propostas" },
+                  ].map((o, i) => (
                     <div key={i}>
                       <div className="num font-display text-xl">{o.n}</div>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{o.l}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        {o.l}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -280,7 +355,8 @@ function Differentials() {
         <div className="mb-16 max-w-3xl">
           <span className="text-xs uppercase tracking-widest text-white/50">Por que Ubroker</span>
           <h2 className="mt-4 font-display text-[clamp(2.25rem,4.5vw,4rem)] leading-[1]">
-            Três frentes que mudam<br />a vida do corretor.
+            Três frentes que mudam
+            <br />a vida do corretor.
           </h2>
         </div>
         <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl bg-white/10 md:grid-cols-3">
@@ -306,19 +382,22 @@ function Testimonials() {
       name: "Alessandra Freixo",
       role: "Olhar de Corretora · Niterói",
       photo: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=200&q=80",
-      quote: "Em 4 meses dobrei meu pipeline qualificado. A IA da Ubroker virou minha sócia silenciosa.",
+      quote:
+        "Em 4 meses dobrei meu pipeline qualificado. A IA da Ubroker virou minha sócia silenciosa.",
     },
     {
       name: "Aldemar e Thiago",
       role: "Homesphere · Maricá",
       photo: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&q=80",
-      quote: "Fechamos 3 vendas em parceria via Ubroker no primeiro mês. A rede funciona de verdade.",
+      quote:
+        "Fechamos 3 vendas em parceria via Ubroker no primeiro mês. A rede funciona de verdade.",
     },
     {
       name: "Denise Molinaro",
       role: "Denise no Jardins · São Paulo",
       photo: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&q=80",
-      quote: "Indicar clientes que estão saindo de SP virou receita recorrente. A monetização SaaS é genial.",
+      quote:
+        "Indicar clientes que estão saindo de SP virou receita recorrente. A monetização SaaS é genial.",
     },
   ];
   return (
@@ -326,7 +405,9 @@ function Testimonials() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-12 flex items-end justify-between">
           <h2 className="font-display text-[clamp(2.25rem,4.5vw,4rem)] leading-[1] tracking-tight">
-            O que nossos<br />parceiros têm a dizer
+            O que nossos
+            <br />
+            parceiros têm a dizer
           </h2>
         </div>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -359,7 +440,8 @@ function PressBand() {
             <div key={i} className="border-l border-white/10 pl-6">
               <div className="font-display text-3xl text-white/90">{p}</div>
               <p className="mt-3 text-xs text-white/55">
-                "Ubroker reorganiza o mercado de corretagem de alto padrão com tecnologia e rede colaborativa."
+                "Ubroker reorganiza o mercado de corretagem de alto padrão com tecnologia e rede
+                colaborativa."
               </p>
             </div>
           ))}
@@ -374,10 +456,13 @@ function FinalCTA() {
     <section className="px-6 py-32">
       <div className="mx-auto max-w-5xl text-center">
         <h2 className="font-display text-[clamp(3rem,7vw,7rem)] leading-[0.92]">
-          Pronto para subir<br />de nível?
+          Pronto para subir
+          <br />
+          de nível?
         </h2>
         <p className="mx-auto mt-8 max-w-xl text-white/70">
-          Veja a plataforma completa em ação. Sem cadastro, sem cartão — entre direto no painel demo.
+          Veja a plataforma completa em ação. Sem cadastro, sem cartão — entre direto no painel
+          demo.
         </p>
         <Link
           to="/app"
@@ -396,9 +481,7 @@ function Footer() {
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-10 md:grid-cols-5">
         <div className="col-span-2">
           <UbrokerLogo />
-          <p className="mt-4 max-w-xs">
-            A plataforma de corretagem para o alto padrão brasileiro.
-          </p>
+          <p className="mt-4 max-w-xs">A plataforma de corretagem para o alto padrão brasileiro.</p>
           <div className="mt-6 text-xs text-white/40">contato@ubroker.com.br</div>
         </div>
         {[
@@ -410,7 +493,11 @@ function Footer() {
             <div className="mb-4 text-xs uppercase tracking-widest text-white/40">{c.t}</div>
             <ul className="space-y-2">
               {c.l.map((x) => (
-                <li key={x}><a href="#" className="hover:text-white">{x}</a></li>
+                <li key={x}>
+                  <a href="#" className="hover:text-white">
+                    {x}
+                  </a>
+                </li>
               ))}
             </ul>
           </div>
@@ -419,8 +506,12 @@ function Footer() {
       <div className="mx-auto mt-12 flex max-w-7xl items-center justify-between border-t border-white/10 pt-8 text-xs text-white/40">
         <div>© 2026 Ubroker. Todos os direitos reservados.</div>
         <div className="flex items-center gap-4">
-          <Link to="/admin" className="hover:text-white/70">Admin (demo)</Link>
-          <span className="flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> CRECI Conformidade</span>
+          <Link to="/admin" className="hover:text-white/70">
+            Admin (demo)
+          </Link>
+          <span className="flex items-center gap-2">
+            <Shield className="h-3.5 w-3.5" /> CRECI Conformidade
+          </span>
         </div>
       </div>
     </footer>

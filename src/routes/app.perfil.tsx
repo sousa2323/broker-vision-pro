@@ -9,37 +9,12 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { ChipGroup } from "@/components/chip-group";
+import { ESPECIALIDADES, TIPOS_IMOVEL, PERFIS_CLIENTE, TICKETS } from "@/data/broker-options";
 
 export const Route = createFileRoute("/app/perfil")({
   component: ProfilePage,
 });
-
-const ESPECIALIDADES = [
-  "Coberturas",
-  "Casas em condomínio",
-  "Alto padrão",
-  "Apartamentos compactos",
-  "Lançamentos",
-  "Pé na areia",
-];
-
-const TIPOS_IMOVEL = ["Residencial", "Comercial", "Lançamentos", "Temporada"];
-
-const PERFIS_CLIENTE = [
-  "Família",
-  "Investidor",
-  "Primeira compra",
-  "Mudança interestadual",
-];
-
-const TICKETS = [
-  "Até R$ 500k",
-  "R$ 500k – R$ 1M",
-  "R$ 1M – R$ 3M",
-  "R$ 3M – R$ 10M",
-  "Acima de R$ 10M",
-];
 
 function ProfilePage() {
   const [especialidades, setEspecialidades] = useState<string[]>([
@@ -54,21 +29,11 @@ function ProfilePage() {
     "Mudança interestadual",
   ]);
   const [ticket, setTicket] = useState<string>("R$ 1M – R$ 3M");
-  const [regioes, setRegioes] = useState<string[]>([
-    "Niterói",
-    "São Gonçalo",
-    "Maricá",
-    "Itaipu",
-  ]);
+  const [regioes, setRegioes] = useState<string[]>(["Niterói", "São Gonçalo", "Maricá", "Itaipu"]);
 
-  const toggle =
-    (state: string[], setState: (v: string[]) => void) => (label: string) => {
-      setState(
-        state.includes(label)
-          ? state.filter((s) => s !== label)
-          : [...state, label],
-      );
-    };
+  const toggle = (state: string[], setState: (v: string[]) => void) => (label: string) => {
+    setState(state.includes(label) ? state.filter((s) => s !== label) : [...state, label]);
+  };
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -99,7 +64,8 @@ function ProfilePage() {
         <div className="flex items-start gap-2 rounded-xl border border-dashed border-border bg-surface/60 p-3 text-xs text-muted-foreground">
           <Sparkles className="mt-0.5 h-4 w-4 text-warm shrink-0" />
           <span>
-            Essas informações ajudam a IA e outros corretores a entender melhor seu perfil de atuação. Quanto mais completo, melhor o sistema trabalha para você.
+            Essas informações ajudam a IA e outros corretores a entender melhor seu perfil de
+            atuação. Quanto mais completo, melhor o sistema trabalha para você.
           </span>
         </div>
 
@@ -121,9 +87,7 @@ function ProfilePage() {
               <div className="text-xs uppercase tracking-widest text-muted-foreground">
                 Regiões secundárias
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Outras regiões onde você atende.
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Outras regiões onde você atende.</p>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -220,52 +184,20 @@ function ProfilePage() {
 }
 
 function Field({
-  icon: Icon, label, value,
-}: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex items-start gap-3 rounded-xl bg-surface p-4">
       <Icon className="mt-0.5 h-4 w-4 text-muted-foreground" />
       <div>
         <div className="text-xs uppercase tracking-widest text-muted-foreground">{label}</div>
         <div className="text-sm">{value}</div>
-      </div>
-    </div>
-  );
-}
-
-function ChipGroup({
-  label,
-  options,
-  selected,
-  onToggle,
-}: {
-  label: string;
-  options: string[];
-  selected: string[];
-  onToggle: (label: string) => void;
-}) {
-  return (
-    <div>
-      <div className="mb-2 text-sm font-medium">{label}</div>
-      <div className="flex flex-wrap gap-2">
-        {options.map((opt) => {
-          const active = selected.includes(opt);
-          return (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => onToggle(opt)}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs transition-colors",
-                active
-                  ? "bg-navy text-navy-foreground"
-                  : "border border-border bg-surface text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {opt}
-            </button>
-          );
-        })}
       </div>
     </div>
   );
