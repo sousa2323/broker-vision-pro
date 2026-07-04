@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Bed, Bath, Car, Handshake, Maximize2, MapPin, MessageSquare } from "lucide-react";
+import { ArrowLeft, Bed, Bath, Car, Eye, Handshake, Maximize2, MapPin, MessageSquare } from "lucide-react";
 import { brokers, properties, formatBRL } from "@/data/mock";
 import { Button } from "@/components/ui/button";
 import {
@@ -112,9 +112,14 @@ function BrokerDetail() {
                       <span className="inline-flex items-center gap-1"><Car className="h-3.5 w-3.5" />{p.vagas}</span>
                       <span className="inline-flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" />{p.area}m²</span>
                     </div>
+                    <Button asChild variant="outline" className="mt-4 w-full">
+                      <Link to="/app/imoveis/$id" params={{ id: p.id }}>
+                        <Eye className="h-4 w-4" /> Ver imóvel
+                      </Link>
+                    </Button>
                     <Button
                       variant="outline"
-                      className="mt-4 w-full"
+                      className="mt-2 w-full"
                       onClick={() => setPartnership({ open: true, property: p })}
                     >
                       <Handshake className="h-4 w-4" /> Solicitar parceria neste imóvel
