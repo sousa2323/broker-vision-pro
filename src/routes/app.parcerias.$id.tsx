@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { ArrowLeft, Bed, Bath, Car, Eye, Handshake, Maximize2, MapPin, MessageSquare } from "lucide-react";
-import { brokers, properties, formatBRL } from "@/data/mock";
+import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, Handshake, MapPin, MessageSquare, Briefcase, Loader2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,31 +21,52 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
+import { getDirectoryBroker, type DirectoryBroker } from "@/lib/directory";
 
 export const Route = createFileRoute("/app/parcerias/$id")({
   component: BrokerDetail,
-  notFoundComponent: () => (
-    <div className="rounded-2xl border border-border bg-card p-8 text-center">
-      <h2 className="font-display text-xl">Corretor não encontrado</h2>
-      <Link to="/app/parcerias" className="mt-4 inline-block text-brand">Voltar à lista</Link>
-    </div>
-  ),
 });
-
-type PropertyLike = (typeof properties)[number];
 
 function BrokerDetail() {
   const { id } = Route.useParams();
-  const broker = brokers.find((b) => b.id === id);
-  if (!broker) throw notFound();
-
-  const inv = properties.filter((p) => broker.inventoryIds.includes(p.id));
-
+  const [broker, setBroker] = useState<DirectoryBroker | null>(null);
+  const [loading, setLoading] = useState(true);
   const [connectOpen, setConnectOpen] = useState(false);
-  const [partnership, setPartnership] = useState<{ open: boolean; property: PropertyLike | null }>({
-    open: false,
-    property: null,
-  });
+  const [partnershipOpen, setPartnershipOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getDirectoryBroker(id).then((b) => {
+      if (!cancelled) {
+        setBroker(b);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="grid place-items-center py-24 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!broker) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-8 text-center">
+        <h2 className="font-display text-xl">Corretor não encontrado</h2>
+        <Link to="/app/parcerias" className="mt-4 inline-block text-brand">Voltar à lista</Link>
+      </div>
+    );
+  }
+
+  const initials = broker.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("");
+  const regiao = (broker.regions ?? []).join(" · ") || "—";
 
   return (
     <div className="space-y-8">
@@ -56,34 +76,36 @@ function BrokerDetail() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-6 lg:col-span-1">
-          <img src={broker.foto} alt={broker.nome} className="aspect-square w-full rounded-2xl object-cover" />
-          <h1 className="mt-5 font-display text-2xl">{broker.nome}</h1>
-          <div className="text-sm text-muted-foreground">{broker.agencia}</div>
+          {broker.avatar_url ? (
+            <img src={broker.avatar_url} alt={broker.full_name} className="aspect-square w-full rounded-2xl object-cover" />
+          ) : (
+            <div className="grid aspect-square w-full place-items-center rounded-2xl bg-surface text-3xl font-medium text-muted-foreground">
+              {initials}
+            </div>
+          )}
+          <h1 className="mt-5 font-display text-2xl">{broker.full_name}</h1>
+          <div className="text-sm text-muted-foreground">Plano {broker.plan}</div>
           <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-            <MapPin className="h-3.5 w-3.5" /> {broker.regiao}
+            <MapPin className="h-3.5 w-3.5" /> {regiao}
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-4 text-sm">
-            <div>
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Especialidade</div>
-              <div>{broker.especialidade}</div>
+          {(broker.specialties ?? []).length > 0 && (
+            <div className="mt-4 border-t border-border pt-4">
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">Especialidades</div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {broker.specialties.map((s) => (
+                  <span key={s} className="inline-flex items-center gap-1 rounded-full bg-brand/5 px-2 py-0.5 text-xs text-brand">
+                    <Briefcase className="h-3 w-3" /> {s}
+                  </span>
+                ))}
+              </div>
             </div>
-            <div>
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Imóveis</div>
-              <div className="num">{broker.imoveis}</div>
-            </div>
-          </div>
+          )}
           <div className="mt-6 space-y-2">
-            <Button
-              className="w-full bg-navy text-navy-foreground hover:bg-navy/90"
-              onClick={() => setPartnership({ open: true, property: null })}
-            >
+            <Button className="w-full bg-navy text-navy-foreground hover:bg-navy/90" onClick={() => setPartnershipOpen(true)}>
               <Handshake className="h-4 w-4" /> Solicitar parceria
             </Button>
             <Button variant="outline" className="w-full" onClick={() => setConnectOpen(true)}>
               <MessageSquare className="h-4 w-4" /> Conectar
-            </Button>
-            <Button asChild variant="ghost" className="w-full text-orange-600 hover:text-orange-700">
-              <Link to="/app/parcerias/ativa">Ver parceria ativa</Link>
             </Button>
           </div>
         </div>
@@ -91,58 +113,33 @@ function BrokerDetail() {
         <div className="lg:col-span-2 space-y-4">
           <div className="rounded-2xl border border-border bg-card p-6">
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Sobre</div>
-            <p className="mt-2 leading-relaxed">{broker.bio}</p>
+            <p className="mt-2 leading-relaxed">{broker.bio || "Este corretor ainda não adicionou uma bio."}</p>
+            {(broker.property_types ?? []).length > 0 && (
+              <div className="mt-4 border-t border-border pt-4">
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">Tipos de imóvel</div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {broker.property_types.map((t) => (
+                    <span key={t} className="rounded-full bg-surface px-2 py-0.5 text-xs">{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-xl">Inventário do parceiro</h2>
-              <div className="text-xs text-muted-foreground">{inv.length} oportunidades</div>
+
+          <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-surface text-muted-foreground">
+              <Building2 className="h-6 w-6" />
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {inv.map((p) => (
-                <article key={p.id} className="overflow-hidden rounded-2xl border border-border bg-card">
-                  <img src={p.foto} alt={p.nome} className="aspect-[16/10] w-full object-cover" />
-                  <div className="p-5">
-                    <div className="num font-display text-lg">{formatBRL(p.valor)}</div>
-                    <div className="mt-1 font-medium">{p.nome}</div>
-                    <div className="text-xs text-muted-foreground">{p.bairro}, {p.cidade}</div>
-                    <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1"><Bed className="h-3.5 w-3.5" />{p.quartos}</span>
-                      <span className="inline-flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{p.suites}</span>
-                      <span className="inline-flex items-center gap-1"><Car className="h-3.5 w-3.5" />{p.vagas}</span>
-                      <span className="inline-flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" />{p.area}m²</span>
-                    </div>
-                    <Button asChild variant="outline" className="mt-4 w-full">
-                      <Link to="/app/imoveis/$id" params={{ id: p.id }}>
-                        <Eye className="h-4 w-4" /> Ver imóvel
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="mt-2 w-full"
-                      onClick={() => setPartnership({ open: true, property: p })}
-                    >
-                      <Handshake className="h-4 w-4" /> Solicitar parceria neste imóvel
-                    </Button>
-                  </div>
-                </article>
-              ))}
-            </div>
+            <div className="mt-3 font-medium">Inventário compartilhado após a conexão</div>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              Os imóveis deste corretor ficam visíveis quando vocês estabelecem uma parceria.
+            </p>
           </div>
         </div>
       </div>
 
-      <ConnectModal
-        open={connectOpen}
-        onOpenChange={setConnectOpen}
-        brokerName={broker.nome}
-      />
-      <PartnershipModal
-        open={partnership.open}
-        onOpenChange={(o) => setPartnership((s) => ({ ...s, open: o }))}
-        brokerName={broker.nome}
-        property={partnership.property}
-      />
+      <ConnectModal open={connectOpen} onOpenChange={setConnectOpen} brokerName={broker.full_name} />
+      <PartnershipModal open={partnershipOpen} onOpenChange={setPartnershipOpen} brokerName={broker.full_name} />
     </div>
   );
 }
@@ -211,23 +208,17 @@ function PartnershipModal({
   open,
   onOpenChange,
   brokerName,
-  property,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   brokerName: string;
-  property: PropertyLike | null;
 }) {
   const [mensagem, setMensagem] = useState("");
   const [tipo, setTipo] = useState("comissao");
   const [obs, setObs] = useState("");
 
   function submit() {
-    toast.success(
-      property
-        ? `Solicitação de parceria enviada · ${property.nome}`
-        : `Solicitação de parceria enviada para ${brokerName}`,
-    );
+    toast.success(`Solicitação de parceria enviada para ${brokerName}`);
     setMensagem("");
     setObs("");
     setTipo("comissao");
@@ -239,11 +230,7 @@ function PartnershipModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Solicitar parceria</DialogTitle>
-          <DialogDescription>
-            {property
-              ? `Imóvel: ${property.nome} · ${formatBRL(property.valor)}`
-              : `Parceria geral com ${brokerName}`}
-          </DialogDescription>
+          <DialogDescription>Parceria com {brokerName}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

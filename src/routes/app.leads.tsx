@@ -25,8 +25,21 @@ import {
   Activity,
   Bot,
   Zap,
+  Loader2,
 } from "lucide-react";
-import { leads, type Lead, type LeadOrigin, type LeadStatus, formatBRL } from "@/data/mock";
+import { toast } from "sonner";
+import { formatBRL } from "@/lib/format";
+import { useSession } from "@/lib/auth";
+import {
+  useLeads,
+  createLead,
+  updateLeadStatus,
+  addLeadEvent,
+  LEAD_ORIGINS,
+  type Lead,
+  type LeadOrigin,
+  type LeadStatus,
+} from "@/lib/leads";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -84,12 +97,14 @@ type FiltroRapido = (typeof FILTROS_RAPIDOS)[number];
 function isAtivo(l: Lead) {
   return l.status !== "Fechado" && l.status !== "Perdido";
 }
+function daysAgo(l: Lead) {
+  return Math.floor((Date.now() - new Date(l.lastInteractionAt).getTime()) / 86_400_000);
+}
 function isAtrasado(l: Lead) {
-  const u = l.ultimaInteracao.toLowerCase();
-  return isAtivo(l) && (u.includes("dia") || u.includes("semana"));
+  return isAtivo(l) && daysAgo(l) >= 2;
 }
 function isHoje(l: Lead) {
-  return l.ultimaInteracao.toLowerCase().includes("hoje") || l.ultimaInteracao.toLowerCase().includes("min") || l.ultimaInteracao.toLowerCase().includes("h");
+  return daysAgo(l) === 0;
 }
 
 type AcaoTipo = "ligar" | "whatsapp" | "visita" | "followup" | "enviar" | "nenhum";
@@ -240,12 +255,9 @@ function getScoreTone(score: number): Tone {
   return "danger";
 }
 function getTempoSemInteracao(l: Lead): { label: string; tone: Tone } {
-  const u = l.ultimaInteracao.toLowerCase();
-  if (u.includes("min")) return { label: l.ultimaInteracao, tone: "good" };
-  if (u.includes("h")) return { label: l.ultimaInteracao, tone: "good" };
-  if (u.includes("hoje")) return { label: l.ultimaInteracao, tone: "good" };
-  if (u.includes("ontem") || u.includes("1 dia") || u.includes("2 dia")) return { label: l.ultimaInteracao, tone: "warn" };
-  return { label: l.ultimaInteracao, tone: "danger" };
+  const d = daysAgo(l);
+  const tone: Tone = d === 0 ? "good" : d <= 2 ? "warn" : "danger";
+  return { label: l.ultimaInteracao, tone };
 }
 function getSlaProximaAcao(l: Lead): { label: string; atrasado: boolean; etapa: string } {
   const cad = getCadenciaDetalhada(l);
@@ -421,8 +433,18 @@ type FiltrosAv = {
 };
 const FILTROS_AV_VAZIO: FiltrosAv = { origem: "", etapa: "", regiao: "", tipo: "", orcamentoMax: "" };
 
-function LeadsPage() {
-  const [selected, setSelected] = useState<Lead>(leads[0]);
+function LeadsView({
+  leads,
+  refetch,
+  brokerId,
+  onNovoLead,
+}: {
+  leads: Lead[];
+  refetch: () => Promise<void> | void;
+  brokerId: string | undefined;
+  onNovoLead: () => void;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapido>("Todos");
   const [busca, setBusca] = useState("");
   const [filtrosOpen, setFiltrosOpen] = useState(false);
@@ -491,6 +513,7 @@ function LeadsPage() {
     { label: "VGV em leads quentes", value: vgvQuenteFmt, sub: "Potencial estimado das oportunidades prioritárias.", accent: false, highlight: true },
   ];
 
+  const selected = leads.find((l) => l.id === selectedId) ?? leads[0];
   const selectedAcao = getProximaAcao(selected);
   const selectedUrg = getUrgencia(selected);
   const selectedNivel = getNivel(selected, nivelCtx);
@@ -513,7 +536,10 @@ function LeadsPage() {
             Sua central diária de execução comercial. Veja o que fazer, quando fazer e quais oportunidades priorizar.
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-md bg-navy px-3 py-2 text-sm text-navy-foreground">
+        <button
+          onClick={onNovoLead}
+          className="inline-flex items-center gap-2 rounded-md bg-navy px-3 py-2 text-sm text-navy-foreground"
+        >
           <Plus className="h-4 w-4" /> Novo lead
         </button>
       </div>
@@ -599,7 +625,7 @@ function LeadsPage() {
                   return (
                     <tr
                       key={l.id}
-                      onClick={() => setSelected(l)}
+                      onClick={() => setSelectedId(l.id)}
                       className={cn(
                         "cursor-pointer border-b border-l-4 border-border transition hover:bg-surface",
                         nivelMeta.border,
@@ -1496,7 +1522,18 @@ function LeadsPage() {
             <button onClick={() => setPerdaOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm">Cancelar</button>
             <button
               disabled={!perdaMotivo || !perdaObs.trim()}
-              onClick={() => { setPerdaOpen(false); setPerdaMotivo(""); setPerdaObs(""); }}
+              onClick={async () => {
+                const ok = await updateLeadStatus(selected.id, "Perdido", `${perdaMotivo} — ${perdaObs}`);
+                setPerdaOpen(false);
+                setPerdaMotivo("");
+                setPerdaObs("");
+                if (ok) {
+                  await refetch();
+                  toast.success("Lead marcado como perdido");
+                } else {
+                  toast.error("Não foi possível atualizar o lead.");
+                }
+              }}
               className="rounded-md bg-red-600 px-3 py-2 text-sm text-white disabled:opacity-50"
             >Confirmar perda</button>
           </DialogFooter>
@@ -1524,13 +1561,225 @@ function LeadsPage() {
           <DialogFooter>
             <button onClick={() => setRegistroOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm">Cancelar</button>
             <button
-              onClick={() => { setRegistroOpen(false); setRegistroTexto(""); }}
-              className="rounded-md bg-foreground px-3 py-2 text-sm text-background"
+              disabled={!registroTexto.trim() || !brokerId}
+              onClick={async () => {
+                if (!brokerId) return;
+                const ok = await addLeadEvent(brokerId, selected.id, registroTipo, registroTexto);
+                setRegistroOpen(false);
+                setRegistroTexto("");
+                if (ok) {
+                  await refetch();
+                  toast.success("Interação registrada");
+                } else {
+                  toast.error("Não foi possível registrar a interação.");
+                }
+              }}
+              className="rounded-md bg-foreground px-3 py-2 text-sm text-background disabled:opacity-50"
             >Salvar</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
     </div>
+  );
+}
+
+function LeadsPage() {
+  const { session } = useSession();
+  const { leads, loading, refetch } = useLeads();
+  const [novoOpen, setNovoOpen] = useState(false);
+  const brokerId = session?.user.id;
+
+  return (
+    <>
+      {loading ? (
+        <div className="grid place-items-center py-24 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : leads.length === 0 ? (
+        <EmptyLeads onNovoLead={() => setNovoOpen(true)} />
+      ) : (
+        <LeadsView
+          leads={leads}
+          refetch={refetch}
+          brokerId={brokerId}
+          onNovoLead={() => setNovoOpen(true)}
+        />
+      )}
+      <NovoLeadModal
+        open={novoOpen}
+        onOpenChange={setNovoOpen}
+        brokerId={brokerId}
+        onCreated={refetch}
+      />
+    </>
+  );
+}
+
+function EmptyLeads({ onNovoLead }: { onNovoLead: () => void }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl">Leads</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Sua central diária de execução comercial.
+          </p>
+        </div>
+        <button
+          onClick={onNovoLead}
+          className="inline-flex items-center gap-2 rounded-md bg-navy px-3 py-2 text-sm text-navy-foreground"
+        >
+          <Plus className="h-4 w-4" /> Novo lead
+        </button>
+      </div>
+      <div className="grid place-items-center gap-3 rounded-2xl border border-dashed border-border bg-card py-24 text-center">
+        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-surface text-muted-foreground">
+          <UserIcon className="h-7 w-7" />
+        </div>
+        <div className="font-display text-lg">Nenhum lead ainda</div>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Cadastre seu primeiro lead para começar a acompanhar oportunidades e priorizar sua rotina.
+        </p>
+        <button
+          onClick={onNovoLead}
+          className="mt-1 inline-flex items-center gap-2 rounded-md bg-navy px-4 py-2 text-sm text-navy-foreground"
+        >
+          <Plus className="h-4 w-4" /> Novo lead
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function NovoLeadModal({
+  open,
+  onOpenChange,
+  brokerId,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  brokerId: string | undefined;
+  onCreated: () => Promise<void> | void;
+}) {
+  const [form, setForm] = useState({
+    nome: "",
+    telefone: "",
+    email: "",
+    origem: "WhatsApp" as LeadOrigin,
+    interesse: "",
+    orcamento: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (!brokerId) return;
+    if (!form.nome.trim()) {
+      toast.error("Informe o nome do lead");
+      return;
+    }
+    setSaving(true);
+    const created = await createLead(brokerId, {
+      nome: form.nome,
+      telefone: form.telefone || undefined,
+      email: form.email || undefined,
+      origem: form.origem,
+      interesse: form.interesse || undefined,
+      orcamento: Number(form.orcamento) || 0,
+    });
+    setSaving(false);
+    if (created) {
+      toast.success("Lead cadastrado");
+      setForm({ nome: "", telefone: "", email: "", origem: "WhatsApp", interesse: "", orcamento: "" });
+      onOpenChange(false);
+      await onCreated();
+    } else {
+      toast.error("Não foi possível cadastrar o lead.");
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Novo lead</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <label className="col-span-2 space-y-1">
+            <span className="text-xs text-muted-foreground">Nome *</span>
+            <input
+              value={form.nome}
+              onChange={(e) => setForm({ ...form, nome: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5"
+              placeholder="Ex.: João Mendes"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">Telefone</span>
+            <input
+              value={form.telefone}
+              onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5"
+              placeholder="+55 21 9..."
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">E-mail</span>
+            <input
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5"
+              placeholder="email@exemplo.com"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">Origem</span>
+            <select
+              value={form.origem}
+              onChange={(e) => setForm({ ...form, origem: e.target.value as LeadOrigin })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5"
+            >
+              {LEAD_ORIGINS.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">Orçamento (R$)</span>
+            <input
+              type="number"
+              value={form.orcamento}
+              onChange={(e) => setForm({ ...form, orcamento: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5"
+              placeholder="1000000"
+            />
+          </label>
+          <label className="col-span-2 space-y-1">
+            <span className="text-xs text-muted-foreground">Interesse</span>
+            <textarea
+              value={form.interesse}
+              onChange={(e) => setForm({ ...form, interesse: e.target.value })}
+              rows={3}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5"
+              placeholder="O que o lead procura (tipo, região, características)…"
+            />
+          </label>
+        </div>
+        <DialogFooter>
+          <button onClick={() => onOpenChange(false)} className="rounded-md border border-border px-3 py-2 text-sm">
+            Cancelar
+          </button>
+          <button
+            onClick={submit}
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-md bg-navy px-3 py-2 text-sm text-navy-foreground disabled:opacity-60"
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Cadastrar lead
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

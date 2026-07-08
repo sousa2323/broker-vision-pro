@@ -9,7 +9,6 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { broker } from "@/data/mock";
 import { useBrokerProfile } from "@/lib/auth";
 
 export const Route = createFileRoute("/app/configuracoes")({
@@ -218,10 +217,10 @@ function SettingsPage() {
         title="Plano e cobrança"
         desc="Gerencie seu plano e recursos ativos."
       >
-        <Pref label="Plano atual" value={profile?.plan ?? broker.plan} />
+        <Pref label="Plano atual" value={profile?.plan ?? "Free"} />
         <Pref
           label="Valor mensal"
-          value={(profile?.plan ?? broker.plan) === "Pro" ? "R$ 149/mês" : "R$ 0/mês"}
+          value={(profile?.plan ?? "Free") === "Pro" ? "R$ 149/mês" : "R$ 0/mês"}
         />
         <Pref label="Próxima cobrança" value="—" />
         <div className="flex items-center justify-between py-3 text-sm">
@@ -243,16 +242,24 @@ function SettingsPage() {
 
       {/* INTEGRAÇÕES */}
       <Section icon={Smartphone} title="Integrações" desc="Conecte seus canais.">
-        <Integracao nome="WhatsApp Business" sub={profile?.phone || broker.phone} conectado />
-        <Integracao nome="Instagram" sub="@ramoncapone.imoveis" conectado />
+        <Integracao
+          nome="WhatsApp Business"
+          sub={profile?.channels?.whatsapp ? profile.phone || "Conectado" : "Não conectado"}
+          conectado={profile?.channels?.whatsapp}
+        />
+        <Integracao
+          nome="Instagram"
+          sub={profile?.channels?.instagram ? "Conectado" : "Não conectado"}
+          conectado={profile?.channels?.instagram}
+        />
         <Integracao nome="Site / Landing page" sub="Não conectado" />
-        <Integracao nome="Marketplace B2C" sub="Sincronizado" conectado />
+        <Integracao nome="Marketplace B2C" sub="Não conectado" />
       </Section>
 
       {/* SEGURANÇA */}
       <Section icon={Lock} title="Segurança" desc="Acesso e privacidade.">
-        <Pref label="Autenticação 2FA" value="Ativada" />
-        <Pref label="Última sessão" value="Hoje, 09:14 · Niterói" />
+        <Pref label="Autenticação 2FA" value="Não configurada" />
+        <Pref label="E-mail da conta" value={profile ? "Verificado" : "—"} />
       </Section>
     </div>
   );

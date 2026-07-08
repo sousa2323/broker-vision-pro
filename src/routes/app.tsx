@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import { UbrokerLogo } from "@/components/ubroker-logo";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { broker } from "@/data/mock";
 import { supabase } from "@/lib/supabase";
 import { useBrokerProfile, type BrokerProfile } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -133,8 +132,8 @@ function AppLayout() {
     .find((i) => (i.exact ? loc.pathname === i.to : loc.pathname.startsWith(i.to)));
 
   // Perfil real com fallback no mock (protótipo) enquanto carrega / para campos vazios
-  const displayName = profile?.full_name ?? broker.name;
-  const displayPlan = profile?.plan ?? broker.plan;
+  const displayName = profile?.full_name ?? "Corretor";
+  const displayPlan = profile?.plan ?? "Free";
 
   async function handleLogout() {
     await supabase.auth.signOut();

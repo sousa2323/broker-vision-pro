@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Mail, Phone, MapPin, Award, Sparkles, X, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { broker } from "@/data/mock";
 import {
   Select,
   SelectTrigger,
@@ -101,13 +100,13 @@ function ProfilePage() {
     }
   }
 
-  // Dados exibidos: perfil real com fallback no mock (protótipo)
-  const displayName = profile?.full_name ?? broker.name;
-  const displayPlan = profile?.plan ?? broker.plan;
-  const displayEmail = session?.user.email ?? broker.email;
-  const displayPhone = profile?.phone || broker.phone;
-  const displayRegion = profile?.regions?.[0] ?? broker.region;
-  const displayCreci = profile?.creci || broker.creci;
+  // Dados exibidos: perfil real do corretor logado
+  const displayName = profile?.full_name ?? session?.user.email ?? "—";
+  const displayPlan = profile?.plan ?? "Free";
+  const displayEmail = session?.user.email ?? "—";
+  const displayPhone = profile?.phone || "—";
+  const displayRegion = profile?.regions?.[0] ?? "—";
+  const displayCreci = profile?.creci || "—";
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -116,7 +115,7 @@ function ProfilePage() {
         <div className="flex justify-center">
           <AvatarUpload
             file={avatarFile}
-            value={profile?.avatar_url ?? broker.avatar}
+            value={profile?.avatar_url ?? ""}
             onFileChange={setAvatarFile}
             className="flex-col text-center"
           />

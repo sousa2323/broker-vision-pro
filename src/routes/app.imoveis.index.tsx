@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   MapPin,
@@ -8,9 +8,7 @@ import {
   Car,
   Maximize2,
   X,
-  Users,
   DoorOpen,
-  FileText,
   Eye,
   Pencil,
   Share2,
@@ -20,9 +18,10 @@ import {
   Upload,
   Video,
   Flame,
+  Loader2,
+  Building2,
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
-import { properties, formatBRL, type Property } from "@/data/mock";
 import {
   Dialog,
   DialogContent,
@@ -33,17 +32,20 @@ import {
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { formatBRL } from "@/lib/format";
+import { useSession } from "@/lib/auth";
+import { useActivities } from "@/lib/activities";
 import {
-  STATUSES,
-  STATUS_STYLES,
-  INITIAL_STATUS,
-  getInteressados,
-  getVisitas,
-  getPropostas,
-  getComissao,
-  isAltaDemanda,
-  type Status,
-} from "@/lib/imoveis";
+  useProperties,
+  createProperty,
+  updateProperty,
+  deleteProperty,
+  EMPTY_PROPERTY,
+  type Property,
+  type PropertyInput,
+  type PropertyStatus,
+} from "@/lib/properties";
+import { STATUSES, STATUS_STYLES, getComissao, isAltaDemanda } from "@/lib/imoveis";
 
 export const Route = createFileRoute("/app/imoveis/")({
   component: InventoryPage,
@@ -51,33 +53,43 @@ export const Route = createFileRoute("/app/imoveis/")({
 
 type ModalState =
   | { kind: "none" }
+  | { kind: "form"; property: Property | null }
   | { kind: "venda"; property: Property }
   | { kind: "exclusao"; property: Property }
   | { kind: "midia"; property: Property };
 
 function InventoryPage() {
-  const [open, setOpen] = useState(false);
-  const [statusMap, setStatusMap] = useState<Record<string, Status>>(INITIAL_STATUS);
+  const { session } = useSession();
+  const { properties, loading, refetch } = useProperties();
+  const { activities } = useActivities();
   const [modal, setModal] = useState<ModalState>({ kind: "none" });
 
-  const getStatus = (id: string): Status => statusMap[id] ?? "Ativo";
+  // Visitas reais: atividades do tipo "Visita" vinculadas ao imóvel
+  const visitasPorImovel = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const a of activities) {
+      if (a.property_id && a.tipo === "Visita") m[a.property_id] = (m[a.property_id] ?? 0) + 1;
+    }
+    return m;
+  }, [activities]);
 
-  const setStatus = (id: string, s: Status) => {
-    setStatusMap((m) => ({ ...m, [id]: s }));
+  async function applyStatus(p: Property, s: PropertyStatus) {
+    const ok = await updateProperty(p.id, { status: s });
+    if (ok) {
+      await refetch();
+      toast.success(`Status atualizado · ${p.nome}`, { description: `Agora "${s}".` });
+    } else {
+      toast.error("Não foi possível atualizar o status.");
+    }
+  }
+
+  const handleStatusPick = (p: Property, s: PropertyStatus) => {
+    if (s === "Vendido") return setModal({ kind: "venda", property: p });
+    if (s === "Excluído") return setModal({ kind: "exclusao", property: p });
+    applyStatus(p, s);
   };
 
-  const handleStatusPick = (p: Property, s: Status) => {
-    if (s === "Vendido") {
-      setModal({ kind: "venda", property: p });
-      return;
-    }
-    if (s === "Excluído") {
-      setModal({ kind: "exclusao", property: p });
-      return;
-    }
-    setStatus(p.id, s);
-    toast.success(`Status atualizado · ${p.id}`, { description: `Agora "${s}".` });
-  };
+  const marketplaceCount = properties.filter((p) => p.marketplace).length;
 
   return (
     <div className="space-y-6">
@@ -87,218 +99,184 @@ function InventoryPage() {
         <div>
           <h1 className="font-display text-2xl">Meu inventário</h1>
           <p className="text-sm text-muted-foreground">
-            {properties.length} imóveis ·{" "}
-            {properties.filter((p) => p.marketplace).length} disponíveis no marketplace B2C
+            {properties.length} {properties.length === 1 ? "imóvel" : "imóveis"} ·{" "}
+            {marketplaceCount} no marketplace B2C
           </p>
         </div>
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => setModal({ kind: "form", property: null })}
           className="inline-flex items-center gap-2 rounded-md bg-warm px-4 py-2.5 text-sm font-medium text-warm-foreground hover:brightness-110"
         >
           <Plus className="h-4 w-4" /> Adicionar imóvel
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {properties.map((p) => {
-          const status = getStatus(p.id);
-          const interessados = getInteressados(p.id);
-          const visitas = getVisitas(p.id);
-          const propostas = getPropostas(p.id);
-          const comissao = getComissao(p.valor);
-          const altaDemanda = isAltaDemanda(p);
-          const excluido = status === "Excluído";
-
-          return (
-            <article
-              key={p.id}
-              className={[
-                "overflow-hidden rounded-2xl border border-border bg-card transition",
-                altaDemanda ? "ring-1 ring-brand/30" : "",
-                excluido ? "opacity-60" : "",
-              ].join(" ")}
-            >
-              <div className="relative aspect-[4/3] overflow-hidden">
-                <img src={p.foto} alt={p.nome} className="h-full w-full object-cover" />
-                {p.marketplace && (
-                  <span className="absolute left-3 top-3 rounded-full bg-navy/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-navy-foreground">
-                    Marketplace B2C
-                  </span>
-                )}
-                {altaDemanda && (
-                  <span className="absolute left-3 top-10 inline-flex items-center gap-1 rounded-full bg-brand/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-white">
-                    <Flame className="h-3 w-3" /> Alta demanda
-                  </span>
-                )}
-                <span
-                  className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest ${STATUS_STYLES[status]}`}
-                >
-                  {status}
-                </span>
-              </div>
-
-              <div className="p-5">
-                <div className={`num font-display text-xl ${excluido ? "line-through" : ""}`}>
-                  {formatBRL(p.valor)}
-                </div>
-                <h3 className="mt-1 line-clamp-1 text-sm font-medium">{p.nome}</h3>
-                <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                  <MapPin className="h-3 w-3" /> {p.bairro}, {p.cidade}
-                </div>
-
-                {/* Performance */}
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                  <span className="inline-flex items-center gap-1">
-                    <Users className="h-3 w-3" /> {interessados} interessados
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <DoorOpen className="h-3 w-3" /> {visitas} visitas
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <FileText className="h-3 w-3" /> {propostas} propostas
-                  </span>
-                </div>
-
-                {/* Comissão */}
-                <div className="mt-2 text-xs font-medium text-emerald-700">
-                  Comissão estimada {formatBRL(comissao)}
-                </div>
-
-                {/* Specs */}
-                <div className="mt-4 flex items-center gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1"><Bed className="h-3.5 w-3.5" />{p.quartos}</span>
-                  <span className="inline-flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{p.suites}</span>
-                  <span className="inline-flex items-center gap-1"><Car className="h-3.5 w-3.5" />{p.vagas}</span>
-                  <span className="inline-flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" />{p.area}m²</span>
-                </div>
-
-                {/* Ações rápidas */}
-                <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
-                  <Link
-                    to="/app/imoveis/$id"
-                    params={{ id: p.id }}
-                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    <span>Ver</span>
-                  </Link>
-                  <CardAction
-                    icon={<Pencil className="h-3.5 w-3.5" />}
-                    label="Editar"
-                    onClick={() => toast("Editar imóvel", { description: p.id })}
-                  />
-                  <CardAction
-                    icon={<Share2 className="h-3.5 w-3.5" />}
-                    label="Compartilhar"
-                    onClick={() => toast.success("Link copiado", { description: p.nome })}
-                  />
-                  <CardAction
-                    icon={<ImageIcon className="h-3.5 w-3.5" />}
-                    label="Mídia"
-                    onClick={() => setModal({ kind: "midia", property: p })}
-                  />
-
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent">
-                        Status <ChevronDown className="h-3 w-3" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-48 p-1" align="end">
-                      {STATUSES.map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => handleStatusPick(p, s)}
-                          className={`flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent ${
-                            s === "Excluído" ? "text-rose-700" : ""
-                          }`}
-                        >
-                          <span>{s}</span>
-                          {s === status && <span className="text-[10px] opacity-60">atual</span>}
-                        </button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-
-      {/* Modal de cadastro */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl bg-card p-8 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-2xl">Adicionar imóvel</h2>
-                <p className="text-sm text-muted-foreground">Será disponibilizado também no marketplace B2C.</p>
-              </div>
-              <button onClick={() => setOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-surface">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mb-5 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-              Este imóvel será exibido no marketplace B2C e poderá receber leads de compradores interessados.
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setOpen(false);
-                toast.success("Imóvel publicado");
-              }}
-              className="grid grid-cols-2 gap-4"
-            >
-              <Field label="Nome do imóvel" placeholder="Apartamento 3 quartos em Icaraí" full />
-              <Field label="Endereço" placeholder="Rua Tavares de Macedo, 421" full />
-              <Field label="Bairro" placeholder="Icaraí" />
-              <Field label="Cidade" placeholder="Niterói" />
-              <Field label="Valor (R$)" placeholder="850000" />
-              <Field label="Área (m²)" placeholder="110" />
-              <Field label="Quartos" placeholder="3" />
-              <Field label="Suítes" placeholder="1" />
-              <Field label="Vagas" placeholder="2" />
-              <div className="col-span-2">
-                <label className="mb-1 block text-xs uppercase tracking-widest text-muted-foreground">
-                  Tipo de cliente ideal <span className="text-muted-foreground/60">(opcional)</span>
-                </label>
-                <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
-                  <option value="">Selecione...</option>
-                  <option>Família</option>
-                  <option>Investidor</option>
-                  <option>Jovem casal</option>
-                  <option>Comprador de primeira moradia</option>
-                  <option>Alto padrão</option>
-                </select>
-              </div>
-              <div className="col-span-2">
-                <label className="mb-1 block text-xs uppercase tracking-widest text-muted-foreground">Descrição</label>
-                <textarea
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                  rows={4}
-                  placeholder="Imóvel reformado, varanda ampla..."
-                />
-              </div>
-              <div className="col-span-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setOpen(false)} className="rounded-md border border-border px-4 py-2 text-sm">Cancelar</button>
-                <button className="rounded-md bg-navy px-4 py-2 text-sm text-navy-foreground">Publicar imóvel</button>
-              </div>
-            </form>
+      {loading ? (
+        <div className="grid place-items-center py-24 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : properties.length === 0 ? (
+        <div className="grid place-items-center gap-3 rounded-2xl border border-dashed border-border bg-card py-24 text-center">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-surface text-muted-foreground">
+            <Building2 className="h-7 w-7" />
           </div>
+          <div className="font-display text-lg">Nenhum imóvel ainda</div>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Cadastre seu primeiro imóvel para começar a receber leads e acompanhar sua performance.
+          </p>
+          <button
+            onClick={() => setModal({ kind: "form", property: null })}
+            className="mt-1 inline-flex items-center gap-2 rounded-md bg-navy px-4 py-2 text-sm text-navy-foreground"
+          >
+            <Plus className="h-4 w-4" /> Adicionar imóvel
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {properties.map((p) => {
+            const status = p.status;
+            const visitas = visitasPorImovel[p.id] ?? 0;
+            const comissao = getComissao(p.valor);
+            const altaDemanda = isAltaDemanda(p);
+            const excluido = status === "Excluído";
+
+            return (
+              <article
+                key={p.id}
+                className={[
+                  "overflow-hidden rounded-2xl border border-border bg-card transition",
+                  altaDemanda ? "ring-1 ring-brand/30" : "",
+                  excluido ? "opacity-60" : "",
+                ].join(" ")}
+              >
+                <div className="relative aspect-[4/3] overflow-hidden bg-surface">
+                  {p.foto ? (
+                    <img src={p.foto} alt={p.nome} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-muted-foreground">
+                      <ImageIcon className="h-8 w-8" />
+                    </div>
+                  )}
+                  {p.marketplace && (
+                    <span className="absolute left-3 top-3 rounded-full bg-navy/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-navy-foreground">
+                      Marketplace B2C
+                    </span>
+                  )}
+                  {altaDemanda && (
+                    <span className="absolute left-3 top-10 inline-flex items-center gap-1 rounded-full bg-brand/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-white">
+                      <Flame className="h-3 w-3" /> Alta demanda
+                    </span>
+                  )}
+                  <span
+                    className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest ${STATUS_STYLES[status]}`}
+                  >
+                    {status}
+                  </span>
+                </div>
+
+                <div className="p-5">
+                  <div className={`num font-display text-xl ${excluido ? "line-through" : ""}`}>
+                    {formatBRL(p.valor)}
+                  </div>
+                  <h3 className="mt-1 line-clamp-1 text-sm font-medium">{p.nome}</h3>
+                  <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3" /> {[p.bairro, p.cidade].filter(Boolean).join(", ") || "—"}
+                  </div>
+
+                  {/* Performance real */}
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <DoorOpen className="h-3 w-3" /> {visitas} {visitas === 1 ? "visita" : "visitas"}
+                    </span>
+                    <span className="text-xs font-medium text-emerald-700">
+                      Comissão estimada {formatBRL(comissao)}
+                    </span>
+                  </div>
+
+                  {/* Specs */}
+                  <div className="mt-4 flex items-center gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1"><Bed className="h-3.5 w-3.5" />{p.quartos}</span>
+                    <span className="inline-flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{p.suites}</span>
+                    <span className="inline-flex items-center gap-1"><Car className="h-3.5 w-3.5" />{p.vagas}</span>
+                    <span className="inline-flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" />{p.area}m²</span>
+                  </div>
+
+                  {/* Ações rápidas */}
+                  <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
+                    <Link
+                      to="/app/imoveis/$id"
+                      params={{ id: p.id }}
+                      className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Ver</span>
+                    </Link>
+                    <CardAction
+                      icon={<Pencil className="h-3.5 w-3.5" />}
+                      label="Editar"
+                      onClick={() => setModal({ kind: "form", property: p })}
+                    />
+                    <CardAction
+                      icon={<Share2 className="h-3.5 w-3.5" />}
+                      label="Compartilhar"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(`${location.origin}/app/imoveis/${p.id}`);
+                        toast.success("Link copiado", { description: p.nome });
+                      }}
+                    />
+                    <CardAction
+                      icon={<ImageIcon className="h-3.5 w-3.5" />}
+                      label="Mídia"
+                      onClick={() => setModal({ kind: "midia", property: p })}
+                    />
+
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] hover:bg-accent">
+                          Status <ChevronDown className="h-3 w-3" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-1" align="end">
+                        {STATUSES.map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => handleStatusPick(p, s)}
+                            className={`flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent ${
+                              s === "Excluído" ? "text-rose-700" : ""
+                            }`}
+                          >
+                            <span>{s}</span>
+                            {s === status && <span className="text-[10px] opacity-60">atual</span>}
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
+
+      {/* Modal cadastro / edição */}
+      <PropertyFormModal
+        state={modal}
+        brokerId={session?.user.id}
+        onClose={() => setModal({ kind: "none" })}
+        onSaved={async () => {
+          setModal({ kind: "none" });
+          await refetch();
+        }}
+      />
 
       {/* Modal Venda */}
       <VendaModal
         state={modal}
         onClose={() => setModal({ kind: "none" })}
-        onConfirm={(p) => {
-          setStatus(p.id, "Vendido");
+        onConfirm={async (p) => {
+          await applyStatus(p, "Vendido");
           setModal({ kind: "none" });
-          toast.success(`Venda registrada · ${p.id}`);
         }}
       />
 
@@ -306,10 +284,15 @@ function InventoryPage() {
       <ExclusaoModal
         state={modal}
         onClose={() => setModal({ kind: "none" })}
-        onConfirm={(p) => {
-          setStatus(p.id, "Excluído");
+        onConfirm={async (p) => {
+          const ok = await deleteProperty(p.id);
           setModal({ kind: "none" });
-          toast.success(`Imóvel removido do inventário · ${p.id}`);
+          if (ok) {
+            await refetch();
+            toast.success(`Imóvel removido do inventário · ${p.nome}`);
+          } else {
+            toast.error("Não foi possível remover o imóvel.");
+          }
         }}
       />
 
@@ -336,6 +319,126 @@ function CardAction({
       {icon}
       <span>{label}</span>
     </button>
+  );
+}
+
+function PropertyFormModal({
+  state,
+  brokerId,
+  onClose,
+  onSaved,
+}: {
+  state: ModalState;
+  brokerId: string | undefined;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isOpen = state.kind === "form";
+  const editing = state.kind === "form" ? state.property : null;
+
+  const [form, setForm] = useState<PropertyInput>(EMPTY_PROPERTY);
+  const [saving, setSaving] = useState(false);
+  // reseta o formulário sempre que abre (novo) ou muda o imóvel editado
+  const formKey = editing?.id ?? (isOpen ? "novo" : "fechado");
+  useEffect(() => {
+    if (!isOpen) return;
+    setForm(
+      editing
+        ? {
+            nome: editing.nome,
+            endereco: editing.endereco ?? "",
+            bairro: editing.bairro ?? "",
+            cidade: editing.cidade ?? "",
+            valor: editing.valor,
+            quartos: editing.quartos,
+            suites: editing.suites,
+            vagas: editing.vagas,
+            area: editing.area,
+            descricao: editing.descricao ?? "",
+            destaque: editing.destaque,
+            marketplace: editing.marketplace,
+            foto: editing.foto ?? "",
+            status: editing.status,
+          }
+        : EMPTY_PROPERTY,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formKey]);
+
+  const upd = <K extends keyof PropertyInput>(k: K, v: PropertyInput[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!brokerId) return;
+    if (!form.nome.trim()) {
+      toast.error("Informe o nome do imóvel.");
+      return;
+    }
+    setSaving(true);
+    const result = editing
+      ? await updateProperty(editing.id, form)
+      : await createProperty(brokerId, form);
+    setSaving(false);
+    if (result) {
+      toast.success(editing ? "Imóvel atualizado" : "Imóvel cadastrado");
+      onSaved();
+    } else {
+      toast.error("Não foi possível salvar o imóvel.");
+    }
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{editing ? "Editar imóvel" : "Adicionar imóvel"}</DialogTitle>
+          <DialogDescription>
+            {form.marketplace
+              ? "Este imóvel será exibido no marketplace B2C e poderá receber leads."
+              : "Ative o marketplace para receber leads de compradores."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+          <FormField label="Nome do imóvel" full value={form.nome} onChange={(v) => upd("nome", v)} placeholder="Apartamento 3 quartos em Icaraí" />
+          <FormField label="Endereço" full value={form.endereco ?? ""} onChange={(v) => upd("endereco", v)} placeholder="Rua Tavares de Macedo, 421" />
+          <FormField label="Bairro" value={form.bairro ?? ""} onChange={(v) => upd("bairro", v)} placeholder="Icaraí" />
+          <FormField label="Cidade" value={form.cidade ?? ""} onChange={(v) => upd("cidade", v)} placeholder="Niterói" />
+          <FormField label="Valor (R$)" type="number" value={String(form.valor || "")} onChange={(v) => upd("valor", Number(v) || 0)} placeholder="850000" />
+          <FormField label="Área (m²)" type="number" value={String(form.area || "")} onChange={(v) => upd("area", Number(v) || 0)} placeholder="110" />
+          <FormField label="Quartos" type="number" value={String(form.quartos || "")} onChange={(v) => upd("quartos", Number(v) || 0)} placeholder="3" />
+          <FormField label="Suítes" type="number" value={String(form.suites || "")} onChange={(v) => upd("suites", Number(v) || 0)} placeholder="1" />
+          <FormField label="Vagas" type="number" value={String(form.vagas || "")} onChange={(v) => upd("vagas", Number(v) || 0)} placeholder="2" />
+          <FormField label="Foto (URL)" value={form.foto ?? ""} onChange={(v) => upd("foto", v)} placeholder="https://..." />
+          <div className="col-span-2">
+            <Label>Descrição</Label>
+            <textarea
+              value={form.descricao ?? ""}
+              onChange={(e) => upd("descricao", e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              rows={4}
+              placeholder="Imóvel reformado, varanda ampla..."
+            />
+          </div>
+          <label className="col-span-2 inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.marketplace}
+              onChange={(e) => upd("marketplace", e.target.checked)}
+            />
+            Disponibilizar no marketplace B2C
+          </label>
+          <DialogFooter className="col-span-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" disabled={saving}>
+              {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+              {editing ? "Salvar alterações" : "Cadastrar imóvel"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -370,8 +473,8 @@ function VendaModal({
             }}
             className="grid grid-cols-2 gap-4"
           >
-            <Field label="Data da venda" type="date" />
-            <Field label="Valor final (R$)" type="number" defaultValue={valorPadrao} />
+            <FormFieldStatic label="Data da venda" type="date" />
+            <FormFieldStatic label="Valor final (R$)" type="number" defaultValue={valorPadrao} />
             <div className="col-span-2">
               <Label>Origem do comprador</Label>
               <select className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
@@ -419,15 +522,15 @@ function ExclusaoModal({
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Registrar exclusão do imóvel</DialogTitle>
+          <DialogTitle>Remover imóvel do inventário</DialogTitle>
           <DialogDescription>
-            Antes de remover este imóvel do inventário, informe o motivo da exclusão para manter o histórico da operação.
+            Informe o motivo da exclusão. Esta ação remove o imóvel definitivamente.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Esta ação ficará registrada no histórico do inventário e não poderá ser desfeita silenciosamente.</p>
+          <p>Esta ação não poderá ser desfeita.</p>
         </div>
 
         {property && (
@@ -449,13 +552,9 @@ function ExclusaoModal({
                 <option>Outro</option>
               </select>
             </div>
-            <RadioRow name="ubroker-exc" label="Houve negociação iniciada pela Ubroker?" />
             <div className="col-span-2">
-              <Label>
-                Observações <span className="text-rose-600">*</span>
-              </Label>
+              <Label>Observações</Label>
               <textarea
-                required
                 rows={3}
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                 placeholder="Descreva o motivo com mais detalhes..."
@@ -507,16 +606,18 @@ function MidiaModal({ state, onClose }: { state: ModalState; onClose: () => void
               <Video className="mr-1 h-4 w-4" /> Adicionar vídeo
             </Button>
 
-            <div>
-              <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
-                Galeria atual
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                <img src={property.foto} alt="" className="aspect-square rounded-md object-cover" />
-                <div className="aspect-square rounded-md bg-surface" />
-                <div className="aspect-square rounded-md bg-surface" />
+            {property.foto && (
+              <div>
+                <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
+                  Galeria atual
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <img src={property.foto} alt="" className="aspect-square rounded-md object-cover" />
+                  <div className="aspect-square rounded-md bg-surface" />
+                  <div className="aspect-square rounded-md bg-surface" />
+                </div>
               </div>
-            </div>
+            )}
 
             <DialogFooter>
               <Button type="button" onClick={onClose}>Fechar</Button>
@@ -552,27 +653,51 @@ function RadioRow({ name, label }: { name: string; label: string }) {
   );
 }
 
-function Field({
+function FormField({
   label,
+  value,
+  onChange,
   placeholder,
   full,
+  type,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  full?: boolean;
+  type?: string;
+}) {
+  return (
+    <div className={full ? "col-span-2" : ""}>
+      <Label>{label}</Label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+function FormFieldStatic({
+  label,
   type,
   defaultValue,
 }: {
   label: string;
-  placeholder?: string;
-  full?: boolean;
   type?: string;
   defaultValue?: string;
 }) {
   return (
-    <div className={full ? "col-span-2" : ""}>
-      <label className="mb-1 block text-xs uppercase tracking-widest text-muted-foreground">{label}</label>
+    <div>
+      <Label>{label}</Label>
       <input
         type={type}
         defaultValue={defaultValue}
         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-        placeholder={placeholder}
       />
     </div>
   );

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Copy, Share2, Sparkles, TrendingUp, Gift, CheckCircle2, Users } from "lucide-react";
 import { toast } from "sonner";
-import { referrals, formatBRL } from "@/data/mock";
-import { useBrokerProfile } from "@/lib/auth";
+import { formatBRL } from "@/lib/format";
+import { useReferrals } from "@/lib/referrals";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 
@@ -10,87 +10,27 @@ export const Route = createFileRoute("/app/indicacoes")({
   component: ReferralsPage,
 });
 
-type Indicado = {
-  nome: string;
-  agencia: string;
-  dataEntrada: string;
-  produto: "Combo IA + Inbox" | "IA Assistente" | "Inbox";
-  status: "Ativo" | "Em teste" | "Cancelado";
-  mrr: number;
-  situacao: "Gerando receita" | "Aguardando conversão";
-};
-
-const indicadosCompletos: Indicado[] = [
-  {
-    nome: "Joana Maciel",
-    agencia: "Maciel Imóveis",
-    dataEntrada: "12/jul",
-    produto: "Combo IA + Inbox",
-    status: "Ativo",
-    mrr: 120,
-    situacao: "Gerando receita",
-  },
-  {
-    nome: "Pedro Verissimo",
-    agencia: "Verissimo & Co.",
-    dataEntrada: "03/ago",
-    produto: "IA Assistente",
-    status: "Ativo",
-    mrr: 120,
-    situacao: "Gerando receita",
-  },
-  {
-    nome: "Carla Fontes",
-    agencia: "Fontes Boutique",
-    dataEntrada: "21/ago",
-    produto: "Combo IA + Inbox",
-    status: "Ativo",
-    mrr: 120,
-    situacao: "Gerando receita",
-  },
-  {
-    nome: "Tiago Sá",
-    agencia: "TS Negócios",
-    dataEntrada: "09/set",
-    produto: "Combo IA + Inbox",
-    status: "Ativo",
-    mrr: 120,
-    situacao: "Gerando receita",
-  },
-  {
-    nome: "Carla Souza",
-    agencia: "Souza Consultoria",
-    dataEntrada: "02/out",
-    produto: "Inbox",
-    status: "Em teste",
-    mrr: 0,
-    situacao: "Aguardando conversão",
-  },
-];
+const MENSALIDADE = 149;
+const MRR_PRO = 120;
 
 function ReferralsPage() {
-  const profile = useBrokerProfile();
-  const referralLink = profile?.referral_slug
-    ? `ubroker.com.br/r/${profile.referral_slug}`
-    : referrals.link;
+  const { link, referred, mrrTotal, ativos } = useReferrals();
+  const referralLink = link ?? "Gerando seu link…";
 
   function copyLink() {
+    if (!link) return;
     navigator.clipboard
       .writeText(referralLink)
       .then(() => toast.success("Link copiado!"))
       .catch(() => toast.error("Não foi possível copiar o link"));
   }
 
-  const mrrTotal = referrals.ativos.reduce((a, b) => a + b.mrr, 0);
-  const mensalidade = 600;
-  const totalAcumulado = mrrTotal * 4;
-  const totalIndicados = 9;
-  const ativos = referrals.ativos.length;
-  const conversaoPct = Math.round((ativos / totalIndicados) * 100);
-  const coberturaPct = Math.min(100, Math.round((mrrTotal / mensalidade) * 100));
-  const faltam = Math.max(0, mensalidade - mrrTotal);
-  const metaProxima = 840;
-  const progressoMeta = Math.round((mrrTotal / metaProxima) * 100);
+  const totalIndicados = referred.length;
+  const conversaoPct = totalIndicados > 0 ? Math.round((ativos / totalIndicados) * 100) : 0;
+  const coberturaPct = Math.min(100, Math.round((mrrTotal / MENSALIDADE) * 100));
+  const faltam = Math.max(0, MENSALIDADE - mrrTotal);
+  const metaProxima = mrrTotal + 3 * MRR_PRO;
+  const progressoMeta = metaProxima > 0 ? Math.round((mrrTotal / metaProxima) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -114,7 +54,7 @@ function ReferralsPage() {
         </h2>
         <p className="mt-3 max-w-xl text-white/70">
           Indique corretores para a Ubroker e ganhe sobre as assinaturas das ferramentas. Você
-          recebe <span className="text-warm">30% recorrentes</span> sobre cada assinatura ativa.
+          recebe <span className="text-warm">recorrência</span> sobre cada assinatura ativa.
         </p>
 
         <div className="mt-8 flex flex-col gap-3 rounded-xl bg-white/10 p-4 backdrop-blur sm:flex-row sm:items-center">
@@ -122,22 +62,29 @@ function ReferralsPage() {
           <div className="flex gap-2">
             <button
               onClick={copyLink}
-              className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm text-ink"
+              disabled={!link}
+              className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm text-ink disabled:opacity-60"
             >
               <Copy className="h-4 w-4" /> Copiar link
             </button>
-            <button className="inline-flex items-center gap-2 rounded-md bg-warm px-4 py-2 text-sm text-warm-foreground">
+            <button
+              onClick={() => {
+                if (link && navigator.share) navigator.share({ url: referralLink }).catch(() => {});
+                else copyLink();
+              }}
+              className="inline-flex items-center gap-2 rounded-md bg-warm px-4 py-2 text-sm text-warm-foreground"
+            >
               <Share2 className="h-4 w-4" /> Compartilhar
             </button>
           </div>
         </div>
       </div>
 
-      {/* Resumo de performance — 4 cards */}
+      {/* Resumo de performance */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Stat label="Indicados ativos" value={`${ativos}`} />
         <Stat label="Receita recorrente mensal" value={`${formatBRL(mrrTotal)}/mês`} />
-        <Stat label="Total acumulado" value={formatBRL(totalAcumulado)} />
+        <Stat label="Total de indicados" value={`${totalIndicados}`} />
         <Stat
           label="Conversão"
           value={`${ativos} de ${totalIndicados}`}
@@ -145,7 +92,7 @@ function ReferralsPage() {
         />
       </div>
 
-      {/* Bloco de incentivo — warm/orange */}
+      {/* Bloco de incentivo */}
       <div className="rounded-2xl border border-orange-200 border-l-4 border-l-warm bg-orange-50/60 p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-3">
@@ -154,7 +101,9 @@ function ReferralsPage() {
             </div>
             <div>
               <div className="font-display text-lg text-ink">
-                Você está a {formatBRL(faltam)} de não pagar nada pelo sistema.
+                {faltam > 0
+                  ? `Você está a ${formatBRL(faltam)} de não pagar nada pelo sistema.`
+                  : "Suas indicações já cobrem toda a sua mensalidade!"}
               </div>
               <div className="mt-1 text-sm text-muted-foreground">
                 Suas indicações já cobriram{" "}
@@ -165,9 +114,6 @@ function ReferralsPage() {
               </div>
             </div>
           </div>
-          <Button className="bg-warm text-warm-foreground hover:bg-warm/90">
-            Indicar mais corretores
-          </Button>
         </div>
       </div>
 
@@ -180,8 +126,8 @@ function ReferralsPage() {
         <ol className="mt-5 space-y-4">
           {[
             "Você compartilha seu link com outros corretores.",
-            "O corretor indicado entra na Ubroker.",
-            "Se ele contratar IA Assistente ou Inbox, você ganha recorrência.",
+            "O corretor indicado entra na Ubroker pelo seu link.",
+            "Se ele assinar o plano Pro, você ganha recorrência.",
             "Se seus ganhos cobrirem sua mensalidade, você não paga nada.",
             "O valor que ultrapassar sua mensalidade pode ser recebido em dinheiro.",
           ].map((step, i) => (
@@ -200,60 +146,67 @@ function ReferralsPage() {
         <div className="flex items-center justify-between border-b border-border p-5">
           <div>
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Indicados</div>
-            <div className="font-display text-lg">Sua rede ativa</div>
+            <div className="font-display text-lg">Sua rede</div>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="h-4 w-4" /> {indicadosCompletos.length} no total
+            <Users className="h-4 w-4" /> {totalIndicados} no total
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-widest text-muted-foreground">
-              <tr className="border-b border-border">
-                <th className="px-5 py-3">Corretor</th>
-                <th className="px-5 py-3">Entrada</th>
-                <th className="px-5 py-3">Produto</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Receita</th>
-                <th className="px-5 py-3">Situação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {indicadosCompletos.map((r, i) => (
-                <tr key={i} className="border-b border-border last:border-0">
-                  <td className="px-5 py-3">
-                    <div className="font-medium">{r.nome}</div>
-                    <div className="text-xs text-muted-foreground">{r.agencia}</div>
-                  </td>
-                  <td className="px-5 py-3 text-muted-foreground">{r.dataEntrada}</td>
-                  <td className="px-5 py-3">
-                    <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs text-blue-800">
-                      {r.produto}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <StatusChip status={r.status} />
-                  </td>
-                  <td className="num px-5 py-3 text-right font-medium">
-                    {r.mrr > 0 ? `${formatBRL(r.mrr)}/mês` : "—"}
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={
-                        r.situacao === "Gerando receita"
-                          ? "inline-flex items-center gap-1 text-xs text-emerald-700"
-                          : "inline-flex items-center gap-1 text-xs text-amber-700"
-                      }
-                    >
-                      {r.situacao === "Gerando receita" && <CheckCircle2 className="h-3.5 w-3.5" />}
-                      {r.situacao}
-                    </span>
-                  </td>
+        {totalIndicados === 0 ? (
+          <p className="p-8 text-center text-sm text-muted-foreground">
+            Você ainda não indicou nenhum corretor. Compartilhe seu link acima para começar a gerar
+            receita recorrente.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs uppercase tracking-widest text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="px-5 py-3">Corretor</th>
+                  <th className="px-5 py-3">Plano</th>
+                  <th className="px-5 py-3 text-right">Receita</th>
+                  <th className="px-5 py-3">Situação</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {referred.map((r) => {
+                  const gerando = r.mrr > 0;
+                  return (
+                    <tr key={r.id} className="border-b border-border last:border-0">
+                      <td className="px-5 py-3">
+                        <div className="font-medium">{r.nome}</div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs ${
+                            r.plano === "Pro" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {r.plano}
+                        </span>
+                      </td>
+                      <td className="num px-5 py-3 text-right font-medium">
+                        {gerando ? `${formatBRL(r.mrr)}/mês` : "—"}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={
+                            gerando
+                              ? "inline-flex items-center gap-1 text-xs text-emerald-700"
+                              : "inline-flex items-center gap-1 text-xs text-amber-700"
+                          }
+                        >
+                          {gerando && <CheckCircle2 className="h-3.5 w-3.5" />}
+                          {gerando ? "Gerando receita" : "Aguardando conversão"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Potencial de crescimento */}
@@ -262,22 +215,18 @@ function ReferralsPage() {
           <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> Potencial de crescimento
         </div>
         <div className="mt-2 font-display text-xl text-ink">
-          Se você ativar mais 3 corretores, pode gerar {formatBRL(metaProxima)}/mês em recorrência.
+          Se você ativar mais 3 corretores Pro, pode gerar {formatBRL(metaProxima)}/mês em recorrência.
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">
-              Ganho atual
-            </div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">Ganho atual</div>
             <div className="num mt-1 font-display text-2xl text-ink">
               {formatBRL(mrrTotal)}
               <span className="text-base text-muted-foreground">/mês</span>
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">
-              Meta próxima
-            </div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">Meta próxima</div>
             <div className="num mt-1 font-display text-2xl text-emerald-700">
               {formatBRL(metaProxima)}
               <span className="text-base text-muted-foreground">/mês</span>
@@ -303,13 +252,4 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
       {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
     </div>
   );
-}
-
-function StatusChip({ status }: { status: "Ativo" | "Em teste" | "Cancelado" }) {
-  const map: Record<typeof status, string> = {
-    Ativo: "bg-emerald-50 text-emerald-700",
-    "Em teste": "bg-amber-50 text-amber-700",
-    Cancelado: "bg-muted text-muted-foreground",
-  };
-  return <span className={`rounded-full px-2 py-0.5 text-xs ${map[status]}`}>{status}</span>;
 }
