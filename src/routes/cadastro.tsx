@@ -59,6 +59,9 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/cadastro")({
+  validateSearch: (search: Record<string, unknown>): { ref?: string } => ({
+    ref: typeof search.ref === "string" ? search.ref : undefined,
+  }),
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const { data } = await supabase.auth.getSession();
@@ -78,6 +81,7 @@ const STEPS = [
 
 function CadastroPage() {
   const navigate = useNavigate();
+  const { ref } = Route.useSearch();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [data, setData] = useState<Partial<SignupPayload>>({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -85,7 +89,9 @@ function CadastroPage() {
   const [emailPendente, setEmailPendente] = useState<string | null>(null);
 
   async function finish(step3: Step3Values) {
-    const payload = { ...data, ...step3 } as SignupPayload;
+    const payload = { ...data, ...step3, referredBySlug: ref } as SignupPayload & {
+      referredBySlug?: string;
+    };
     setSubmitting(true);
     const result = await signUpBroker(payload, avatarFile);
     setSubmitting(false);

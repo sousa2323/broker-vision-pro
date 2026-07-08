@@ -60,6 +60,7 @@ export type Step1Values = z.infer<typeof step1Schema>;
 export type Step2Values = z.infer<typeof step2Schema>;
 export type Step3Values = z.infer<typeof step3Schema>;
 export type SignupPayload = Step1Values & Step2Values & Step3Values;
+export type SignupPayloadWithReferral = SignupPayload & { referredBySlug?: string };
 
 // ---------------------------------------------------------------------------
 // Perfil (broker_profiles)
@@ -87,7 +88,8 @@ export type BrokerProfile = {
 /** Monta a linha de broker_profiles a partir do payload do cadastro. */
 function profileRowFromPayload(
   userId: string,
-  p: Omit<SignupPayload, "password" | "confirmPassword">,
+  p: Omit<SignupPayloadWithReferral, "password" | "confirmPassword">,
+  referredBy: string | null = null,
 ) {
   return {
     id: userId,
@@ -104,8 +106,28 @@ function profileRowFromPayload(
     availability: p.availability,
     lead_limit: p.leadLimit,
     plan: p.plan,
+    referred_by: referredBy,
     terms_accepted_at: new Date().toISOString(),
   };
+}
+
+async function resolveReferrerId(slug: string | undefined, newUserId: string): Promise<string | null> {
+  const cleanSlug = slug?.trim();
+  if (!cleanSlug) return null;
+
+  const { data, error } = await supabase
+    .from("broker_directory")
+    .select("id")
+    .eq("referral_slug", cleanSlug)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Falha ao resolver indicação:", error.message);
+    return null;
+  }
+
+  const referrerId = (data?.id as string | undefined) ?? null;
+  return referrerId && referrerId !== newUserId ? referrerId : null;
 }
 
 /**
@@ -174,7 +196,7 @@ export async function uploadAvatar(userId: string, file: File): Promise<string |
  * Se `avatarFile` for informado, o upload acontece após a sessão existir.
  */
 export async function signUpBroker(
-  payload: SignupPayload,
+  payload: SignupPayloadWithReferral,
   avatarFile?: File | null,
 ): Promise<SignUpResult> {
   const { password, confirmPassword: _confirm, ...profile } = payload;
@@ -205,7 +227,12 @@ export async function signUpBroker(
     }
 
     const userId = data.user.id;
-    const row = profileRowFromPayload(userId, { ...profile, avatarUrl: avatarUrl ?? "" });
+    const referredBy = await resolveReferrerId(profile.referredBySlug, userId);
+    const row = profileRowFromPayload(
+      userId,
+      { ...profile, avatarUrl: avatarUrl ?? "" },
+      referredBy,
+    );
     // Se falhar, a conta já existe; o perfil será recriado via ensureProfile no próximo login
     await withUniqueSlug(payload.fullName, (slug) =>
       supabase
@@ -266,6 +293,7 @@ export async function ensureProfile(session: Session): Promise<BrokerProfile | n
     availability: m.availability ?? null,
     lead_limit: m.leadLimit ?? null,
     plan: m.plan === "Pro" ? "Pro" : "Free",
+    referred_by: await resolveReferrerId(m.referredBySlug, session.user.id),
     terms_accepted_at: m.termsAcceptedAt ?? new Date().toISOString(),
   };
 

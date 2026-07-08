@@ -16,6 +16,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as AppPipelineRouteImport } from './routes/app.pipeline'
 import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppLeadsRouteImport } from './routes/app.leads'
@@ -76,6 +77,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const RSlugRoute = RSlugRouteImport.update({
+  id: '/r/$slug',
+  path: '/r/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppPipelineRoute = AppPipelineRouteImport.update({
   id: '/pipeline',
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/app/leads': typeof AppLeadsRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/pipeline': typeof AppPipelineRoute
+  '/r/$slug': typeof RSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/app/imoveis/$id': typeof AppImoveisIdRoute
@@ -261,6 +268,7 @@ export interface FileRoutesByTo {
   '/app/leads': typeof AppLeadsRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/pipeline': typeof AppPipelineRoute
+  '/r/$slug': typeof RSlugRoute
   '/admin': typeof AdminIndexRoute
   '/app': typeof AppIndexRoute
   '/app/imoveis/$id': typeof AppImoveisIdRoute
@@ -296,6 +304,7 @@ export interface FileRoutesById {
   '/app/leads': typeof AppLeadsRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/pipeline': typeof AppPipelineRoute
+  '/r/$slug': typeof RSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/app/': typeof AppIndexRoute
   '/app/imoveis/$id': typeof AppImoveisIdRoute
@@ -332,6 +341,7 @@ export interface FileRouteTypes {
     | '/app/leads'
     | '/app/perfil'
     | '/app/pipeline'
+    | '/r/$slug'
     | '/admin/'
     | '/app/'
     | '/app/imoveis/$id'
@@ -364,6 +374,7 @@ export interface FileRouteTypes {
     | '/app/leads'
     | '/app/perfil'
     | '/app/pipeline'
+    | '/r/$slug'
     | '/admin'
     | '/app'
     | '/app/imoveis/$id'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/app/leads'
     | '/app/perfil'
     | '/app/pipeline'
+    | '/r/$slug'
     | '/admin/'
     | '/app/'
     | '/app/imoveis/$id'
@@ -413,6 +425,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   CadastroRoute: typeof CadastroRoute
   LoginRoute: typeof LoginRoute
+  RSlugRoute: typeof RSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -465,6 +478,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/r/$slug': {
+      id: '/r/$slug'
+      path: '/r/$slug'
+      fullPath: '/r/$slug'
+      preLoaderRoute: typeof RSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/app/pipeline': {
       id: '/app/pipeline'
@@ -720,6 +740,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   CadastroRoute: CadastroRoute,
   LoginRoute: LoginRoute,
+  RSlugRoute: RSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

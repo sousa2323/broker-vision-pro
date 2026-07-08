@@ -57,7 +57,8 @@ export function useReferrals() {
   }, [brokerId]);
 
   const slug = profile?.referral_slug ?? null;
-  const link = slug ? `ubroker.com.br/r/${slug}` : null;
+  const origin = typeof window === "undefined" ? "https://ubroker.com.br" : window.location.origin;
+  const link = slug ? `${origin}/r/${slug}` : null;
   const mrrTotal = referred.reduce((s, r) => s + r.mrr, 0);
   const ativos = referred.filter((r) => r.plano === "Pro").length;
 
