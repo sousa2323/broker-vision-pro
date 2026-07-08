@@ -24,10 +24,51 @@ import {
   LogOut,
 } from "lucide-react";
 import { UbrokerLogo } from "@/components/ubroker-logo";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { broker } from "@/data/mock";
 import { supabase } from "@/lib/supabase";
-import { useBrokerProfile } from "@/lib/auth";
+import { useBrokerProfile, type BrokerProfile } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+
+/** Iniciais (até 2) a partir do nome completo, para o fallback do avatar. */
+function initials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+/**
+ * Avatar do corretor logado. Enquanto o perfil carrega (`profile === null`),
+ * mostra um ícone neutro — nunca a foto/nome fictício do mock. Com perfil,
+ * usa a foto real e cai nas iniciais quando não há `avatar_url`.
+ */
+function UserAvatar({
+  profile,
+  className,
+  fallbackClassName,
+}: {
+  profile: BrokerProfile | null;
+  className?: string;
+  fallbackClassName?: string;
+}) {
+  return (
+    <Avatar className={className}>
+      {profile?.avatar_url ? (
+        <AvatarImage src={profile.avatar_url} alt="" className="object-cover" />
+      ) : null}
+      <AvatarFallback className={fallbackClassName}>
+        {profile ? (
+          <span className="text-xs font-medium">{initials(profile.full_name)}</span>
+        ) : (
+          <User className="h-4 w-4" />
+        )}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
 
 export const Route = createFileRoute("/app")({
   beforeLoad: async ({ location }) => {
@@ -94,7 +135,6 @@ function AppLayout() {
   // Perfil real com fallback no mock (protótipo) enquanto carrega / para campos vazios
   const displayName = profile?.full_name ?? broker.name;
   const displayPlan = profile?.plan ?? broker.plan;
-  const displayAvatar = profile?.avatar_url || broker.avatar;
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -141,7 +181,11 @@ function AppLayout() {
         </nav>
         <div className="border-t border-sidebar-border px-4 py-4">
           <div className="flex items-center gap-3">
-            <img src={displayAvatar} alt="" className="h-9 w-9 rounded-full object-cover" />
+            <UserAvatar
+              profile={profile}
+              className="h-9 w-9"
+              fallbackClassName="bg-sidebar-accent text-white/80"
+            />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm text-white">{displayName}</div>
               <div className="text-xs text-white/50">Plano {displayPlan}</div>
@@ -173,10 +217,10 @@ function AppLayout() {
             <button className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground">
               <Bell className="h-4 w-4" />
             </button>
-            <img
-              src={displayAvatar}
-              alt=""
-              className="h-9 w-9 rounded-full object-cover ring-1 ring-border"
+            <UserAvatar
+              profile={profile}
+              className="h-9 w-9 ring-1 ring-border"
+              fallbackClassName="bg-muted text-muted-foreground"
             />
           </div>
         </header>
