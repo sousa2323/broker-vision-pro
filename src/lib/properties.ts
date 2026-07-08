@@ -27,6 +27,8 @@ export type Property = {
   destaque: boolean;
   marketplace: boolean;
   foto: string | null;
+  fotos: string[];
+  video: string | null;
   status: PropertyStatus;
   created_at: string;
   updated_at: string;
@@ -51,8 +53,34 @@ export const EMPTY_PROPERTY: PropertyInput = {
   destaque: false,
   marketplace: false,
   foto: "",
+  fotos: [],
+  video: null,
   status: "Ativo",
 };
+
+/**
+ * Sobe uma foto ou vídeo do imóvel para o bucket `property-media`, na pasta
+ * do próprio usuário (`{userId}/{folder}/{uuid}.{ext}`). Requer sessão ativa.
+ * Nome de arquivo único ⇒ sem cache-buster. Retorna a URL pública ou null.
+ */
+export async function uploadPropertyMedia(
+  userId: string,
+  folder: string,
+  file: File,
+): Promise<string | null> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
+  const path = `${userId}/${folder}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("property-media").upload(path, file, {
+    upsert: false,
+    contentType: file.type,
+  });
+  if (error) {
+    console.error("Falha ao enviar mídia do imóvel:", error.message);
+    return null;
+  }
+  const { data } = supabase.storage.from("property-media").getPublicUrl(path);
+  return data.publicUrl;
+}
 
 export async function listProperties(): Promise<Property[]> {
   const { data, error } = await supabase

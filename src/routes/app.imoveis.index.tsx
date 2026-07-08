@@ -40,12 +40,14 @@ import {
   createProperty,
   updateProperty,
   deleteProperty,
+  uploadPropertyMedia,
   EMPTY_PROPERTY,
   type Property,
   type PropertyInput,
   type PropertyStatus,
 } from "@/lib/properties";
 import { STATUSES, STATUS_STYLES, getComissao, isAltaDemanda } from "@/lib/imoveis";
+import { PropertyMediaUpload, type MediaItem } from "@/components/property-media-upload";
 
 export const Route = createFileRoute("/app/imoveis/")({
   component: InventoryPage,
@@ -227,7 +229,7 @@ function InventoryPage() {
                     <CardAction
                       icon={<ImageIcon className="h-3.5 w-3.5" />}
                       label="Mídia"
-                      onClick={() => setModal({ kind: "midia", property: p })}
+                      onClick={() => setModal({ kind: "form", property: p })}
                     />
 
                     <Popover>
@@ -338,6 +340,9 @@ function PropertyFormModal({
 
   const [form, setForm] = useState<PropertyInput>(EMPTY_PROPERTY);
   const [saving, setSaving] = useState(false);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   // reseta o formulário sempre que abre (novo) ou muda o imóvel editado
   const formKey = editing?.id ?? (isOpen ? "novo" : "fechado");
   useEffect(() => {
@@ -358,10 +363,21 @@ function PropertyFormModal({
             destaque: editing.destaque,
             marketplace: editing.marketplace,
             foto: editing.foto ?? "",
+            fotos: editing.fotos ?? [],
+            video: editing.video ?? null,
             status: editing.status,
           }
         : EMPTY_PROPERTY,
     );
+    setMediaItems(
+      (editing?.fotos ?? []).map((url) => ({
+        id: crypto.randomUUID(),
+        kind: "existing" as const,
+        url,
+      })),
+    );
+    setVideoFile(null);
+    setVideoUrl(editing?.video ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formKey]);
 
@@ -376,9 +392,27 @@ function PropertyFormModal({
       return;
     }
     setSaving(true);
+
+    // Sobe as mídias novas mantendo a ordem escolhida (primeira = capa)
+    const folder = editing?.id ?? crypto.randomUUID();
+    const fotos: string[] = [];
+    for (const item of mediaItems) {
+      if (item.kind === "existing") {
+        fotos.push(item.url);
+      } else {
+        const url = await uploadPropertyMedia(brokerId, folder, item.file);
+        if (url) fotos.push(url);
+      }
+    }
+    let video = videoUrl;
+    if (videoFile) {
+      video = await uploadPropertyMedia(brokerId, folder, videoFile);
+    }
+
+    const payload: PropertyInput = { ...form, fotos, foto: fotos[0] ?? null, video };
     const result = editing
-      ? await updateProperty(editing.id, form)
-      : await createProperty(brokerId, form);
+      ? await updateProperty(editing.id, payload)
+      : await createProperty(brokerId, payload);
     setSaving(false);
     if (result) {
       toast.success(editing ? "Imóvel atualizado" : "Imóvel cadastrado");
@@ -410,7 +444,18 @@ function PropertyFormModal({
           <FormField label="Quartos" type="number" value={String(form.quartos || "")} onChange={(v) => upd("quartos", Number(v) || 0)} placeholder="3" />
           <FormField label="Suítes" type="number" value={String(form.suites || "")} onChange={(v) => upd("suites", Number(v) || 0)} placeholder="1" />
           <FormField label="Vagas" type="number" value={String(form.vagas || "")} onChange={(v) => upd("vagas", Number(v) || 0)} placeholder="2" />
-          <FormField label="Foto (URL)" value={form.foto ?? ""} onChange={(v) => upd("foto", v)} placeholder="https://..." />
+          <div className="col-span-2">
+            <PropertyMediaUpload
+              items={mediaItems}
+              onItemsChange={setMediaItems}
+              videoFile={videoFile}
+              videoUrl={videoUrl}
+              onVideoChange={(file, url) => {
+                setVideoFile(file);
+                setVideoUrl(url);
+              }}
+            />
+          </div>
           <div className="col-span-2">
             <Label>Descrição</Label>
             <textarea

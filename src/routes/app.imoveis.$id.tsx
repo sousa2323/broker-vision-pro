@@ -29,6 +29,7 @@ function PropertyDetail() {
   const { id } = Route.useParams();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeIdx, setActiveIdx] = useState(0);
   const { activities } = useActivities();
 
   useEffect(() => {
@@ -69,6 +70,9 @@ function PropertyDetail() {
   const comissao = getComissao(property.valor);
   const altaDemanda = isAltaDemanda(property);
 
+  const fotos = property.fotos?.length ? property.fotos : property.foto ? [property.foto] : [];
+  const fotoAtual = fotos[activeIdx] ?? fotos[0] ?? null;
+
   return (
     <div className="space-y-8">
       <Toaster position="top-right" richColors />
@@ -83,30 +87,55 @@ function PropertyDetail() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Coluna principal */}
         <div className="space-y-6 lg:col-span-2">
-          <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-surface">
-            {property.foto ? (
-              <img src={property.foto} alt={property.nome} className="h-full w-full object-cover" />
-            ) : (
-              <div className="grid h-full w-full place-items-center text-muted-foreground">
-                <ImageIcon className="h-10 w-10" />
+          <div>
+            <div className="relative aspect-video overflow-hidden rounded-2xl border border-border bg-surface">
+              {fotoAtual ? (
+                <img src={fotoAtual} alt={property.nome} className="h-full w-full object-cover" />
+              ) : (
+                <div className="grid h-full w-full place-items-center text-muted-foreground">
+                  <ImageIcon className="h-10 w-10" />
+                </div>
+              )}
+              {property.marketplace && (
+                <span className="absolute left-3 top-3 rounded-full bg-navy/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-navy-foreground">
+                  Marketplace B2C
+                </span>
+              )}
+              {altaDemanda && (
+                <span className="absolute left-3 top-10 inline-flex items-center gap-1 rounded-full bg-brand/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-white">
+                  <Flame className="h-3 w-3" /> Alta demanda
+                </span>
+              )}
+              <span
+                className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest ${STATUS_STYLES[status]}`}
+              >
+                {status}
+              </span>
+            </div>
+
+            {fotos.length > 1 && (
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {fotos.map((f, i) => (
+                  <button
+                    key={f + i}
+                    type="button"
+                    onClick={() => setActiveIdx(i)}
+                    className={`relative h-16 w-20 shrink-0 overflow-hidden rounded-lg border transition ${
+                      i === activeIdx ? "border-brand ring-1 ring-brand" : "border-border opacity-80 hover:opacity-100"
+                    }`}
+                  >
+                    <img src={f} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
               </div>
             )}
-            {property.marketplace && (
-              <span className="absolute left-3 top-3 rounded-full bg-navy/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-navy-foreground">
-                Marketplace B2C
-              </span>
-            )}
-            {altaDemanda && (
-              <span className="absolute left-3 top-10 inline-flex items-center gap-1 rounded-full bg-brand/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-white">
-                <Flame className="h-3 w-3" /> Alta demanda
-              </span>
-            )}
-            <span
-              className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest ${STATUS_STYLES[status]}`}
-            >
-              {status}
-            </span>
           </div>
+
+          {property.video && (
+            <div className="overflow-hidden rounded-2xl border border-border bg-black">
+              <video src={property.video} controls className="max-h-[420px] w-full" />
+            </div>
+          )}
 
           <div className="rounded-2xl border border-border bg-card p-6">
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Descrição</div>
