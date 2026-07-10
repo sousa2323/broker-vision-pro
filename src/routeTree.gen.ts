@@ -39,9 +39,10 @@ import { Route as AdminConfiguracoesRouteImport } from './routes/admin.configura
 import { Route as AdminAuditoriaRouteImport } from './routes/admin.auditoria'
 import { Route as AppParceriasIndexRouteImport } from './routes/app.parcerias.index'
 import { Route as AppImoveisIndexRouteImport } from './routes/app.imoveis.index'
-import { Route as AppParceriasAtivaRouteImport } from './routes/app.parcerias.ativa'
 import { Route as AppParceriasIdRouteImport } from './routes/app.parcerias.$id'
 import { Route as AppImoveisIdRouteImport } from './routes/app.imoveis.$id'
+import { Route as AppParceriasAtivaIndexRouteImport } from './routes/app.parcerias.ativa.index'
+import { Route as AppParceriasAtivaIdRouteImport } from './routes/app.parcerias.ativa.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -193,11 +194,6 @@ const AppImoveisIndexRoute = AppImoveisIndexRouteImport.update({
   path: '/imoveis/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppParceriasAtivaRoute = AppParceriasAtivaRouteImport.update({
-  id: '/parcerias/ativa',
-  path: '/parcerias/ativa',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppParceriasIdRoute = AppParceriasIdRouteImport.update({
   id: '/parcerias/$id',
   path: '/parcerias/$id',
@@ -206,6 +202,16 @@ const AppParceriasIdRoute = AppParceriasIdRouteImport.update({
 const AppImoveisIdRoute = AppImoveisIdRouteImport.update({
   id: '/imoveis/$id',
   path: '/imoveis/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppParceriasAtivaIndexRoute = AppParceriasAtivaIndexRouteImport.update({
+  id: '/parcerias/ativa/',
+  path: '/parcerias/ativa/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppParceriasAtivaIdRoute = AppParceriasAtivaIdRouteImport.update({
+  id: '/parcerias/ativa/$id',
+  path: '/parcerias/ativa/$id',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -240,9 +246,10 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/app/imoveis/$id': typeof AppImoveisIdRoute
   '/app/parcerias/$id': typeof AppParceriasIdRoute
-  '/app/parcerias/ativa': typeof AppParceriasAtivaRoute
   '/app/imoveis/': typeof AppImoveisIndexRoute
   '/app/parcerias/': typeof AppParceriasIndexRoute
+  '/app/parcerias/ativa/$id': typeof AppParceriasAtivaIdRoute
+  '/app/parcerias/ativa/': typeof AppParceriasAtivaIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -273,9 +280,10 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/app/imoveis/$id': typeof AppImoveisIdRoute
   '/app/parcerias/$id': typeof AppParceriasIdRoute
-  '/app/parcerias/ativa': typeof AppParceriasAtivaRoute
   '/app/imoveis': typeof AppImoveisIndexRoute
   '/app/parcerias': typeof AppParceriasIndexRoute
+  '/app/parcerias/ativa/$id': typeof AppParceriasAtivaIdRoute
+  '/app/parcerias/ativa': typeof AppParceriasAtivaIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -309,9 +317,10 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/app/imoveis/$id': typeof AppImoveisIdRoute
   '/app/parcerias/$id': typeof AppParceriasIdRoute
-  '/app/parcerias/ativa': typeof AppParceriasAtivaRoute
   '/app/imoveis/': typeof AppImoveisIndexRoute
   '/app/parcerias/': typeof AppParceriasIndexRoute
+  '/app/parcerias/ativa/$id': typeof AppParceriasAtivaIdRoute
+  '/app/parcerias/ativa/': typeof AppParceriasAtivaIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -346,9 +355,10 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/imoveis/$id'
     | '/app/parcerias/$id'
-    | '/app/parcerias/ativa'
     | '/app/imoveis/'
     | '/app/parcerias/'
+    | '/app/parcerias/ativa/$id'
+    | '/app/parcerias/ativa/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -379,9 +389,10 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/imoveis/$id'
     | '/app/parcerias/$id'
-    | '/app/parcerias/ativa'
     | '/app/imoveis'
     | '/app/parcerias'
+    | '/app/parcerias/ativa/$id'
+    | '/app/parcerias/ativa'
   id:
     | '__root__'
     | '/'
@@ -414,9 +425,10 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/imoveis/$id'
     | '/app/parcerias/$id'
-    | '/app/parcerias/ativa'
     | '/app/imoveis/'
     | '/app/parcerias/'
+    | '/app/parcerias/ativa/$id'
+    | '/app/parcerias/ativa/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -640,13 +652,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImoveisIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/parcerias/ativa': {
-      id: '/app/parcerias/ativa'
-      path: '/parcerias/ativa'
-      fullPath: '/app/parcerias/ativa'
-      preLoaderRoute: typeof AppParceriasAtivaRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/parcerias/$id': {
       id: '/app/parcerias/$id'
       path: '/parcerias/$id'
@@ -659,6 +664,20 @@ declare module '@tanstack/react-router' {
       path: '/imoveis/$id'
       fullPath: '/app/imoveis/$id'
       preLoaderRoute: typeof AppImoveisIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/parcerias/ativa/': {
+      id: '/app/parcerias/ativa/'
+      path: '/parcerias/ativa'
+      fullPath: '/app/parcerias/ativa/'
+      preLoaderRoute: typeof AppParceriasAtivaIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/parcerias/ativa/$id': {
+      id: '/app/parcerias/ativa/$id'
+      path: '/parcerias/ativa/$id'
+      fullPath: '/app/parcerias/ativa/$id'
+      preLoaderRoute: typeof AppParceriasAtivaIdRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -709,9 +728,10 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppImoveisIdRoute: typeof AppImoveisIdRoute
   AppParceriasIdRoute: typeof AppParceriasIdRoute
-  AppParceriasAtivaRoute: typeof AppParceriasAtivaRoute
   AppImoveisIndexRoute: typeof AppImoveisIndexRoute
   AppParceriasIndexRoute: typeof AppParceriasIndexRoute
+  AppParceriasAtivaIdRoute: typeof AppParceriasAtivaIdRoute
+  AppParceriasAtivaIndexRoute: typeof AppParceriasAtivaIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -727,9 +747,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppImoveisIdRoute: AppImoveisIdRoute,
   AppParceriasIdRoute: AppParceriasIdRoute,
-  AppParceriasAtivaRoute: AppParceriasAtivaRoute,
   AppImoveisIndexRoute: AppImoveisIndexRoute,
   AppParceriasIndexRoute: AppParceriasIndexRoute,
+  AppParceriasAtivaIdRoute: AppParceriasAtivaIdRoute,
+  AppParceriasAtivaIndexRoute: AppParceriasAtivaIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

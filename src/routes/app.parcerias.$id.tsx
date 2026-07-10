@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Handshake, MapPin, MessageSquare, Briefcase, Loader2, Building2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Handshake,
+  MapPin,
+  MessageSquare,
+  Briefcase,
+  Loader2,
+  Building2,
+  Check,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +31,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { getDirectoryBroker, type DirectoryBroker } from "@/lib/directory";
+import { createPartnershipRequest, usePartnershipRequests } from "@/lib/partnerships";
 
 export const Route = createFileRoute("/app/parcerias/$id")({
   component: BrokerDetail,
@@ -33,6 +43,7 @@ function BrokerDetail() {
   const [loading, setLoading] = useState(true);
   const [connectOpen, setConnectOpen] = useState(false);
   const [partnershipOpen, setPartnershipOpen] = useState(false);
+  const { requests, loading: relationshipLoading, currentUserId } = usePartnershipRequests();
 
   useEffect(() => {
     let cancelled = false;
@@ -60,24 +71,42 @@ function BrokerDetail() {
     return (
       <div className="rounded-2xl border border-border bg-card p-8 text-center">
         <h2 className="font-display text-xl">Corretor não encontrado</h2>
-        <Link to="/app/parcerias" className="mt-4 inline-block text-brand">Voltar à lista</Link>
+        <Link to="/app/parcerias" className="mt-4 inline-block text-brand">
+          Voltar à lista
+        </Link>
       </div>
     );
   }
 
-  const initials = broker.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("");
+  const initials = broker.full_name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("");
   const regiao = (broker.regions ?? []).join(" · ") || "—";
+  const relationship = requests.find(
+    (request) =>
+      (request.sender_id === broker.id || request.receiver_id === broker.id) &&
+      request.status !== "declined",
+  );
 
   return (
     <div className="space-y-8">
-      <Link to="/app/parcerias" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        to="/app/parcerias"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeft className="h-4 w-4" /> Voltar para parcerias
       </Link>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-6 lg:col-span-1">
           {broker.avatar_url ? (
-            <img src={broker.avatar_url} alt={broker.full_name} className="aspect-square w-full rounded-2xl object-cover" />
+            <img
+              src={broker.avatar_url}
+              alt={broker.full_name}
+              className="aspect-square w-full rounded-2xl object-cover"
+            />
           ) : (
             <div className="grid aspect-square w-full place-items-center rounded-2xl bg-surface text-3xl font-medium text-muted-foreground">
               {initials}
@@ -90,10 +119,15 @@ function BrokerDetail() {
           </div>
           {(broker.specialties ?? []).length > 0 && (
             <div className="mt-4 border-t border-border pt-4">
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Especialidades</div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">
+                Especialidades
+              </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {broker.specialties.map((s) => (
-                  <span key={s} className="inline-flex items-center gap-1 rounded-full bg-brand/5 px-2 py-0.5 text-xs text-brand">
+                  <span
+                    key={s}
+                    className="inline-flex items-center gap-1 rounded-full bg-brand/5 px-2 py-0.5 text-xs text-brand"
+                  >
                     <Briefcase className="h-3 w-3" /> {s}
                   </span>
                 ))}
@@ -101,25 +135,52 @@ function BrokerDetail() {
             </div>
           )}
           <div className="mt-6 space-y-2">
-            <Button className="w-full bg-navy text-navy-foreground hover:bg-navy/90" onClick={() => setPartnershipOpen(true)}>
-              <Handshake className="h-4 w-4" /> Solicitar parceria
-            </Button>
-            <Button variant="outline" className="w-full" onClick={() => setConnectOpen(true)}>
-              <MessageSquare className="h-4 w-4" /> Conectar
-            </Button>
+            {relationshipLoading ? (
+              <Button className="w-full" variant="outline" disabled>
+                Carregando relação…
+              </Button>
+            ) : !relationship ? (
+              <>
+                <Button
+                  className="w-full bg-navy text-navy-foreground hover:bg-navy/90"
+                  onClick={() => setPartnershipOpen(true)}
+                >
+                  <Handshake className="h-4 w-4" /> Solicitar parceria
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => setConnectOpen(true)}>
+                  <MessageSquare className="h-4 w-4" /> Conectar
+                </Button>
+              </>
+            ) : relationship.status === "accepted" ? (
+              <div className="rounded-md bg-emerald-50 px-3 py-2 text-center text-sm font-medium text-emerald-700">
+                <Check className="mr-1 inline h-4 w-4" /> Vocês estão conectados
+              </div>
+            ) : (
+              <div className="rounded-md bg-surface px-3 py-2 text-center text-sm text-muted-foreground">
+                {relationship.sender_id === currentUserId
+                  ? "Solicitação enviada"
+                  : "Solicitação aguardando sua resposta"}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="lg:col-span-2 space-y-4">
           <div className="rounded-2xl border border-border bg-card p-6">
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Sobre</div>
-            <p className="mt-2 leading-relaxed">{broker.bio || "Este corretor ainda não adicionou uma bio."}</p>
+            <p className="mt-2 leading-relaxed">
+              {broker.bio || "Este corretor ainda não adicionou uma bio."}
+            </p>
             {(broker.property_types ?? []).length > 0 && (
               <div className="mt-4 border-t border-border pt-4">
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Tipos de imóvel</div>
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">
+                  Tipos de imóvel
+                </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {broker.property_types.map((t) => (
-                    <span key={t} className="rounded-full bg-surface px-2 py-0.5 text-xs">{t}</span>
+                    <span key={t} className="rounded-full bg-surface px-2 py-0.5 text-xs">
+                      {t}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -138,8 +199,8 @@ function BrokerDetail() {
         </div>
       </div>
 
-      <ConnectModal open={connectOpen} onOpenChange={setConnectOpen} brokerName={broker.full_name} />
-      <PartnershipModal open={partnershipOpen} onOpenChange={setPartnershipOpen} brokerName={broker.full_name} />
+      <ConnectModal open={connectOpen} onOpenChange={setConnectOpen} broker={broker} />
+      <PartnershipModal open={partnershipOpen} onOpenChange={setPartnershipOpen} broker={broker} />
     </div>
   );
 }
@@ -147,17 +208,26 @@ function BrokerDetail() {
 function ConnectModal({
   open,
   onOpenChange,
-  brokerName,
+  broker,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  brokerName: string;
+  broker: DirectoryBroker;
 }) {
   const [mensagem, setMensagem] = useState("");
   const [objetivo, setObjetivo] = useState("parcerias");
+  const [sending, setSending] = useState(false);
 
-  function submit() {
-    toast.success(`Solicitação de conexão enviada para ${brokerName}`);
+  async function submit() {
+    setSending(true);
+    const { error } = await createPartnershipRequest({
+      receiverId: broker.id,
+      message: mensagem,
+      partnershipType: objetivo === "parcerias" ? "comissao" : objetivo,
+    });
+    setSending(false);
+    if (error) return toast.error(error);
+    toast.success(`Solicitação de conexão enviada para ${broker.full_name}`);
     setMensagem("");
     setObjetivo("parcerias");
     onOpenChange(false);
@@ -168,7 +238,7 @@ function ConnectModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Conectar com corretor</DialogTitle>
-          <DialogDescription>Inicie uma colaboração com {brokerName}.</DialogDescription>
+          <DialogDescription>Inicie uma colaboração com {broker.full_name}.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -196,8 +266,12 @@ function ConnectModal({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={!mensagem.trim()}>Enviar conexão</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={!mensagem.trim() || sending}>
+            {sending ? "Enviando…" : "Enviar conexão"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -207,18 +281,28 @@ function ConnectModal({
 function PartnershipModal({
   open,
   onOpenChange,
-  brokerName,
+  broker,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  brokerName: string;
+  broker: DirectoryBroker;
 }) {
   const [mensagem, setMensagem] = useState("");
   const [tipo, setTipo] = useState("comissao");
   const [obs, setObs] = useState("");
+  const [sending, setSending] = useState(false);
 
-  function submit() {
-    toast.success(`Solicitação de parceria enviada para ${brokerName}`);
+  async function submit() {
+    setSending(true);
+    const { error } = await createPartnershipRequest({
+      receiverId: broker.id,
+      message: mensagem,
+      partnershipType: tipo,
+      notes: obs,
+    });
+    setSending(false);
+    if (error) return toast.error(error);
+    toast.success(`Solicitação de parceria enviada para ${broker.full_name}`);
     setMensagem("");
     setObs("");
     setTipo("comissao");
@@ -230,7 +314,7 @@ function PartnershipModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Solicitar parceria</DialogTitle>
-          <DialogDescription>Parceria com {brokerName}</DialogDescription>
+          <DialogDescription>Parceria com {broker.full_name}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -245,7 +329,9 @@ function PartnershipModal({
           <div className="space-y-2">
             <Label>Tipo de parceria</Label>
             <Select value={tipo} onValueChange={setTipo}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="comissao">Compartilhar comissão</SelectItem>
                 <SelectItem value="captacao">Captação conjunta</SelectItem>
@@ -265,8 +351,12 @@ function PartnershipModal({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={submit} disabled={!mensagem.trim()}>Enviar solicitação</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} disabled={!mensagem.trim() || sending}>
+            {sending ? "Enviando…" : "Enviar solicitação"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
