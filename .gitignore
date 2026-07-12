@@ -43,6 +43,7 @@ playwright-report/
 blob-report/
 .nyc_output/
 
+
 # Caches
 .cache/
 .eslintcache
