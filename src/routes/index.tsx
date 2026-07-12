@@ -65,9 +65,13 @@ function Header() {
             Imprensa
           </a>
         </nav>
-        <div className="flex items-center gap-6">
-          <Link to="/login" className="text-sm text-white/70 transition hover:text-white">
+        <div className="flex items-center">
+          <Link
+            to="/login"
+            className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 hover:shadow-lg hover:shadow-black/10"
+          >
             Entrar
+            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
           </Link>
         </div>
       </div>
@@ -95,9 +99,12 @@ function Hero() {
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <a
               href="#plataforma"
-              className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
+              className="group inline-flex items-center gap-3 rounded-full bg-warm px-6 py-3.5 text-sm font-semibold text-warm-foreground shadow-lg shadow-warm/20 transition duration-300 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-xl hover:shadow-warm/30"
             >
-              Falar com vendas <ArrowUpRight className="h-4 w-4" />
+              Falar com vendas
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-300 group-hover:rotate-45">
+                <ArrowUpRight className="h-4 w-4" />
+              </span>
             </a>
           </div>
         </div>
