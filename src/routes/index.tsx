@@ -69,12 +69,6 @@ function Header() {
           <Link to="/login" className="text-sm text-white/70 transition hover:text-white">
             Entrar
           </Link>
-          <Link
-            to="/app"
-            className="inline-flex items-center gap-2 rounded-full bg-warm px-5 py-2.5 text-sm font-medium text-warm-foreground transition hover:brightness-110"
-          >
-            Ver demo <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
       </div>
     </header>
@@ -99,12 +93,6 @@ function Hero() {
             pipeline, IA, omnichannel, parcerias e monetização SaaS — sem depender da imobiliária.
           </p>
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Link
-              to="/app"
-              className="inline-flex items-center gap-2 rounded-full bg-warm px-7 py-3.5 text-sm font-medium text-warm-foreground transition hover:brightness-110"
-            >
-              Ver demo da plataforma <ArrowRight className="h-4 w-4" />
-            </Link>
             <a
               href="#plataforma"
               className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white"
@@ -464,12 +452,6 @@ function FinalCTA() {
           Veja a plataforma completa em ação. Sem cadastro, sem cartão — entre direto no painel
           demo.
         </p>
-        <Link
-          to="/app"
-          className="mt-12 inline-flex items-center gap-3 rounded-full bg-warm px-8 py-4 text-base font-medium text-warm-foreground transition hover:brightness-110"
-        >
-          Ver demo gratuita <ArrowRight className="h-5 w-5" />
-        </Link>
       </div>
     </section>
   );
