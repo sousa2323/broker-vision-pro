@@ -26,7 +26,9 @@ function IAAdmin() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl">IA Assistente</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Performance global do atendimento automatizado.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Performance global do atendimento automatizado.
+        </p>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -44,8 +46,13 @@ function IAAdmin() {
           {semana.map((s) => (
             <div key={s.d} className="flex flex-1 flex-col items-center gap-2">
               <div className="num text-xs text-muted-foreground">{s.v}</div>
-              <div className="w-full rounded-t-md bg-navy" style={{ height: `${(s.v / max) * 100}%` }} />
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{s.d}</div>
+              <div
+                className="w-full rounded-t-md bg-navy"
+                style={{ height: `${(s.v / max) * 100}%` }}
+              />
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                {s.d}
+              </div>
             </div>
           ))}
         </div>
@@ -74,12 +81,16 @@ function IAAdmin() {
                 <td className="px-4 py-3 text-muted-foreground">{l.canal}</td>
                 <td className="px-4 py-3 text-right num">{l.score}</td>
                 <td className="px-4 py-3">
-                  <span className={cn(
-                    "rounded-full px-2 py-0.5 text-xs",
-                    l.resultado === "Qualificado" && "bg-emerald-50 text-emerald-700",
-                    l.resultado === "Em qualificação" && "bg-amber-50 text-amber-700",
-                    l.resultado === "Descartado" && "bg-red-50 text-red-700",
-                  )}>{l.resultado}</span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-xs",
+                      l.resultado === "Qualificado" && "bg-emerald-50 text-emerald-700",
+                      l.resultado === "Em qualificação" && "bg-amber-50 text-amber-700",
+                      l.resultado === "Descartado" && "bg-red-50 text-red-700",
+                    )}
+                  >
+                    {l.resultado}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">{l.data}</td>
               </tr>
@@ -94,8 +105,12 @@ function IAAdmin() {
 function KPI({ label, value, tone }: { label: string; value: string; tone?: "green" }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className={cn("mt-2 num font-display text-2xl", tone === "green" && "text-emerald-700")}>{value}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </div>
+      <div className={cn("mt-2 num font-display text-2xl", tone === "green" && "text-emerald-700")}>
+        {value}
+      </div>
     </div>
   );
 }

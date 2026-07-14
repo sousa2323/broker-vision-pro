@@ -1,15 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { leads as leadsBase, formatBRL, formatBRLcompact, type Lead, type LeadStatus } from "@/data/mock";
+import {
+  leads as leadsBase,
+  formatBRL,
+  formatBRLcompact,
+  type Lead,
+  type LeadStatus,
+} from "@/data/mock";
 import { adminBrokers, corretorRisco, type AdminBroker } from "@/data/admin-mock";
 import { cn } from "@/lib/utils";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -102,7 +103,7 @@ function getTempoParado(l: Lead): { horas: number; label: string } {
   else if (ui.includes("d")) horas = (parseInt(ui.replace(/\D/g, ""), 10) || 1) * 24;
   else horas = 36;
   // Adiciona variação determinística
-  horas += (seedFromId(l.id) % 18);
+  horas += seedFromId(l.id) % 18;
   const label =
     horas < 1 ? "<1h" : horas < 24 ? `${Math.round(horas)}h` : `${Math.round(horas / 24)}d`;
   return { horas, label };
@@ -132,7 +133,8 @@ function getScore(l: Lead): number {
   };
   const corretor = getCorretor(l);
   const risco = corretorRisco[corretor.nome]?.pctAtraso ?? 10;
-  let score = 100 - Math.min(50, horas * 0.6) - (sla.quebrado ? 20 : 0) - risco * 0.3 + stageBonus[l.status];
+  let score =
+    100 - Math.min(50, horas * 0.6) - (sla.quebrado ? 20 : 0) - risco * 0.3 + stageBonus[l.status];
   score = Math.max(5, Math.min(100, Math.round(score)));
   return score;
 }
@@ -220,7 +222,13 @@ function enrich(l: Lead): LeadView {
 
 // ============ Filtros ============
 
-type AlertaKey = null | "sla72" | "propostasMilhao" | "visitasNaoConfirmadas" | "bypass" | "execucaoBaixa";
+type AlertaKey =
+  | null
+  | "sla72"
+  | "propostasMilhao"
+  | "visitasNaoConfirmadas"
+  | "bypass"
+  | "execucaoBaixa";
 
 type Filtros = {
   origem: string;
@@ -261,7 +269,9 @@ function LeadsAdmin() {
 
   // KPIs
   const kpis = useMemo(() => {
-    const ativos = all.filter((l) => l.tipo === "Plataforma" && l.status !== "Fechado" && l.status !== "Perdido");
+    const ativos = all.filter(
+      (l) => l.tipo === "Plataforma" && l.status !== "Fechado" && l.status !== "Perdido",
+    );
     const emRisco = all.filter((l) => l.risco !== "saudavel" && l.status !== "Fechado");
     const negligenciados = all.filter((l) => l.tipo === "Plataforma" && l.sla.quebrado);
     const horasMedia = all.reduce((s, l) => s + l.tempoParado.horas, 0) / all.length;
@@ -284,14 +294,28 @@ function LeadsAdmin() {
 
   // Alertas
   const alertas = useMemo(() => {
-    const sla72 = all.filter((l) => l.tipo === "Plataforma" && l.sla.quebrado && l.tempoParado.horas > 72).length;
-    const propostasMilhao = all.filter((l) => l.status === "Proposta" && l.orcamento >= 1_000_000 && l.sla.sobra < 0).length;
-    const visitasNaoConfirmadas = all.filter((l) => l.status === "Visita" && l.proximaAcao === "Confirmar visita").length;
+    const sla72 = all.filter(
+      (l) => l.tipo === "Plataforma" && l.sla.quebrado && l.tempoParado.horas > 72,
+    ).length;
+    const propostasMilhao = all.filter(
+      (l) => l.status === "Proposta" && l.orcamento >= 1_000_000 && l.sla.sobra < 0,
+    ).length;
+    const visitasNaoConfirmadas = all.filter(
+      (l) => l.status === "Visita" && l.proximaAcao === "Confirmar visita",
+    ).length;
     const bypass = all.filter((l) => l.proximaAcao === "Verificar risco de bypass").length;
     const corretoresExecBaixa = new Set(
-      all.filter((l) => (corretorRisco[l.corretor.nome]?.pctAtraso ?? 0) >= 60).map((l) => l.corretor.id),
+      all
+        .filter((l) => (corretorRisco[l.corretor.nome]?.pctAtraso ?? 0) >= 60)
+        .map((l) => l.corretor.id),
     ).size;
-    return { sla72, propostasMilhao, visitasNaoConfirmadas, bypass, execucaoBaixa: corretoresExecBaixa };
+    return {
+      sla72,
+      propostasMilhao,
+      visitasNaoConfirmadas,
+      bypass,
+      execucaoBaixa: corretoresExecBaixa,
+    };
   }, [all]);
 
   // Lista filtrada
@@ -319,16 +343,31 @@ function LeadsAdmin() {
       if (filtros.scoreFx === "atn" && (l.score < 40 || l.score >= 70)) return false;
       if (filtros.scoreFx === "cri" && l.score >= 40) return false;
       if (filtros.vgvFx === "ate500" && l.orcamento >= 500_000) return false;
-      if (filtros.vgvFx === "500a1m" && (l.orcamento < 500_000 || l.orcamento >= 1_000_000)) return false;
-      if (filtros.vgvFx === "1ma3m" && (l.orcamento < 1_000_000 || l.orcamento >= 3_000_000)) return false;
+      if (filtros.vgvFx === "500a1m" && (l.orcamento < 500_000 || l.orcamento >= 1_000_000))
+        return false;
+      if (filtros.vgvFx === "1ma3m" && (l.orcamento < 1_000_000 || l.orcamento >= 3_000_000))
+        return false;
       if (filtros.vgvFx === "3m+" && l.orcamento < 3_000_000) return false;
 
       // Alerta clicado
-      if (alerta === "sla72" && !(l.tipo === "Plataforma" && l.sla.quebrado && l.tempoParado.horas > 72)) return false;
-      if (alerta === "propostasMilhao" && !(l.status === "Proposta" && l.orcamento >= 1_000_000 && l.sla.sobra < 0)) return false;
-      if (alerta === "visitasNaoConfirmadas" && !(l.status === "Visita" && l.proximaAcao === "Confirmar visita")) return false;
+      if (
+        alerta === "sla72" &&
+        !(l.tipo === "Plataforma" && l.sla.quebrado && l.tempoParado.horas > 72)
+      )
+        return false;
+      if (
+        alerta === "propostasMilhao" &&
+        !(l.status === "Proposta" && l.orcamento >= 1_000_000 && l.sla.sobra < 0)
+      )
+        return false;
+      if (
+        alerta === "visitasNaoConfirmadas" &&
+        !(l.status === "Visita" && l.proximaAcao === "Confirmar visita")
+      )
+        return false;
       if (alerta === "bypass" && l.proximaAcao !== "Verificar risco de bypass") return false;
-      if (alerta === "execucaoBaixa" && (corretorRisco[l.corretor.nome]?.pctAtraso ?? 0) < 60) return false;
+      if (alerta === "execucaoBaixa" && (corretorRisco[l.corretor.nome]?.pctAtraso ?? 0) < 60)
+        return false;
       return true;
     });
   }, [all, busca, filtros, alerta]);
@@ -351,13 +390,54 @@ function LeadsAdmin() {
 
       {/* Camada 1 — KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-        <KpiCard label="Leads ativos da plataforma" value={kpis.ativos} hint="Operações em andamento" delta="+8%" />
-        <KpiCard label="Leads em risco" value={kpis.emRisco} hint="Sem interação acima do SLA" delta="+3" tone="amber" />
-        <KpiCard label="Leads negligenciados" value={kpis.negligenciados} hint="Possível perda operacional" delta="+2" tone="red" />
-        <KpiCard label="Tempo médio de resposta" value={`${kpis.tempoMedio}h`} hint="Média da rede" delta="-1h" tone="emerald" />
-        <KpiCard label="Conversão da plataforma" value={`${kpis.conversao}%`} hint="Leads convertidos em venda" delta="+1.2pp" tone="emerald" />
-        <KpiCard label="VGV em risco" value={formatBRLcompact(kpis.vgvRisco)} hint="Operações críticas" delta="+R$ 1,2M" tone="red" />
-        <KpiCard label="Próximos fechamentos" value={kpis.proximos} hint={`Propostas · ${formatBRLcompact(kpis.proximosVgv)}`} delta="+1" tone="emerald" />
+        <KpiCard
+          label="Leads ativos da plataforma"
+          value={kpis.ativos}
+          hint="Operações em andamento"
+          delta="+8%"
+        />
+        <KpiCard
+          label="Leads em risco"
+          value={kpis.emRisco}
+          hint="Sem interação acima do SLA"
+          delta="+3"
+          tone="amber"
+        />
+        <KpiCard
+          label="Leads negligenciados"
+          value={kpis.negligenciados}
+          hint="Possível perda operacional"
+          delta="+2"
+          tone="red"
+        />
+        <KpiCard
+          label="Tempo médio de resposta"
+          value={`${kpis.tempoMedio}h`}
+          hint="Média da rede"
+          delta="-1h"
+          tone="emerald"
+        />
+        <KpiCard
+          label="Conversão da plataforma"
+          value={`${kpis.conversao}%`}
+          hint="Leads convertidos em venda"
+          delta="+1.2pp"
+          tone="emerald"
+        />
+        <KpiCard
+          label="VGV em risco"
+          value={formatBRLcompact(kpis.vgvRisco)}
+          hint="Operações críticas"
+          delta="+R$ 1,2M"
+          tone="red"
+        />
+        <KpiCard
+          label="Próximos fechamentos"
+          value={kpis.proximos}
+          hint={`Propostas · ${formatBRLcompact(kpis.proximosVgv)}`}
+          delta="+1"
+          tone="emerald"
+        />
       </div>
 
       {/* Camada 2 — Alertas */}
@@ -365,16 +445,28 @@ function LeadsAdmin() {
         <AlertaPill cor="red" ativo={alerta === "sla72"} onClick={() => aplicarAlerta("sla72")}>
           {alertas.sla72} leads da plataforma sem interação há mais de 72h
         </AlertaPill>
-        <AlertaPill cor="amber" ativo={alerta === "propostasMilhao"} onClick={() => aplicarAlerta("propostasMilhao")}>
+        <AlertaPill
+          cor="amber"
+          ativo={alerta === "propostasMilhao"}
+          onClick={() => aplicarAlerta("propostasMilhao")}
+        >
           {alertas.propostasMilhao} propostas acima de R$ 1M sem follow-up
         </AlertaPill>
-        <AlertaPill cor="yellow" ativo={alerta === "visitasNaoConfirmadas"} onClick={() => aplicarAlerta("visitasNaoConfirmadas")}>
+        <AlertaPill
+          cor="yellow"
+          ativo={alerta === "visitasNaoConfirmadas"}
+          onClick={() => aplicarAlerta("visitasNaoConfirmadas")}
+        >
           {alertas.visitasNaoConfirmadas} visitas agendadas sem confirmação
         </AlertaPill>
         <AlertaPill cor="red" ativo={alerta === "bypass"} onClick={() => aplicarAlerta("bypass")}>
           {alertas.bypass} possíveis bypass identificados
         </AlertaPill>
-        <AlertaPill cor="amber" ativo={alerta === "execucaoBaixa"} onClick={() => aplicarAlerta("execucaoBaixa")}>
+        <AlertaPill
+          cor="amber"
+          ativo={alerta === "execucaoBaixa"}
+          onClick={() => aplicarAlerta("execucaoBaixa")}
+        >
           {alertas.execucaoBaixa} corretores com execução abaixo de 40%
         </AlertaPill>
       </div>
@@ -391,32 +483,111 @@ function LeadsAdmin() {
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <FiltroSelect placeholder="Origem" value={filtros.origem} onChange={(v) => setFiltros({ ...filtros, origem: v })} options={[
-            { v: "all", l: "Todas as origens" }, { v: "IA", l: "IA" }, { v: "Inbox", l: "Inbox" }, { v: "Marketplace", l: "Marketplace" }, { v: "Indicação", l: "Indicação" },
-          ]} />
-          <FiltroSelect placeholder="Região" value={filtros.regiao} onChange={(v) => setFiltros({ ...filtros, regiao: v })} options={[{ v: "all", l: "Todas as regiões" }, ...regioesUnicas.map((r) => ({ v: r, l: r }))]} />
-          <FiltroSelect placeholder="Corretor" value={filtros.corretor} onChange={(v) => setFiltros({ ...filtros, corretor: v })} options={[{ v: "all", l: "Todos corretores" }, ...activeBrokers.map((b) => ({ v: b.id, l: b.nome }))]} />
-          <FiltroSelect placeholder="Etapa" value={filtros.etapa} onChange={(v) => setFiltros({ ...filtros, etapa: v })} options={[
-            { v: "all", l: "Todas etapas" }, { v: "Novo", l: "Novo" }, { v: "Qualificado", l: "Qualificado" }, { v: "Visita", l: "Visita" }, { v: "Proposta", l: "Proposta" }, { v: "Fechado", l: "Fechado" }, { v: "Perdido", l: "Perdido" },
-          ]} />
-          <FiltroSelect placeholder="Risco" value={filtros.risco} onChange={(v) => setFiltros({ ...filtros, risco: v })} options={[
-            { v: "all", l: "Todos riscos" }, { v: "saudavel", l: "Saudável" }, { v: "atencao", l: "Atenção" }, { v: "critico", l: "Crítico" },
-          ]} />
-          <FiltroSelect placeholder="SLA" value={filtros.sla} onChange={(v) => setFiltros({ ...filtros, sla: v })} options={[
-            { v: "all", l: "SLA: todos" }, { v: "ok", l: "SLA Ok" }, { v: "quebrado", l: "SLA Quebrado" },
-          ]} />
-          <FiltroSelect placeholder="Tipo" value={filtros.tipo} onChange={(v) => setFiltros({ ...filtros, tipo: v })} options={[
-            { v: "all", l: "Tipo: todos" }, { v: "Plataforma", l: "Plataforma" }, { v: "Próprio", l: "Próprio" },
-          ]} />
-          <FiltroSelect placeholder="Score" value={filtros.scoreFx} onChange={(v) => setFiltros({ ...filtros, scoreFx: v })} options={[
-            { v: "all", l: "Score: todos" }, { v: "exc", l: "Excelente (70+)" }, { v: "atn", l: "Atenção (40–69)" }, { v: "cri", l: "Crítico (<40)" },
-          ]} />
-          <FiltroSelect placeholder="VGV" value={filtros.vgvFx} onChange={(v) => setFiltros({ ...filtros, vgvFx: v })} options={[
-            { v: "all", l: "VGV: todos" }, { v: "ate500", l: "Até R$ 500k" }, { v: "500a1m", l: "R$ 500k–1M" }, { v: "1ma3m", l: "R$ 1M–3M" }, { v: "3m+", l: "Acima de R$ 3M" },
-          ]} />
+          <FiltroSelect
+            placeholder="Origem"
+            value={filtros.origem}
+            onChange={(v) => setFiltros({ ...filtros, origem: v })}
+            options={[
+              { v: "all", l: "Todas as origens" },
+              { v: "IA", l: "IA" },
+              { v: "Inbox", l: "Inbox" },
+              { v: "Marketplace", l: "Marketplace" },
+              { v: "Indicação", l: "Indicação" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Região"
+            value={filtros.regiao}
+            onChange={(v) => setFiltros({ ...filtros, regiao: v })}
+            options={[
+              { v: "all", l: "Todas as regiões" },
+              ...regioesUnicas.map((r) => ({ v: r, l: r })),
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Corretor"
+            value={filtros.corretor}
+            onChange={(v) => setFiltros({ ...filtros, corretor: v })}
+            options={[
+              { v: "all", l: "Todos corretores" },
+              ...activeBrokers.map((b) => ({ v: b.id, l: b.nome })),
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Etapa"
+            value={filtros.etapa}
+            onChange={(v) => setFiltros({ ...filtros, etapa: v })}
+            options={[
+              { v: "all", l: "Todas etapas" },
+              { v: "Novo", l: "Novo" },
+              { v: "Qualificado", l: "Qualificado" },
+              { v: "Visita", l: "Visita" },
+              { v: "Proposta", l: "Proposta" },
+              { v: "Fechado", l: "Fechado" },
+              { v: "Perdido", l: "Perdido" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Risco"
+            value={filtros.risco}
+            onChange={(v) => setFiltros({ ...filtros, risco: v })}
+            options={[
+              { v: "all", l: "Todos riscos" },
+              { v: "saudavel", l: "Saudável" },
+              { v: "atencao", l: "Atenção" },
+              { v: "critico", l: "Crítico" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="SLA"
+            value={filtros.sla}
+            onChange={(v) => setFiltros({ ...filtros, sla: v })}
+            options={[
+              { v: "all", l: "SLA: todos" },
+              { v: "ok", l: "SLA Ok" },
+              { v: "quebrado", l: "SLA Quebrado" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Tipo"
+            value={filtros.tipo}
+            onChange={(v) => setFiltros({ ...filtros, tipo: v })}
+            options={[
+              { v: "all", l: "Tipo: todos" },
+              { v: "Plataforma", l: "Plataforma" },
+              { v: "Próprio", l: "Próprio" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Score"
+            value={filtros.scoreFx}
+            onChange={(v) => setFiltros({ ...filtros, scoreFx: v })}
+            options={[
+              { v: "all", l: "Score: todos" },
+              { v: "exc", l: "Excelente (70+)" },
+              { v: "atn", l: "Atenção (40–69)" },
+              { v: "cri", l: "Crítico (<40)" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="VGV"
+            value={filtros.vgvFx}
+            onChange={(v) => setFiltros({ ...filtros, vgvFx: v })}
+            options={[
+              { v: "all", l: "VGV: todos" },
+              { v: "ate500", l: "Até R$ 500k" },
+              { v: "500a1m", l: "R$ 500k–1M" },
+              { v: "1ma3m", l: "R$ 1M–3M" },
+              { v: "3m+", l: "Acima de R$ 3M" },
+            ]}
+          />
           {filtrosAtivos && (
             <button
-              onClick={() => { setFiltros(filtrosVazios); setBusca(""); setAlerta(null); }}
+              onClick={() => {
+                setFiltros(filtrosVazios);
+                setBusca("");
+                setAlerta(null);
+              }}
               className="text-xs text-muted-foreground underline-offset-2 hover:underline"
             >
               Limpar filtros
@@ -463,7 +634,9 @@ function LeadsAdmin() {
                     <div className="text-[10px] text-muted-foreground">{l.regiao}</div>
                   </td>
                   <td className="px-3 py-3">
-                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700">{l.origemAdmin}</span>
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700">
+                      {l.origemAdmin}
+                    </span>
                   </td>
                   <td className="px-3 py-3">
                     <TooltipProvider delayDuration={200}>
@@ -472,7 +645,9 @@ function LeadsAdmin() {
                           <span
                             className={cn(
                               "rounded-full px-2 py-0.5 text-[11px]",
-                              l.tipo === "Plataforma" ? "bg-blue-100 text-blue-800" : "bg-muted text-muted-foreground",
+                              l.tipo === "Plataforma"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-muted text-muted-foreground",
                             )}
                           >
                             {l.tipo}
@@ -488,54 +663,112 @@ function LeadsAdmin() {
                   </td>
                   <td className="px-3 py-3 text-xs">{l.status}</td>
                   <td className="px-3 py-3">
-                    <span className={cn("rounded-md border px-2 py-0.5 text-[11px] font-medium", tonScore(l.score))}>
+                    <span
+                      className={cn(
+                        "rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                        tonScore(l.score),
+                      )}
+                    >
                       {l.score}
                     </span>
                   </td>
                   <td className="px-3 py-3">
-                    <span className={cn("rounded-full px-2 py-0.5 text-[11px]", l.sla.quebrado ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700")}>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[11px]",
+                        l.sla.quebrado
+                          ? "bg-red-50 text-red-700"
+                          : "bg-emerald-50 text-emerald-700",
+                      )}
+                    >
                       {l.sla.quebrado ? `Quebrado ${l.sla.restante}` : l.sla.restante}
                     </span>
                   </td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">{l.ultimaInteracao}</td>
                   <td className="px-3 py-3 text-xs">{l.tempoParado.label}</td>
-                  <td className="px-3 py-3 text-right num text-xs">{formatBRLcompact(l.orcamento)}</td>
+                  <td className="px-3 py-3 text-right num text-xs">
+                    {formatBRLcompact(l.orcamento)}
+                  </td>
                   <td className="px-3 py-3">
-                    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", tonRisco[l.risco])}>
-                      <span className={cn("h-1.5 w-1.5 rounded-full", l.risco === "saudavel" ? "bg-emerald-500" : l.risco === "atencao" ? "bg-amber-500" : "bg-red-500")} />
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
+                        tonRisco[l.risco],
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          l.risco === "saudavel"
+                            ? "bg-emerald-500"
+                            : l.risco === "atencao"
+                              ? "bg-amber-500"
+                              : "bg-red-500",
+                        )}
+                      />
                       {labelRisco[l.risco]}
                     </span>
                   </td>
                   <td className="px-3 py-3 text-xs">
-                    <span className={cn(l.proximaAcao !== "Sem ação necessária" ? "font-medium text-foreground" : "text-muted-foreground")}>
+                    <span
+                      className={cn(
+                        l.proximaAcao !== "Sem ação necessária"
+                          ? "font-medium text-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
                       {l.proximaAcao}
                     </span>
                   </td>
                   <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem onClick={() => setSelecionado(l)}>Ver operação</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSelecionado(l)}>Ver timeline</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSelecionado(l)}>
+                          Ver operação
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSelecionado(l)}>
+                          Ver timeline
+                        </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link to="/admin/usuarios">Ver corretor</Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {l.tipo === "Plataforma" && (
-                          <DropdownMenuItem onClick={() => { setSelecionado(l); setRedistribuirOpen(true); }}>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelecionado(l);
+                              setRedistribuirOpen(true);
+                            }}
+                          >
                             Redistribuir lead
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => { setSelecionado(l); setObservacaoOpen(true); }}>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelecionado(l);
+                            setObservacaoOpen(true);
+                          }}
+                        >
                           Adicionar observação interna
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.success("Acompanhamento marcado para amanhã, 09h")}>
+                        <DropdownMenuItem
+                          onClick={() => toast.success("Acompanhamento marcado para amanhã, 09h")}
+                        >
                           Marcar acompanhamento
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSelecionado(l)}>Abrir auditoria</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.success("Risco sinalizado para revisão da governança")}>
+                        <DropdownMenuItem onClick={() => setSelecionado(l)}>
+                          Abrir auditoria
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            toast.success("Risco sinalizado para revisão da governança")
+                          }
+                        >
                           Sinalizar risco
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -544,7 +777,11 @@ function LeadsAdmin() {
                 </tr>
               ))}
               {lista.length === 0 && (
-                <tr><td colSpan={13} className="px-3 py-12 text-center text-sm text-muted-foreground">Nenhum lead corresponde aos filtros atuais.</td></tr>
+                <tr>
+                  <td colSpan={13} className="px-3 py-12 text-center text-sm text-muted-foreground">
+                    Nenhum lead corresponde aos filtros atuais.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -567,16 +804,25 @@ function LeadsAdmin() {
             <AlertDialogDescription>
               {selecionado && (
                 <>
-                  O lead <strong>{selecionado.nome}</strong> será redirecionado a outro corretor apto da região <strong>{selecionado.regiao}</strong>. O corretor original perderá o acesso comercial a esta operação.
-                  <br /><br />
-                  Apenas leads originados pela plataforma podem ser redistribuídos. Carteira própria do corretor é sempre preservada.
+                  O lead <strong>{selecionado.nome}</strong> será redirecionado a outro corretor
+                  apto da região <strong>{selecionado.regiao}</strong>. O corretor original perderá
+                  o acesso comercial a esta operação.
+                  <br />
+                  <br />
+                  Apenas leads originados pela plataforma podem ser redistribuídos. Carteira própria
+                  do corretor é sempre preservada.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setRedistribuirOpen(false); toast.success("Lead redistribuído com sucesso"); }}>
+            <AlertDialogAction
+              onClick={() => {
+                setRedistribuirOpen(false);
+                toast.success("Lead redistribuído com sucesso");
+              }}
+            >
               Confirmar redistribuição
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -592,10 +838,23 @@ function LeadsAdmin() {
               Visível apenas para administração e auditoria. Não notifica o corretor.
             </DialogDescription>
           </DialogHeader>
-          <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Ex.: lead de alto valor, validar cadência manualmente." rows={4} />
+          <Textarea
+            value={observacao}
+            onChange={(e) => setObservacao(e.target.value)}
+            placeholder="Ex.: lead de alto valor, validar cadência manualmente."
+            rows={4}
+          />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setObservacaoOpen(false)}>Cancelar</Button>
-            <Button onClick={() => { setObservacaoOpen(false); setObservacao(""); toast.success("Observação registrada na auditoria"); }}>
+            <Button variant="ghost" onClick={() => setObservacaoOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                setObservacaoOpen(false);
+                setObservacao("");
+                toast.success("Observação registrada na auditoria");
+              }}
+            >
               Registrar
             </Button>
           </DialogFooter>
@@ -608,12 +867,26 @@ function LeadsAdmin() {
 // ============ Subcomponentes ============
 
 function KpiCard({
-  label, value, hint, delta, tone = "neutral",
-}: { label: string; value: string | number; hint: string; delta?: string; tone?: "neutral" | "emerald" | "amber" | "red" }) {
+  label,
+  value,
+  hint,
+  delta,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string | number;
+  hint: string;
+  delta?: string;
+  tone?: "neutral" | "emerald" | "amber" | "red";
+}) {
   const tonClass =
-    tone === "emerald" ? "text-emerald-700" :
-    tone === "amber" ? "text-amber-700" :
-    tone === "red" ? "text-red-700" : "text-muted-foreground";
+    tone === "emerald"
+      ? "text-emerald-700"
+      : tone === "amber"
+        ? "text-amber-700"
+        : tone === "red"
+          ? "text-red-700"
+          : "text-muted-foreground";
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
@@ -627,12 +900,22 @@ function KpiCard({
 }
 
 function AlertaPill({
-  children, cor, ativo, onClick,
-}: { children: React.ReactNode; cor: "red" | "amber" | "yellow"; ativo: boolean; onClick: () => void }) {
+  children,
+  cor,
+  ativo,
+  onClick,
+}: {
+  children: React.ReactNode;
+  cor: "red" | "amber" | "yellow";
+  ativo: boolean;
+  onClick: () => void;
+}) {
   const bg =
-    cor === "red" ? "bg-red-50 text-red-700 border-red-100" :
-    cor === "amber" ? "bg-amber-50 text-amber-700 border-amber-100" :
-    "bg-yellow-50 text-yellow-700 border-yellow-100";
+    cor === "red"
+      ? "bg-red-50 text-red-700 border-red-100"
+      : cor === "amber"
+        ? "bg-amber-50 text-amber-700 border-amber-100"
+        : "bg-yellow-50 text-yellow-700 border-yellow-100";
   const dot = cor === "red" ? "bg-red-500" : cor === "amber" ? "bg-amber-500" : "bg-yellow-500";
   return (
     <button
@@ -650,8 +933,16 @@ function AlertaPill({
 }
 
 function FiltroSelect({
-  placeholder, value, onChange, options,
-}: { placeholder: string; value: string; onChange: (v: string) => void; options: { v: string; l: string }[] }) {
+  placeholder,
+  value,
+  onChange,
+  options,
+}: {
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { v: string; l: string }[];
+}) {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="h-8 w-auto min-w-[8rem] text-xs">
@@ -659,7 +950,9 @@ function FiltroSelect({
       </SelectTrigger>
       <SelectContent>
         {options.map((o) => (
-          <SelectItem key={o.v} value={o.v} className="text-xs">{o.l}</SelectItem>
+          <SelectItem key={o.v} value={o.v} className="text-xs">
+            {o.l}
+          </SelectItem>
         ))}
       </SelectContent>
     </Select>
@@ -669,8 +962,16 @@ function FiltroSelect({
 // ============ Drawer ============
 
 function LeadDrawer({
-  lead, onClose, onRedistribuir, onObservacao,
-}: { lead: LeadView | null; onClose: () => void; onRedistribuir: () => void; onObservacao: () => void }) {
+  lead,
+  onClose,
+  onRedistribuir,
+  onObservacao,
+}: {
+  lead: LeadView | null;
+  onClose: () => void;
+  onRedistribuir: () => void;
+  onObservacao: () => void;
+}) {
   if (!lead) return null;
   const corretorRiscoData = corretorRisco[lead.corretor.nome];
   const execucao = corretorRiscoData ? Math.max(20, 100 - corretorRiscoData.pctAtraso) : 78;
@@ -689,16 +990,24 @@ function LeadDrawer({
     { data: "Hoje", evento: "Mudança de etapa", detalhe: `Avançou para ${lead.status}` },
     { data: "Ontem", evento: "Atribuição", detalhe: `Lead atribuído a ${lead.corretor.nome}` },
     ...(lead.proximaAcao === "Verificar risco de bypass"
-      ? [{ data: "Há 2 dias", evento: "Suspeita de bypass", detalhe: "Sinal IA: corretor não registrou interação após visita." }]
+      ? [
+          {
+            data: "Há 2 dias",
+            evento: "Suspeita de bypass",
+            detalhe: "Sinal IA: corretor não registrou interação após visita.",
+          },
+        ]
       : []),
-    ...(lead.sla.quebrado ? [{ data: "Há 1 dia", evento: "SLA quebrado", detalhe: "Notificação enviada à governança." }] : []),
+    ...(lead.sla.quebrado
+      ? [{ data: "Há 1 dia", evento: "SLA quebrado", detalhe: "Notificação enviada à governança." }]
+      : []),
   ];
 
   const fatoresRisco = [
     `Score atual: ${lead.score}`,
     `SLA: ${lead.sla.quebrado ? "quebrado" : "ok"} (${lead.sla.restante})`,
     `Tempo parado: ${lead.tempoParado.label}`,
-    `Histórico do corretor: ${(corretorRiscoData?.pctAtraso ?? 0)}% atraso`,
+    `Histórico do corretor: ${corretorRiscoData?.pctAtraso ?? 0}% atraso`,
   ];
 
   return (
@@ -708,15 +1017,51 @@ function LeadDrawer({
           <SheetTitle className="text-lg">{lead.nome}</SheetTitle>
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <span className="font-mono text-[11px] text-muted-foreground">{lead.id}</span>
-            <span className={cn("rounded-full px-2 py-0.5 text-[11px]", lead.tipo === "Plataforma" ? "bg-blue-100 text-blue-800" : "bg-muted text-muted-foreground")}>{lead.tipo}</span>
-            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", tonRisco[lead.risco])}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", lead.risco === "saudavel" ? "bg-emerald-500" : lead.risco === "atencao" ? "bg-amber-500" : "bg-red-500")} />
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[11px]",
+                lead.tipo === "Plataforma"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {lead.tipo}
+            </span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
+                tonRisco[lead.risco],
+              )}
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  lead.risco === "saudavel"
+                    ? "bg-emerald-500"
+                    : lead.risco === "atencao"
+                      ? "bg-amber-500"
+                      : "bg-red-500",
+                )}
+              />
               {labelRisco[lead.risco]}
             </span>
-            <span className={cn("rounded-md border px-2 py-0.5 text-[11px] font-medium", tonScore(lead.score))}>Score {lead.score}</span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{lead.status}</span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">VGV {formatBRLcompact(lead.orcamento)}</span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">Parado {lead.tempoParado.label}</span>
+            <span
+              className={cn(
+                "rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                tonScore(lead.score),
+              )}
+            >
+              Score {lead.score}
+            </span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              {lead.status}
+            </span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              VGV {formatBRLcompact(lead.orcamento)}
+            </span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              Parado {lead.tempoParado.label}
+            </span>
           </div>
         </SheetHeader>
 
@@ -735,7 +1080,11 @@ function LeadDrawer({
             <div className="grid grid-cols-2 gap-3">
               <Info label="Origem" value={lead.origemAdmin} />
               <Info label="Tipo" value={lead.tipo} />
-              <Info label="Responsável" value={lead.corretor.nome} sub={`${lead.corretor.plano} · ${lead.regiao}`} />
+              <Info
+                label="Responsável"
+                value={lead.corretor.nome}
+                sub={`${lead.corretor.plano} · ${lead.regiao}`}
+              />
               <Info label="Score" value={String(lead.score)} />
               <Info label="Risco" value={labelRisco[lead.risco]} />
               <Info label="VGV" value={formatBRL(lead.orcamento)} />
@@ -744,7 +1093,9 @@ function LeadDrawer({
               <Info label="Execução do corretor" value={`${execucao}%`} />
               <Info label="Conversão histórica" value={`${conversaoCorretor}%`} />
             </div>
-            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{lead.interesse}</div>
+            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">
+              {lead.interesse}
+            </div>
           </TabsContent>
 
           <TabsContent value="timeline" className="mt-4">
@@ -752,7 +1103,9 @@ function LeadDrawer({
               {lead.historico.map((h, i) => (
                 <li key={i} className="relative">
                   <span className="absolute -left-[26px] mt-1 h-2 w-2 rounded-full bg-foreground" />
-                  <div className="text-[11px] text-muted-foreground">{h.data} · {h.tipo}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {h.data} · {h.tipo}
+                  </div>
                   <div>{h.texto}</div>
                 </li>
               ))}
@@ -769,7 +1122,10 @@ function LeadDrawer({
           <TabsContent value="cadencia" className="mt-4">
             <ul className="space-y-2 text-sm">
               {cadenciaItens.map((c, i) => (
-                <li key={i} className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
+                <li
+                  key={i}
+                  className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2"
+                >
                   <span>{c.etapa}</span>
                   <span className={cn("text-[11px]", c.ok ? "text-emerald-700" : "text-amber-700")}>
                     {c.ok ? "Cumprido" : "Pendente"}
@@ -787,7 +1143,12 @@ function LeadDrawer({
               <Mini label="Plano" value={lead.corretor.plano} />
             </div>
             <div className="text-xs">
-              <Link to="/admin/usuarios" className="text-foreground underline-offset-2 hover:underline">Ver corretor →</Link>
+              <Link
+                to="/admin/usuarios"
+                className="text-foreground underline-offset-2 hover:underline"
+              >
+                Ver corretor →
+              </Link>
             </div>
           </TabsContent>
 
@@ -795,7 +1156,9 @@ function LeadDrawer({
             <ul className="space-y-2 text-sm">
               {auditoria.map((a, i) => (
                 <li key={i} className="rounded-lg border border-border bg-card px-3 py-2">
-                  <div className="text-[11px] text-muted-foreground">{a.data} · {a.evento}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {a.data} · {a.evento}
+                  </div>
                   <div>{a.detalhe}</div>
                 </li>
               ))}
@@ -805,20 +1168,39 @@ function LeadDrawer({
           <TabsContent value="financeiro" className="mt-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <Info label="VGV potencial" value={formatBRL(lead.orcamento)} />
-              <Info label="Comissão estimada" value={formatBRL(Math.round(lead.orcamento * 0.03))} />
-              <Info label="Status de cobrança" value={lead.status === "Fechado" ? "Faturado" : "Sem cobrança vinculada"} />
-              <Info label="Origem da receita" value={lead.tipo === "Plataforma" ? "Ubroker (lead plataforma)" : "Carteira própria"} />
+              <Info
+                label="Comissão estimada"
+                value={formatBRL(Math.round(lead.orcamento * 0.03))}
+              />
+              <Info
+                label="Status de cobrança"
+                value={lead.status === "Fechado" ? "Faturado" : "Sem cobrança vinculada"}
+              />
+              <Info
+                label="Origem da receita"
+                value={
+                  lead.tipo === "Plataforma" ? "Ubroker (lead plataforma)" : "Carteira própria"
+                }
+              />
             </div>
           </TabsContent>
 
           <TabsContent value="risco" className="mt-4 space-y-3">
             <div className="rounded-lg border border-border bg-card p-3 text-sm">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Como o risco foi calculado</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                Como o risco foi calculado
+              </div>
               <ul className="space-y-1 text-xs">
-                {fatoresRisco.map((f, i) => <li key={i}>• {f}</li>)}
+                {fatoresRisco.map((f, i) => (
+                  <li key={i}>• {f}</li>
+                ))}
               </ul>
             </div>
-            <Button variant="outline" size="sm" onClick={() => toast.success("Risco sinalizado para revisão da governança")}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.success("Risco sinalizado para revisão da governança")}
+            >
               Sinalizar risco
             </Button>
           </TabsContent>
@@ -826,11 +1208,27 @@ function LeadDrawer({
 
         <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-4">
           {lead.tipo === "Plataforma" && (
-            <Button size="sm" onClick={onRedistribuir}>Redistribuir</Button>
+            <Button size="sm" onClick={onRedistribuir}>
+              Redistribuir
+            </Button>
           )}
-          <Button variant="outline" size="sm" onClick={onObservacao}>Adicionar observação</Button>
-          <Button variant="outline" size="sm" onClick={() => toast.success("Acompanhamento marcado para amanhã, 09h")}>Marcar acompanhamento</Button>
-          <Button variant="ghost" size="sm" onClick={() => toast.success("Risco sinalizado para revisão da governança")}>Sinalizar risco</Button>
+          <Button variant="outline" size="sm" onClick={onObservacao}>
+            Adicionar observação
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => toast.success("Acompanhamento marcado para amanhã, 09h")}
+          >
+            Marcar acompanhamento
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toast.success("Risco sinalizado para revisão da governança")}
+          >
+            Sinalizar risco
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

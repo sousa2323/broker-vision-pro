@@ -6,9 +6,21 @@ export const Route = createFileRoute("/app/ia")({
 });
 
 const recursos = [
-  { icon: MessagesSquare, nome: "Atendimento automático", desc: "A IA responde e qualifica leads 24/7 nos seus canais." },
-  { icon: Filter, nome: "Qualificação inteligente", desc: "Extrai orçamento, região e urgência de cada conversa." },
-  { icon: Bot, nome: "Sugestões de ação", desc: "Recomenda o próximo passo para cada oportunidade." },
+  {
+    icon: MessagesSquare,
+    nome: "Atendimento automático",
+    desc: "A IA responde e qualifica leads 24/7 nos seus canais.",
+  },
+  {
+    icon: Filter,
+    nome: "Qualificação inteligente",
+    desc: "Extrai orçamento, região e urgência de cada conversa.",
+  },
+  {
+    icon: Bot,
+    nome: "Sugestões de ação",
+    desc: "Recomenda o próximo passo para cada oportunidade.",
+  },
 ];
 
 function AIPage() {

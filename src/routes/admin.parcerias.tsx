@@ -27,21 +27,11 @@ import {
 import { adminParcerias } from "@/data/admin-mock";
 import { formatBRL, formatBRLcompact } from "@/data/mock";
 import { cn } from "@/lib/utils";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -99,7 +89,10 @@ const ORIGENS: Relacao["origem"][] = ["Captação", "Distribuição", "Match IA"
 
 function buildRelacoes(): Relacao[] {
   // Agrupa por par (captador↔parceiro) somando comissões e operações
-  const map = new Map<string, { a: string; b: string; ops: typeof adminParcerias; comissao: number }>();
+  const map = new Map<
+    string,
+    { a: string; b: string; ops: typeof adminParcerias; comissao: number }
+  >();
   for (const p of adminParcerias) {
     const [a, b] = [p.captador, p.parceiro].sort();
     const k = `${a}__${b}`;
@@ -127,15 +120,15 @@ function buildRelacoes(): Relacao[] {
   return Array.from(map.entries()).map(([k, v], idx) => {
     const s = seed(k);
     const compat = 55 + (s % 45);
-    const leadsA_B = 2 + (rnd(k + "ab", 18));
-    const leadsB_A = (rnd(k + "ba", 22));
+    const leadsA_B = 2 + rnd(k + "ab", 18);
+    const leadsB_A = rnd(k + "ba", 22);
     const leadsCompart = leadsA_B + leadsB_A;
-    const conversao = 4 + (rnd(k + "cv", 38));
-    const tempoResposta = 1 + (rnd(k + "tr", 24));
-    const ticket = 380_000 + (rnd(k + "tk", 26) * 95_000);
-    const vgv = ticket * (1 + (rnd(k + "vg", 6)));
-    const receita = v.comissao + (rnd(k + "rc", 180) * 1_200);
-    const operacoes = v.ops.length + (rnd(k + "op", 6));
+    const conversao = 4 + rnd(k + "cv", 38);
+    const tempoResposta = 1 + rnd(k + "tr", 24);
+    const ticket = 380_000 + rnd(k + "tk", 26) * 95_000;
+    const vgv = ticket * (1 + rnd(k + "vg", 6));
+    const receita = v.comissao + rnd(k + "rc", 180) * 1_200;
+    const operacoes = v.ops.length + rnd(k + "op", 6);
 
     // reciprocidade
     const ratio = Math.min(leadsA_B, leadsB_A) / Math.max(1, Math.max(leadsA_B, leadsB_A));
@@ -156,10 +149,13 @@ function buildRelacoes(): Relacao[] {
     else saude = "saudavel";
     if (hasFin && saude === "inativa") saude = "saudavel";
 
-    const statusBase: StatusBase =
-      v.ops.find((o) => o.status === "Ativa") ? "Ativa" :
-      v.ops.find((o) => o.status === "Finalizada") ? "Finalizada" :
-      v.ops.find((o) => o.status === "Cancelada") ? "Cancelada" : "Ativa";
+    const statusBase: StatusBase = v.ops.find((o) => o.status === "Ativa")
+      ? "Ativa"
+      : v.ops.find((o) => o.status === "Finalizada")
+        ? "Finalizada"
+        : v.ops.find((o) => o.status === "Cancelada")
+          ? "Cancelada"
+          : "Ativa";
 
     return {
       id: `R-${1000 + idx}`,
@@ -203,17 +199,24 @@ const RECIP_LABEL: Record<Recip, string> = {
 };
 
 function saudeDot(s: Saude): string {
-  return s === "saudavel" ? "bg-emerald-500"
-    : s === "expansao" ? "bg-sky-500"
-    : s === "atencao" ? "bg-amber-500"
-    : s === "critica" ? "bg-red-500"
-    : "bg-muted-foreground/40";
+  return s === "saudavel"
+    ? "bg-emerald-500"
+    : s === "expansao"
+      ? "bg-sky-500"
+      : s === "atencao"
+        ? "bg-amber-500"
+        : s === "critica"
+          ? "bg-red-500"
+          : "bg-muted-foreground/40";
 }
 function recipTone(r: Recip): string {
-  return r === "alta" ? "text-emerald-700 bg-emerald-50"
-    : r === "media" ? "text-sky-700 bg-sky-50"
-    : r === "baixa" ? "text-amber-700 bg-amber-50"
-    : "text-muted-foreground bg-surface";
+  return r === "alta"
+    ? "text-emerald-700 bg-emerald-50"
+    : r === "media"
+      ? "text-sky-700 bg-sky-50"
+      : r === "baixa"
+        ? "text-amber-700 bg-amber-50"
+        : "text-muted-foreground bg-surface";
 }
 function compatTone(c: number): string {
   if (c >= 85) return "border-emerald-200 bg-emerald-50 text-emerald-700";
@@ -222,7 +225,12 @@ function compatTone(c: number): string {
   return "border-border bg-surface text-muted-foreground";
 }
 function initials(name: string): string {
-  return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 // ============ Componente ============
@@ -260,12 +268,26 @@ function ParceriasAdmin() {
       if (ticketF === "mid" && (r.ticket < 500_000 || r.ticket >= 900_000)) return false;
       if (ticketF === "low" && r.ticket >= 500_000) return false;
       if (alertFiltro === "sem-retorno" && r.tempoResposta < 18) return false;
-      if (alertFiltro === "baixa-recip" && r.recip !== "baixa" && r.recip !== "unilateral") return false;
+      if (alertFiltro === "baixa-recip" && r.recip !== "baixa" && r.recip !== "unilateral")
+        return false;
       if (alertFiltro === "alta-conv" && r.conversao < 30) return false;
       if (alertFiltro === "risco" && r.saude !== "critica") return false;
       return true;
     });
-  }, [relacoes, q, regiao, saude, recip, tipo, statusF, origemF, compatMin, convMin, ticketF, alertFiltro]);
+  }, [
+    relacoes,
+    q,
+    regiao,
+    saude,
+    recip,
+    tipo,
+    statusF,
+    origemF,
+    compatMin,
+    convMin,
+    ticketF,
+    alertFiltro,
+  ]);
 
   // KPIs estratégicos
   const kpis = useMemo(() => {
@@ -286,13 +308,41 @@ function ParceriasAdmin() {
     return { ativas, matchAlto, convMedia, receita, risco, leads, top };
   }, [relacoes]);
 
-  const alertas = useMemo(() => ([
-    { key: "sem-retorno", n: relacoes.reduce((s, r) => s + (r.tempoResposta > 18 ? r.leadsCompart : 0), 0), label: "leads compartilhados sem retorno", tone: "amber" },
-    { key: "baixa-recip", n: relacoes.filter((r) => r.recip === "baixa" || r.recip === "unilateral").length, label: "parcerias com baixa reciprocidade", tone: "amber" },
-    { key: "alta-conv", n: relacoes.filter((r) => r.conversao >= 30).length, label: "conexões acima de 30% de conversão", tone: "emerald" },
-    { key: "risco", n: relacoes.filter((r) => r.saude === "critica").length, label: "conflitos operacionais identificados", tone: "red" },
-    { key: "match", n: relacoes.filter((r) => r.compat >= 85 && r.operacoes === 0).length, label: "oportunidades sem parceiro compatível", tone: "sky" },
-  ]), [relacoes]);
+  const alertas = useMemo(
+    () => [
+      {
+        key: "sem-retorno",
+        n: relacoes.reduce((s, r) => s + (r.tempoResposta > 18 ? r.leadsCompart : 0), 0),
+        label: "leads compartilhados sem retorno",
+        tone: "amber",
+      },
+      {
+        key: "baixa-recip",
+        n: relacoes.filter((r) => r.recip === "baixa" || r.recip === "unilateral").length,
+        label: "parcerias com baixa reciprocidade",
+        tone: "amber",
+      },
+      {
+        key: "alta-conv",
+        n: relacoes.filter((r) => r.conversao >= 30).length,
+        label: "conexões acima de 30% de conversão",
+        tone: "emerald",
+      },
+      {
+        key: "risco",
+        n: relacoes.filter((r) => r.saude === "critica").length,
+        label: "conflitos operacionais identificados",
+        tone: "red",
+      },
+      {
+        key: "match",
+        n: relacoes.filter((r) => r.compat >= 85 && r.operacoes === 0).length,
+        label: "oportunidades sem parceiro compatível",
+        tone: "sky",
+      },
+    ],
+    [relacoes],
+  );
 
   return (
     <TooltipProvider delayDuration={120}>
@@ -312,13 +362,62 @@ function ParceriasAdmin() {
 
         {/* KPIs */}
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-          <KpiCard icon={<Handshake className="h-3.5 w-3.5" />} label="Parcerias ativas" value={kpis.ativas} hint="conexões operacionais" trend="up" delta="+8%" />
-          <KpiCard icon={<Sparkles className="h-3.5 w-3.5" />} label="Match alto" value={kpis.matchAlto} hint="compatibilidade ≥ 85%" trend="up" delta="+5" />
-          <KpiCard icon={<TrendingUp className="h-3.5 w-3.5" />} label="Conversão compartilhada" value={`${kpis.convMedia}%`} hint="média da rede" trend="up" delta="+2,1pp" />
-          <KpiCard icon={<HandCoins className="h-3.5 w-3.5" />} label="Receita compartilhada" value={formatBRLcompact(kpis.receita)} hint="acumulado 90d" trend="up" delta="+14%" />
-          <KpiCard icon={<AlertTriangle className="h-3.5 w-3.5" />} label="Parcerias em risco" value={kpis.risco} hint="atenção e críticas" trend="down" delta="-2" tone="amber" />
-          <KpiCard icon={<Users className="h-3.5 w-3.5" />} label="Leads compartilhados" value={kpis.leads} hint="volume operacional" trend="up" delta="+22" />
-          <KpiCard icon={<Star className="h-3.5 w-3.5" />} label="Mais colaborativo" value={kpis.top ? (kpis.top[0].split(" ")[0]) : "—"} hint={kpis.top ? `${kpis.top[1]} operações` : "—"} trend="flat" />
+          <KpiCard
+            icon={<Handshake className="h-3.5 w-3.5" />}
+            label="Parcerias ativas"
+            value={kpis.ativas}
+            hint="conexões operacionais"
+            trend="up"
+            delta="+8%"
+          />
+          <KpiCard
+            icon={<Sparkles className="h-3.5 w-3.5" />}
+            label="Match alto"
+            value={kpis.matchAlto}
+            hint="compatibilidade ≥ 85%"
+            trend="up"
+            delta="+5"
+          />
+          <KpiCard
+            icon={<TrendingUp className="h-3.5 w-3.5" />}
+            label="Conversão compartilhada"
+            value={`${kpis.convMedia}%`}
+            hint="média da rede"
+            trend="up"
+            delta="+2,1pp"
+          />
+          <KpiCard
+            icon={<HandCoins className="h-3.5 w-3.5" />}
+            label="Receita compartilhada"
+            value={formatBRLcompact(kpis.receita)}
+            hint="acumulado 90d"
+            trend="up"
+            delta="+14%"
+          />
+          <KpiCard
+            icon={<AlertTriangle className="h-3.5 w-3.5" />}
+            label="Parcerias em risco"
+            value={kpis.risco}
+            hint="atenção e críticas"
+            trend="down"
+            delta="-2"
+            tone="amber"
+          />
+          <KpiCard
+            icon={<Users className="h-3.5 w-3.5" />}
+            label="Leads compartilhados"
+            value={kpis.leads}
+            hint="volume operacional"
+            trend="up"
+            delta="+22"
+          />
+          <KpiCard
+            icon={<Star className="h-3.5 w-3.5" />}
+            label="Mais colaborativo"
+            value={kpis.top ? kpis.top[0].split(" ")[0] : "—"}
+            hint={kpis.top ? `${kpis.top[1]} operações` : "—"}
+            trend="flat"
+          />
         </section>
 
         {/* Alertas operacionais */}
@@ -332,7 +431,9 @@ function ParceriasAdmin() {
               onClick={() => setAlertFiltro(alertFiltro === a.key ? null : a.key)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-                alertFiltro === a.key ? "border-foreground/30 bg-background" : "border-border bg-background/40 hover:bg-background",
+                alertFiltro === a.key
+                  ? "border-foreground/30 bg-background"
+                  : "border-border bg-background/40 hover:bg-background",
                 a.tone === "amber" && "text-amber-700",
                 a.tone === "red" && "text-red-700",
                 a.tone === "emerald" && "text-emerald-700",
@@ -344,7 +445,10 @@ function ParceriasAdmin() {
             </button>
           ))}
           {alertFiltro && (
-            <button onClick={() => setAlertFiltro(null)} className="ml-auto text-[11px] text-muted-foreground hover:text-foreground">
+            <button
+              onClick={() => setAlertFiltro(null)}
+              className="ml-auto text-[11px] text-muted-foreground hover:text-foreground"
+            >
               limpar
             </button>
           )}
@@ -354,17 +458,90 @@ function ParceriasAdmin() {
         <section className="flex flex-wrap items-center gap-2">
           <div className="relative w-full max-w-xs">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar relação, corretor, região…" className="h-8 pl-8 text-xs" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar relação, corretor, região…"
+              className="h-8 pl-8 text-xs"
+            />
           </div>
-          <FilterSelect value={regiao} setValue={setRegiao} placeholder="Região" options={REGIOES} />
-          <FilterSelect value={compatMin} setValue={setCompatMin} placeholder="Compatibilidade" options={[["70","≥ 70%"],["80","≥ 80%"],["90","≥ 90%"]]} />
-          <FilterSelect value={convMin} setValue={setConvMin} placeholder="Conversão" options={[["15","≥ 15%"],["25","≥ 25%"],["35","≥ 35%"]]} />
-          <FilterSelect value={saude} setValue={setSaude} placeholder="Saúde" options={[["saudavel","Saudável"],["expansao","Em expansão"],["atencao","Atenção"],["critica","Crítica"],["inativa","Inativa"]]} />
-          <FilterSelect value={recip} setValue={setRecip} placeholder="Reciprocidade" options={[["alta","Alta"],["media","Média"],["baixa","Baixa"],["unilateral","Unilateral"]]} />
-          <FilterSelect value={tipo} setValue={setTipo} placeholder="Tipo de imóvel" options={TIPOS} />
-          <FilterSelect value={statusF} setValue={setStatusF} placeholder="Status" options={["Ativa","Finalizada","Cancelada"]} />
-          <FilterSelect value={origemF} setValue={setOrigemF} placeholder="Origem" options={ORIGENS} />
-          <FilterSelect value={ticketF} setValue={setTicketF} placeholder="Ticket/VGV" options={[["high","Alto (≥ 900k)"],["mid","Médio"],["low","Baixo (< 500k)"]]} />
+          <FilterSelect
+            value={regiao}
+            setValue={setRegiao}
+            placeholder="Região"
+            options={REGIOES}
+          />
+          <FilterSelect
+            value={compatMin}
+            setValue={setCompatMin}
+            placeholder="Compatibilidade"
+            options={[
+              ["70", "≥ 70%"],
+              ["80", "≥ 80%"],
+              ["90", "≥ 90%"],
+            ]}
+          />
+          <FilterSelect
+            value={convMin}
+            setValue={setConvMin}
+            placeholder="Conversão"
+            options={[
+              ["15", "≥ 15%"],
+              ["25", "≥ 25%"],
+              ["35", "≥ 35%"],
+            ]}
+          />
+          <FilterSelect
+            value={saude}
+            setValue={setSaude}
+            placeholder="Saúde"
+            options={[
+              ["saudavel", "Saudável"],
+              ["expansao", "Em expansão"],
+              ["atencao", "Atenção"],
+              ["critica", "Crítica"],
+              ["inativa", "Inativa"],
+            ]}
+          />
+          <FilterSelect
+            value={recip}
+            setValue={setRecip}
+            placeholder="Reciprocidade"
+            options={[
+              ["alta", "Alta"],
+              ["media", "Média"],
+              ["baixa", "Baixa"],
+              ["unilateral", "Unilateral"],
+            ]}
+          />
+          <FilterSelect
+            value={tipo}
+            setValue={setTipo}
+            placeholder="Tipo de imóvel"
+            options={TIPOS}
+          />
+          <FilterSelect
+            value={statusF}
+            setValue={setStatusF}
+            placeholder="Status"
+            options={["Ativa", "Finalizada", "Cancelada"]}
+          />
+          <FilterSelect
+            value={origemF}
+            setValue={setOrigemF}
+            placeholder="Origem"
+            options={ORIGENS}
+          />
+          <FilterSelect
+            value={ticketF}
+            setValue={setTicketF}
+            placeholder="Ticket/VGV"
+            options={[
+              ["high", "Alto (≥ 900k)"],
+              ["mid", "Médio"],
+              ["low", "Baixo (< 500k)"],
+            ]}
+          />
           <span className="ml-auto text-[11px] text-muted-foreground">
             {filtradas.length} de {relacoes.length} relações
           </span>
@@ -389,7 +566,11 @@ function ParceriasAdmin() {
             </thead>
             <tbody className="divide-y divide-border">
               {filtradas.map((r) => (
-                <tr key={r.id} className="cursor-pointer hover:bg-surface/60" onClick={() => setSelecionada(r)}>
+                <tr
+                  key={r.id}
+                  className="cursor-pointer hover:bg-surface/60"
+                  onClick={() => setSelecionada(r)}
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <PairAvatars a={r.a} b={r.b} />
@@ -411,11 +592,18 @@ function ParceriasAdmin() {
                   </td>
                   <td className="px-4 py-3 text-right num text-[12px]">{r.leadsCompart}</td>
                   <td className="px-4 py-3 text-right num text-[12px]">{r.conversao}%</td>
-                  <td className="px-4 py-3 text-right num text-[12px]">{formatBRLcompact(r.receita)}</td>
+                  <td className="px-4 py-3 text-right num text-[12px]">
+                    {formatBRLcompact(r.receita)}
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", recipTone(r.recip))}>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
+                        recipTone(r.recip),
+                      )}
+                    >
                       <ArrowLeftRight className="h-3 w-3" />
-                      {RECIP_LABEL[r.recip].replace(" reciprocidade","")}
+                      {RECIP_LABEL[r.recip].replace(" reciprocidade", "")}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -432,24 +620,38 @@ function ParceriasAdmin() {
                     </Tooltip>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px]",
-                      r.statusBase === "Ativa" && "bg-amber-50 text-amber-700",
-                      r.statusBase === "Finalizada" && "bg-emerald-50 text-emerald-700",
-                      r.statusBase === "Cancelada" && "bg-red-50 text-red-700",
-                    )}>{r.statusBase}</span>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[11px]",
+                        r.statusBase === "Ativa" && "bg-amber-50 text-amber-700",
+                        r.statusBase === "Finalizada" && "bg-emerald-50 text-emerald-700",
+                        r.statusBase === "Cancelada" && "bg-red-50 text-red-700",
+                      )}
+                    >
+                      {r.statusBase}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                      <IconBtn title="Ver operações" onClick={() => setSelecionada(r)}><Eye className="h-3.5 w-3.5" /></IconBtn>
-                      <IconBtn title="Ver contrato" onClick={() => toast.info(`Contrato ${r.id}`)}><FileText className="h-3.5 w-3.5" /></IconBtn>
-                      <IconBtn title="Pipeline compartilhado" onClick={() => setSelecionada(r)}><GitBranch className="h-3.5 w-3.5" /></IconBtn>
+                      <IconBtn title="Ver operações" onClick={() => setSelecionada(r)}>
+                        <Eye className="h-3.5 w-3.5" />
+                      </IconBtn>
+                      <IconBtn title="Ver contrato" onClick={() => toast.info(`Contrato ${r.id}`)}>
+                        <FileText className="h-3.5 w-3.5" />
+                      </IconBtn>
+                      <IconBtn title="Pipeline compartilhado" onClick={() => setSelecionada(r)}>
+                        <GitBranch className="h-3.5 w-3.5" />
+                      </IconBtn>
                     </div>
                   </td>
                 </tr>
               ))}
               {filtradas.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-muted-foreground">Nenhuma relação encontrada.</td></tr>
+                <tr>
+                  <td colSpan={10} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    Nenhuma relação encontrada.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -464,17 +666,35 @@ function ParceriasAdmin() {
 // ============ Subcomponentes ============
 
 function KpiCard({
-  icon, label, value, hint, trend, delta, tone = "default",
+  icon,
+  label,
+  value,
+  hint,
+  trend,
+  delta,
+  tone = "default",
 }: {
-  icon: React.ReactNode; label: string; value: React.ReactNode; hint?: string;
-  trend?: "up" | "down" | "flat"; delta?: string; tone?: "default" | "amber";
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  trend?: "up" | "down" | "flat";
+  delta?: string;
+  tone?: "default" | "amber";
 }) {
   const TrendIcon = trend === "up" ? ArrowUpRight : trend === "down" ? ArrowDownRight : null;
-  const trendCls = trend === "up" ? "text-emerald-700" : trend === "down" ? "text-amber-700" : "text-muted-foreground";
+  const trendCls =
+    trend === "up"
+      ? "text-emerald-700"
+      : trend === "down"
+        ? "text-amber-700"
+        : "text-muted-foreground";
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-        <span className={cn(tone === "amber" ? "text-amber-700" : "text-foreground/60")}>{icon}</span>
+        <span className={cn(tone === "amber" ? "text-amber-700" : "text-foreground/60")}>
+          {icon}
+        </span>
         {label}
       </div>
       <div className="mt-2 flex items-end justify-between gap-2">
@@ -492,9 +712,14 @@ function KpiCard({
 }
 
 function FilterSelect({
-  value, setValue, placeholder, options,
+  value,
+  setValue,
+  placeholder,
+  options,
 }: {
-  value: string; setValue: (v: string) => void; placeholder: string;
+  value: string;
+  setValue: (v: string) => void;
+  placeholder: string;
   options: ReadonlyArray<string | readonly [string, string]>;
 }) {
   return (
@@ -506,7 +731,11 @@ function FilterSelect({
         <SelectItem value="all">{placeholder}</SelectItem>
         {options.map((o) => {
           const [v, l] = Array.isArray(o) ? o : [o, o];
-          return <SelectItem key={v} value={v}>{l}</SelectItem>;
+          return (
+            <SelectItem key={v} value={v}>
+              {l}
+            </SelectItem>
+          );
         })}
       </SelectContent>
     </Select>
@@ -515,7 +744,12 @@ function FilterSelect({
 
 function CompatBadge({ c }: { c: number }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] num", compatTone(c))}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] num",
+        compatTone(c),
+      )}
+    >
       <Sparkles className="h-3 w-3" />
       {c}%
     </span>
@@ -543,7 +777,15 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
-function IconBtn({ children, title, onClick }: { children: React.ReactNode; title: string; onClick?: () => void }) {
+function IconBtn({
+  children,
+  title,
+  onClick,
+}: {
+  children: React.ReactNode;
+  title: string;
+  onClick?: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -560,7 +802,10 @@ function IconBtn({ children, title, onClick }: { children: React.ReactNode; titl
 function RelacaoDrawer({ relacao, onClose }: { relacao: Relacao | null; onClose: () => void }) {
   return (
     <Sheet open={!!relacao} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full max-w-[680px] overflow-y-auto p-0 sm:max-w-[680px]">
+      <SheetContent
+        side="right"
+        className="w-full max-w-[680px] overflow-y-auto p-0 sm:max-w-[680px]"
+      >
         {relacao && <DrawerBody r={relacao} />}
       </SheetContent>
     </Sheet>
@@ -586,15 +831,24 @@ function DrawerBody({ r }: { r: Relacao }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <CompatBadge c={r.compat} />
-          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", recipTone(r.recip))}>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
+              recipTone(r.recip),
+            )}
+          >
             <ArrowLeftRight className="h-3 w-3" /> {RECIP_LABEL[r.recip]}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2 py-0.5 text-[11px]">
             <span className={cn("h-2 w-2 rounded-full", saudeDot(r.saude))} />
             {SAUDE_LABEL[r.saude]}
           </span>
-          <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] num">Conv {r.conversao}%</span>
-          <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] num">{formatBRL(r.receita)}</span>
+          <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] num">
+            Conv {r.conversao}%
+          </span>
+          <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] num">
+            {formatBRL(r.receita)}
+          </span>
         </div>
 
         {/* AI insight */}
@@ -609,11 +863,21 @@ function DrawerBody({ r }: { r: Relacao }) {
 
       <Tabs defaultValue="resumo" className="px-6 py-4">
         <TabsList className="h-8">
-          <TabsTrigger value="resumo" className="text-xs">Resumo</TabsTrigger>
-          <TabsTrigger value="ops" className="text-xs">Operações</TabsTrigger>
-          <TabsTrigger value="perf" className="text-xs">Performance</TabsTrigger>
-          <TabsTrigger value="fin" className="text-xs">Financeiro</TabsTrigger>
-          <TabsTrigger value="aud" className="text-xs">Auditoria</TabsTrigger>
+          <TabsTrigger value="resumo" className="text-xs">
+            Resumo
+          </TabsTrigger>
+          <TabsTrigger value="ops" className="text-xs">
+            Operações
+          </TabsTrigger>
+          <TabsTrigger value="perf" className="text-xs">
+            Performance
+          </TabsTrigger>
+          <TabsTrigger value="fin" className="text-xs">
+            Financeiro
+          </TabsTrigger>
+          <TabsTrigger value="aud" className="text-xs">
+            Auditoria
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-4 pt-4">
@@ -678,7 +942,10 @@ function DrawerBody({ r }: { r: Relacao }) {
             <Mini label="Compartilhados" value={r.leadsCompart} />
             <Mini label="Em andamento" value={Math.max(1, Math.floor(r.leadsCompart * 0.4))} />
             <Mini label="Em proposta" value={Math.max(0, Math.floor(r.leadsCompart * 0.15))} />
-            <Mini label="Convertidos" value={Math.max(0, Math.floor(r.leadsCompart * (r.conversao / 100)))} />
+            <Mini
+              label="Convertidos"
+              value={Math.max(0, Math.floor(r.leadsCompart * (r.conversao / 100)))}
+            />
           </div>
 
           <div className="space-y-2">
@@ -693,15 +960,30 @@ function DrawerBody({ r }: { r: Relacao }) {
             <Field label="Conversão" value={`${r.conversao}%`} />
             <Field label="Tempo médio de resposta" value={`${r.tempoResposta}h`} />
             <Field label="VGV compartilhado" value={formatBRLcompact(r.vgv)} />
-            <Field label="Taxa de fechamento" value={`${Math.min(100, Math.round(r.conversao * 0.6))}%`} />
-            <Field label="Velocidade operacional" value={r.tempoResposta < 6 ? "Alta" : r.tempoResposta < 18 ? "Média" : "Baixa"} />
+            <Field
+              label="Taxa de fechamento"
+              value={`${Math.min(100, Math.round(r.conversao * 0.6))}%`}
+            />
+            <Field
+              label="Velocidade operacional"
+              value={r.tempoResposta < 6 ? "Alta" : r.tempoResposta < 18 ? "Média" : "Baixa"}
+            />
             <Field label="Operações concluídas" value={r.operacoes} />
           </Grid>
           <Block title="Leitura de performance">
             <ul className="space-y-1.5 text-[12px]">
               {performanceInsights(r).map((p, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className={cn("mt-0.5 inline-flex h-4 items-center rounded px-1 text-[10px] font-semibold uppercase tracking-wider", p.tone === "good" ? "bg-emerald-50 text-emerald-700" : p.tone === "warn" ? "bg-amber-50 text-amber-700" : "bg-surface text-muted-foreground")}>
+                  <span
+                    className={cn(
+                      "mt-0.5 inline-flex h-4 items-center rounded px-1 text-[10px] font-semibold uppercase tracking-wider",
+                      p.tone === "good"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : p.tone === "warn"
+                          ? "bg-amber-50 text-amber-700"
+                          : "bg-surface text-muted-foreground",
+                    )}
+                  >
                     {p.tag}
                   </span>
                   <span>{p.text}</span>
@@ -717,16 +999,27 @@ function DrawerBody({ r }: { r: Relacao }) {
             <Field label="Comissão histórica" value={formatBRL(r.comissaoTotal)} />
             <Field label="Split operacional" value="50 / 50" />
             <Field label="Volume movimentado" value={formatBRLcompact(r.vgv)} />
-            <Field label="Previsão comissão aberta" value={formatBRL(Math.round(r.receita * 0.22))} />
-            <Field label="Aguardando split" value={`${Math.max(0, (seed(r.id) % 4))} operações`} />
-            <Field label="Média receita / operação" value={formatBRL(Math.round(r.receita / Math.max(1, r.operacoes)))} />
+            <Field
+              label="Previsão comissão aberta"
+              value={formatBRL(Math.round(r.receita * 0.22))}
+            />
+            <Field label="Aguardando split" value={`${Math.max(0, seed(r.id) % 4)} operações`} />
+            <Field
+              label="Média receita / operação"
+              value={formatBRL(Math.round(r.receita / Math.max(1, r.operacoes)))}
+            />
             <Field label="Crescimento mensal" value={`+${5 + (seed(r.id) % 18)}%`} />
           </Grid>
           <Block title="Histórico operacional financeiro">
             <div className="space-y-1.5 text-[12px]">
               {financeiroHistorico(r).map((h, i) => (
-                <div key={i} className="flex items-center justify-between border-b border-border/60 pb-1.5 last:border-0">
-                  <span className="text-muted-foreground">{h.data} · {h.descricao}</span>
+                <div
+                  key={i}
+                  className="flex items-center justify-between border-b border-border/60 pb-1.5 last:border-0"
+                >
+                  <span className="text-muted-foreground">
+                    {h.data} · {h.descricao}
+                  </span>
                   <span className="num font-medium">{h.valor}</span>
                 </div>
               ))}
@@ -739,19 +1032,29 @@ function DrawerBody({ r }: { r: Relacao }) {
             <div className="absolute left-1 top-1 bottom-1 w-px bg-border" />
             {auditoria(r).map((e, i) => (
               <div key={i} className="relative pb-3 last:pb-0">
-                <div className={cn("absolute -left-3 top-1.5 h-2 w-2 rounded-full ring-2 ring-background",
-                  e.tipo === "conflito" ? "bg-red-500"
-                  : e.tipo === "pausa" ? "bg-amber-500"
-                  : e.tipo === "redistribuicao" ? "bg-sky-500"
-                  : e.tipo === "comissao" ? "bg-emerald-500"
-                  : "bg-muted-foreground/60")} />
+                <div
+                  className={cn(
+                    "absolute -left-3 top-1.5 h-2 w-2 rounded-full ring-2 ring-background",
+                    e.tipo === "conflito"
+                      ? "bg-red-500"
+                      : e.tipo === "pausa"
+                        ? "bg-amber-500"
+                        : e.tipo === "redistribuicao"
+                          ? "bg-sky-500"
+                          : e.tipo === "comissao"
+                            ? "bg-emerald-500"
+                            : "bg-muted-foreground/60",
+                  )}
+                />
                 <div className="rounded-lg border border-border bg-card px-3 py-2">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-[12px] font-medium">{e.titulo}</div>
                       <div className="text-[11px] text-muted-foreground">{e.detalhe}</div>
                     </div>
-                    <span className="whitespace-nowrap text-[11px] text-muted-foreground">{e.data}</span>
+                    <span className="whitespace-nowrap text-[11px] text-muted-foreground">
+                      {e.data}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -762,12 +1065,27 @@ function DrawerBody({ r }: { r: Relacao }) {
 
       {/* Ações */}
       <div className="sticky bottom-0 flex flex-wrap gap-2 border-t border-border bg-background/95 px-6 py-3 backdrop-blur">
-        <Button size="sm" onClick={() => toast.success("Parceria priorizada")}><Star className="h-3.5 w-3.5" /> Priorizar</Button>
-        <Button size="sm" variant="outline" onClick={() => toast.warning("Risco sinalizado")}><Flag className="h-3.5 w-3.5" /> Sinalizar risco</Button>
-        <Button size="sm" variant="outline" onClick={() => toast.info("Acompanhamento ativo")}><Activity className="h-3.5 w-3.5" /> Acompanhar</Button>
-        <Button size="sm" variant="outline" onClick={() => toast.info("Operações abertas")}><GitBranch className="h-3.5 w-3.5" /> Ver operações</Button>
-        <Button size="sm" variant="outline" onClick={() => toast.info("Contrato aberto")}><FileText className="h-3.5 w-3.5" /> Contrato</Button>
-        <Button size="sm" variant="ghost" className="ml-auto text-muted-foreground" onClick={() => toast.warning("Parceria suspensa")}>
+        <Button size="sm" onClick={() => toast.success("Parceria priorizada")}>
+          <Star className="h-3.5 w-3.5" /> Priorizar
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => toast.warning("Risco sinalizado")}>
+          <Flag className="h-3.5 w-3.5" /> Sinalizar risco
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => toast.info("Acompanhamento ativo")}>
+          <Activity className="h-3.5 w-3.5" /> Acompanhar
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => toast.info("Operações abertas")}>
+          <GitBranch className="h-3.5 w-3.5" /> Ver operações
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => toast.info("Contrato aberto")}>
+          <FileText className="h-3.5 w-3.5" /> Contrato
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto text-muted-foreground"
+          onClick={() => toast.warning("Parceria suspensa")}
+        >
           <PauseCircle className="h-3.5 w-3.5" /> Suspender
         </Button>
       </div>
@@ -781,7 +1099,9 @@ function Grid({ children }: { children: React.ReactNode }) {
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border bg-card px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </div>
       <div className="mt-0.5 text-sm">{value}</div>
     </div>
   );
@@ -789,7 +1109,9 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-xl border border-border bg-card p-3">
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{title}</div>
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        {title}
+      </div>
       {children}
     </div>
   );
@@ -809,14 +1131,20 @@ function ReciprocidadeBar({ r }: { r: Relacao }) {
   return (
     <div>
       <div className="flex justify-between text-[11px] text-muted-foreground">
-        <span>{r.a} → {r.b}: <span className="num text-foreground">{r.leadsA_B}</span></span>
-        <span>{r.b} → {r.a}: <span className="num text-foreground">{r.leadsB_A}</span></span>
+        <span>
+          {r.a} → {r.b}: <span className="num text-foreground">{r.leadsA_B}</span>
+        </span>
+        <span>
+          {r.b} → {r.a}: <span className="num text-foreground">{r.leadsB_A}</span>
+        </span>
       </div>
       <div className="mt-1.5 flex h-2 overflow-hidden rounded-full bg-surface">
         <div className="bg-sky-500" style={{ width: `${pa}%` }} />
         <div className="bg-emerald-500" style={{ width: `${pb}%` }} />
       </div>
-      <div className="mt-1 text-[11px] text-muted-foreground">{RECIP_LABEL[r.recip]} — equilíbrio operacional {pa}/{pb}.</div>
+      <div className="mt-1 text-[11px] text-muted-foreground">
+        {RECIP_LABEL[r.recip]} — equilíbrio operacional {pa}/{pb}.
+      </div>
     </div>
   );
 }
@@ -824,9 +1152,11 @@ function ReciprocidadeBar({ r }: { r: Relacao }) {
 // ============ Conteúdo derivado ============
 
 function leituraRelacao(r: Relacao): string {
-  if (r.saude === "expansao") return "Parceria em expansão — alta conversão e reciprocidade saudável.";
+  if (r.saude === "expansao")
+    return "Parceria em expansão — alta conversão e reciprocidade saudável.";
   if (r.saude === "critica") return "Parceria com sinais críticos — exige acompanhamento imediato.";
-  if (r.recip === "unilateral") return "Relação unilateral — fluxo de leads concentrado em um lado.";
+  if (r.recip === "unilateral")
+    return "Relação unilateral — fluxo de leads concentrado em um lado.";
   if (r.conversao >= 25) return "Conexão de alta performance comercial.";
   if (r.tempoResposta > 18) return "Velocidade operacional abaixo do esperado.";
   return "Parceria estável dentro dos padrões da rede.";
@@ -835,7 +1165,8 @@ function racionalRelacao(r: Relacao): string {
   const partes: string[] = [];
   if (r.compat >= 85) partes.push("alta compatibilidade de perfil");
   if (r.recip === "alta") partes.push("reciprocidade equilibrada");
-  if (r.recip === "baixa" || r.recip === "unilateral") partes.push("desequilíbrio no fluxo de leads");
+  if (r.recip === "baixa" || r.recip === "unilateral")
+    partes.push("desequilíbrio no fluxo de leads");
   if (r.tempoResposta > 18) partes.push(`resposta média de ${r.tempoResposta}h`);
   if (r.conversao >= 30) partes.push("conversão acima da média da rede");
   return partes.length ? partes.join(" · ") : "Sem sinais relevantes nas últimas semanas.";
@@ -843,27 +1174,120 @@ function racionalRelacao(r: Relacao): string {
 function opsExemplo(r: Relacao): Operacao[] {
   const s = seed(r.id);
   const base: Operacao[] = [
-    { imovel: "Cobertura Linear · Icaraí", etapa: "Proposta", resp: r.a, prioridade: "Alta", slaH: 8, ultima: "há 2h", risco: "atencao", proxima: "Follow-up de decisão", previsao: "7 dias", ticket: 1_950_000 },
-    { imovel: "Apto Charitas · 3q", etapa: "Visita", resp: r.b, prioridade: "Média", slaH: 22, ultima: "há 6h", risco: "ok", proxima: "Confirmar visita", previsao: "14 dias", ticket: 980_000 },
-    { imovel: "Casa Camboinhas Beach", etapa: "Fechamento", resp: r.a, prioridade: "Alta", slaH: 3, ultima: "há 45min", risco: "atencao", proxima: "Coleta de assinaturas", previsao: "2 dias", ticket: 3_400_000 },
-    { imovel: "Sala Centro Empresarial", etapa: "Lead", resp: r.b, prioridade: "Baixa", slaH: 36, ultima: "há 1d", risco: "ok", proxima: "Qualificar perfil", previsao: "30 dias", ticket: 620_000 },
-    { imovel: "Lançamento Vista Bay", etapa: "Negociação", resp: r.a, prioridade: "Média", slaH: 14, ultima: "há 4h", risco: r.saude === "critica" ? "critico" : "ok", proxima: "Revisar contraproposta", previsao: "10 dias", ticket: 1_280_000 },
+    {
+      imovel: "Cobertura Linear · Icaraí",
+      etapa: "Proposta",
+      resp: r.a,
+      prioridade: "Alta",
+      slaH: 8,
+      ultima: "há 2h",
+      risco: "atencao",
+      proxima: "Follow-up de decisão",
+      previsao: "7 dias",
+      ticket: 1_950_000,
+    },
+    {
+      imovel: "Apto Charitas · 3q",
+      etapa: "Visita",
+      resp: r.b,
+      prioridade: "Média",
+      slaH: 22,
+      ultima: "há 6h",
+      risco: "ok",
+      proxima: "Confirmar visita",
+      previsao: "14 dias",
+      ticket: 980_000,
+    },
+    {
+      imovel: "Casa Camboinhas Beach",
+      etapa: "Fechamento",
+      resp: r.a,
+      prioridade: "Alta",
+      slaH: 3,
+      ultima: "há 45min",
+      risco: "atencao",
+      proxima: "Coleta de assinaturas",
+      previsao: "2 dias",
+      ticket: 3_400_000,
+    },
+    {
+      imovel: "Sala Centro Empresarial",
+      etapa: "Lead",
+      resp: r.b,
+      prioridade: "Baixa",
+      slaH: 36,
+      ultima: "há 1d",
+      risco: "ok",
+      proxima: "Qualificar perfil",
+      previsao: "30 dias",
+      ticket: 620_000,
+    },
+    {
+      imovel: "Lançamento Vista Bay",
+      etapa: "Negociação",
+      resp: r.a,
+      prioridade: "Média",
+      slaH: 14,
+      ultima: "há 4h",
+      risco: r.saude === "critica" ? "critico" : "ok",
+      proxima: "Revisar contraproposta",
+      previsao: "10 dias",
+      ticket: 1_280_000,
+    },
   ];
   return base.slice(0, 2 + (s % 3));
 }
 
-type AuditoriaTipo = "registro" | "redistribuicao" | "conflito" | "comissao" | "pausa" | "alteracao";
+type AuditoriaTipo =
+  | "registro"
+  | "redistribuicao"
+  | "conflito"
+  | "comissao"
+  | "pausa"
+  | "alteracao";
 type AuditoriaItem = { titulo: string; detalhe: string; data: string; tipo: AuditoriaTipo };
 
 function auditoria(r: Relacao): AuditoriaItem[] {
   const items: AuditoriaItem[] = [
-    { tipo: "registro", titulo: "Parceria registrada", detalhe: `Origem: ${r.origem}`, data: r.desde },
-    { tipo: "redistribuicao", titulo: "Redistribuição de lead", detalhe: `${r.b} assumiu atendimento de lead premium`, data: "12/05" },
-    { tipo: "comissao", titulo: "Comissão compartilhada liquidada", detalhe: formatBRL(r.comissaoTotal || 12_400), data: "03/05" },
-    { tipo: "alteracao", titulo: "Alteração de responsável", detalhe: `Operação transferida para ${r.a}`, data: "21/04" },
+    {
+      tipo: "registro",
+      titulo: "Parceria registrada",
+      detalhe: `Origem: ${r.origem}`,
+      data: r.desde,
+    },
+    {
+      tipo: "redistribuicao",
+      titulo: "Redistribuição de lead",
+      detalhe: `${r.b} assumiu atendimento de lead premium`,
+      data: "12/05",
+    },
+    {
+      tipo: "comissao",
+      titulo: "Comissão compartilhada liquidada",
+      detalhe: formatBRL(r.comissaoTotal || 12_400),
+      data: "03/05",
+    },
+    {
+      tipo: "alteracao",
+      titulo: "Alteração de responsável",
+      detalhe: `Operação transferida para ${r.a}`,
+      data: "21/04",
+    },
   ];
-  if (r.saude === "critica") items.push({ tipo: "conflito", titulo: "Conflito sinalizado", detalhe: "Divergência sobre atribuição de lead", data: "28/04" });
-  if (r.saude === "inativa") items.push({ tipo: "pausa", titulo: "Parceria pausada", detalhe: "Sem operações ativas há 45 dias", data: "10/04" });
+  if (r.saude === "critica")
+    items.push({
+      tipo: "conflito",
+      titulo: "Conflito sinalizado",
+      detalhe: "Divergência sobre atribuição de lead",
+      data: "28/04",
+    });
+  if (r.saude === "inativa")
+    items.push({
+      tipo: "pausa",
+      titulo: "Parceria pausada",
+      detalhe: "Sem operações ativas há 45 dias",
+      data: "10/04",
+    });
   return items;
 }
 
@@ -900,7 +1324,8 @@ function potencialExpansao(r: Relacao): string[] {
   const out: string[] = [];
   if (r.ticket > 1_200_000) out.push("Alto potencial em imóveis acima de R$ 1,5M");
   else out.push("Oportunidade em imóveis compactos e médio padrão");
-  if (r.regiao.includes("Niterói") || r.regiao.includes("Rio")) out.push(`Possibilidade de expansão em ${r.regiao.split("/")[0]}`);
+  if (r.regiao.includes("Niterói") || r.regiao.includes("Rio"))
+    out.push(`Possibilidade de expansão em ${r.regiao.split("/")[0]}`);
   if (r.origem !== "Match IA") out.push("Baixa exploração do marketplace — ativar matchmaking");
   if (r.tipoImovel !== "Lançamento") out.push("Espaço para entrar em lançamentos da rede");
   return out.slice(0, 4);
@@ -909,9 +1334,11 @@ function potencialExpansao(r: Relacao): string[] {
 function matchEngine(r: Relacao): string[] {
   const out: string[] = [];
   if (r.ticket > 1_200_000) out.push("Perfil forte para imóveis premium");
-  if (r.origem === "Indicação" || r.conversao >= 25) out.push("Dupla performa acima da média em leads de indicação");
+  if (r.origem === "Indicação" || r.conversao >= 25)
+    out.push("Dupla performa acima da média em leads de indicação");
   out.push(`Recomendada para operações em ${r.regiao.split("/")[0]}`);
-  if (r.perfil === "Investidor" || r.perfil === "Alto padrão") out.push(`Compatível com clientes ${r.perfil.toLowerCase()}`);
+  if (r.perfil === "Investidor" || r.perfil === "Alto padrão")
+    out.push(`Compatível com clientes ${r.perfil.toLowerCase()}`);
   return out.slice(0, 4);
 }
 
@@ -919,23 +1346,51 @@ type PerfInsight = { tag: string; text: string; tone: "good" | "warn" | "neutral
 function performanceInsights(r: Relacao): PerfInsight[] {
   const out: PerfInsight[] = [];
   if (r.ticket > 1_200_000)
-    out.push({ tag: "Origem", text: `Conversão mais forte em imóveis acima de ${formatBRLcompact(r.ticket)}.`, tone: "good" });
-  out.push({ tag: "Tipo", text: `${r.tipoImovel} é o tipo mais eficiente desta dupla.`, tone: "good" });
+    out.push({
+      tag: "Origem",
+      text: `Conversão mais forte em imóveis acima de ${formatBRLcompact(r.ticket)}.`,
+      tone: "good",
+    });
+  out.push({
+    tag: "Tipo",
+    text: `${r.tipoImovel} é o tipo mais eficiente desta dupla.`,
+    tone: "good",
+  });
   out.push({ tag: "Região", text: `${r.regiao} concentra o melhor desempenho.`, tone: "neutral" });
   if (r.tempoResposta > 18)
-    out.push({ tag: "Gargalo", text: "Atraso na resposta inicial compromete leads quentes.", tone: "warn" });
+    out.push({
+      tag: "Gargalo",
+      text: "Atraso na resposta inicial compromete leads quentes.",
+      tone: "warn",
+    });
   else
-    out.push({ tag: "Etapa", text: "Maior perda ocorre após a visita — reforçar follow-up.", tone: "warn" });
+    out.push({
+      tag: "Etapa",
+      text: "Maior perda ocorre após a visita — reforçar follow-up.",
+      tone: "warn",
+    });
   return out;
 }
 
 function financeiroHistorico(r: Relacao) {
   const base = Math.round((r.comissaoTotal || 18_000) / 3);
   return [
-    { data: "20/05", descricao: "Comissão liquidada · Cobertura Linear", valor: formatBRL(base + 4_200) },
+    {
+      data: "20/05",
+      descricao: "Comissão liquidada · Cobertura Linear",
+      valor: formatBRL(base + 4_200),
+    },
     { data: "08/05", descricao: "Split aprovado · Apto Charitas", valor: formatBRL(base) },
-    { data: "22/04", descricao: "Comissão liquidada · Casa Camboinhas", valor: formatBRL(base + 9_800) },
-    { data: "05/04", descricao: "Split aprovado · Sala Empresarial", valor: formatBRL(base - 1_400) },
+    {
+      data: "22/04",
+      descricao: "Comissão liquidada · Casa Camboinhas",
+      valor: formatBRL(base + 9_800),
+    },
+    {
+      data: "05/04",
+      descricao: "Split aprovado · Sala Empresarial",
+      valor: formatBRL(base - 1_400),
+    },
   ];
 }
 
@@ -956,15 +1411,21 @@ type Operacao = {
 
 function OperacaoCard({ o }: { o: Operacao }) {
   const riscoTone =
-    o.risco === "critico" ? "text-red-700 bg-red-50"
-    : o.risco === "atencao" ? "text-amber-700 bg-amber-50"
-    : "text-emerald-700 bg-emerald-50";
-  const riscoLabel = o.risco === "critico" ? "Risco" : o.risco === "atencao" ? "Atenção" : "Estável";
+    o.risco === "critico"
+      ? "text-red-700 bg-red-50"
+      : o.risco === "atencao"
+        ? "text-amber-700 bg-amber-50"
+        : "text-emerald-700 bg-emerald-50";
+  const riscoLabel =
+    o.risco === "critico" ? "Risco" : o.risco === "atencao" ? "Atenção" : "Estável";
   const prioTone =
-    o.prioridade === "Alta" ? "border-red-200 text-red-700"
-    : o.prioridade === "Média" ? "border-amber-200 text-amber-700"
-    : "border-border text-muted-foreground";
-  const slaTone = o.slaH <= 6 ? "text-red-700" : o.slaH <= 18 ? "text-amber-700" : "text-muted-foreground";
+    o.prioridade === "Alta"
+      ? "border-red-200 text-red-700"
+      : o.prioridade === "Média"
+        ? "border-amber-200 text-amber-700"
+        : "border-border text-muted-foreground";
+  const slaTone =
+    o.slaH <= 6 ? "text-red-700" : o.slaH <= 18 ? "text-amber-700" : "text-muted-foreground";
 
   return (
     <div className="rounded-lg border border-border bg-card p-3">
@@ -972,22 +1433,46 @@ function OperacaoCard({ o }: { o: Operacao }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-[13px] font-medium">
             <span className="truncate">{o.imovel}</span>
-            <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">{o.etapa}</span>
+            <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+              {o.etapa}
+            </span>
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1"><Users className="h-3 w-3" />{o.resp}</span>
-            <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{formatBRLcompact(o.ticket)}</span>
+            <span className="inline-flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              {o.resp}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {formatBRLcompact(o.ticket)}
+            </span>
             <span>Última interação {o.ultima}</span>
           </div>
         </div>
-        <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider", riscoTone)}>{riscoLabel}</span>
+        <span
+          className={cn(
+            "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+            riscoTone,
+          )}
+        >
+          {riscoLabel}
+        </span>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-        <span className={cn("rounded-full border px-2 py-0.5", prioTone)}>Prioridade {o.prioridade}</span>
-        <span className={cn("inline-flex items-center gap-1 rounded-full bg-surface px-2 py-0.5", slaTone)}>
+        <span className={cn("rounded-full border px-2 py-0.5", prioTone)}>
+          Prioridade {o.prioridade}
+        </span>
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full bg-surface px-2 py-0.5",
+            slaTone,
+          )}
+        >
           <Clock className="h-3 w-3" /> SLA: {o.slaH}h restantes
         </span>
-        <span className="rounded-full bg-surface px-2 py-0.5 text-muted-foreground">Previsão: {o.previsao}</span>
+        <span className="rounded-full bg-surface px-2 py-0.5 text-muted-foreground">
+          Previsão: {o.previsao}
+        </span>
       </div>
       <div className="mt-2 flex items-center gap-1.5 rounded-md border border-dashed border-border bg-surface/40 px-2 py-1.5 text-[11px]">
         <Zap className="h-3 w-3 text-foreground/70" />

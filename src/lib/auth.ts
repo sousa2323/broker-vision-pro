@@ -111,7 +111,10 @@ function profileRowFromPayload(
   };
 }
 
-async function resolveReferrerId(slug: string | undefined, newUserId: string): Promise<string | null> {
+async function resolveReferrerId(
+  slug: string | undefined,
+  newUserId: string,
+): Promise<string | null> {
   const cleanSlug = slug?.trim();
   if (!cleanSlug) return null;
 

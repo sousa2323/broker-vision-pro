@@ -66,7 +66,9 @@ function PropertyDetail() {
   }
 
   const status = property.status;
-  const visitas = activities.filter((a) => a.property_id === property.id && a.tipo === "Visita").length;
+  const visitas = activities.filter(
+    (a) => a.property_id === property.id && a.tipo === "Visita",
+  ).length;
   const comissao = getComissao(property.valor);
   const altaDemanda = isAltaDemanda(property);
 
@@ -121,7 +123,9 @@ function PropertyDetail() {
                     type="button"
                     onClick={() => setActiveIdx(i)}
                     className={`relative h-16 w-20 shrink-0 overflow-hidden rounded-lg border transition ${
-                      i === activeIdx ? "border-brand ring-1 ring-brand" : "border-border opacity-80 hover:opacity-100"
+                      i === activeIdx
+                        ? "border-brand ring-1 ring-brand"
+                        : "border-border opacity-80 hover:opacity-100"
                     }`}
                   >
                     <img src={f} alt="" className="h-full w-full object-cover" />
@@ -142,10 +146,22 @@ function PropertyDetail() {
             <p className="mt-2 leading-relaxed">{property.descricao || "Sem descrição."}</p>
 
             <div className="mt-5 flex items-center gap-4 border-t border-border pt-4 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><Bed className="h-4 w-4" />{property.quartos} quartos</span>
-              <span className="inline-flex items-center gap-1.5"><Bath className="h-4 w-4" />{property.suites} suítes</span>
-              <span className="inline-flex items-center gap-1.5"><Car className="h-4 w-4" />{property.vagas} vagas</span>
-              <span className="inline-flex items-center gap-1.5"><Maximize2 className="h-4 w-4" />{property.area}m²</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Bed className="h-4 w-4" />
+                {property.quartos} quartos
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Bath className="h-4 w-4" />
+                {property.suites} suítes
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Car className="h-4 w-4" />
+                {property.vagas} vagas
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Maximize2 className="h-4 w-4" />
+                {property.area}m²
+              </span>
             </div>
           </div>
         </div>
@@ -186,10 +202,14 @@ function PropertyDetail() {
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-6">
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">Performance</div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">
+              Performance
+            </div>
             <div className="mt-3 space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-2 text-muted-foreground"><DoorOpen className="h-4 w-4" /> Visitas agendadas</span>
+                <span className="inline-flex items-center gap-2 text-muted-foreground">
+                  <DoorOpen className="h-4 w-4" /> Visitas agendadas
+                </span>
                 <span className="num font-medium">{visitas}</span>
               </div>
             </div>

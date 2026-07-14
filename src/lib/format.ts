@@ -6,8 +6,7 @@ export const formatBRL = (n: number) =>
 export const formatBRLcompact = (n: number) => {
   if (n >= 1_000_000)
     return `R$ ${(n / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}mi`;
-  if (n >= 1_000)
-    return `R$ ${(n / 1_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}k`;
+  if (n >= 1_000) return `R$ ${(n / 1_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}k`;
   return formatBRL(n);
 };
 

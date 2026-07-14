@@ -1,7 +1,19 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Wallet, UserPlus, Users, Building2, Filter,
-  Handshake, Sparkles, Inbox, Settings, FileSearch, ShieldAlert, Search, Bell,
+  LayoutDashboard,
+  Wallet,
+  UserPlus,
+  Users,
+  Building2,
+  Filter,
+  Handshake,
+  Sparkles,
+  Inbox,
+  Settings,
+  FileSearch,
+  ShieldAlert,
+  Search,
+  Bell,
 } from "lucide-react";
 import { UbrokerLogo } from "@/components/ubroker-logo";
 import { cn } from "@/lib/utils";
@@ -10,7 +22,13 @@ export const Route = createFileRoute("/admin")({
   component: AdminLayout,
 });
 
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; exact?: boolean; badge?: number };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  exact?: boolean;
+  badge?: number;
+};
 type NavGroup = { title: string; items: NavItem[] };
 
 const groups: NavGroup[] = [
@@ -50,9 +68,9 @@ const groups: NavGroup[] = [
 
 function AdminLayout() {
   const loc = useLocation();
-  const current = groups.flatMap((g) => g.items).find((i) =>
-    i.exact ? loc.pathname === i.to : loc.pathname.startsWith(i.to)
-  );
+  const current = groups
+    .flatMap((g) => g.items)
+    .find((i) => (i.exact ? loc.pathname === i.to : loc.pathname.startsWith(i.to)));
 
   return (
     <div className="flex min-h-screen bg-surface text-ink">
@@ -60,7 +78,9 @@ function AdminLayout() {
         <div className="px-6 py-6">
           <Link to="/" className="flex items-center gap-2 text-white">
             <UbrokerLogo />
-            <span className="rounded bg-warm px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-warm-foreground">Admin</span>
+            <span className="rounded bg-warm px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-warm-foreground">
+              Admin
+            </span>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto px-3 pb-6">
@@ -78,13 +98,17 @@ function AdminLayout() {
                         to={it.to as string}
                         className={cn(
                           "group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
-                          active ? "bg-sidebar-accent-active text-white" : "text-white/70 hover:bg-sidebar-accent hover:text-white"
+                          active
+                            ? "bg-sidebar-accent-active text-white"
+                            : "text-white/70 hover:bg-sidebar-accent hover:text-white",
                         )}
                       >
                         <it.icon className="h-4 w-4" strokeWidth={1.75} />
                         <span className="flex-1">{it.label}</span>
                         {it.badge ? (
-                          <span className="rounded-full bg-warm px-1.5 py-0.5 text-[10px] font-semibold text-warm-foreground">{it.badge}</span>
+                          <span className="rounded-full bg-warm px-1.5 py-0.5 text-[10px] font-semibold text-warm-foreground">
+                            {it.badge}
+                          </span>
                         ) : null}
                       </Link>
                     </li>
@@ -96,7 +120,9 @@ function AdminLayout() {
         </nav>
         <div className="border-t border-sidebar-border px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-warm text-warm-foreground text-sm font-semibold">SA</div>
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-warm text-warm-foreground text-sm font-semibold">
+              SA
+            </div>
             <div className="min-w-0">
               <div className="truncate text-sm text-white">Superadmin Ubroker</div>
               <div className="text-xs text-white/50">Acesso total</div>
@@ -111,9 +137,13 @@ function AdminLayout() {
             <div>
               <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground">
                 Ubroker
-                <span className="rounded bg-warm/15 px-1.5 py-0.5 text-[9px] font-semibold text-warm">Admin</span>
+                <span className="rounded bg-warm/15 px-1.5 py-0.5 text-[9px] font-semibold text-warm">
+                  Admin
+                </span>
               </div>
-              <div className="font-display text-lg leading-none">{current?.label ?? "Dashboard"}</div>
+              <div className="font-display text-lg leading-none">
+                {current?.label ?? "Dashboard"}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -124,7 +154,9 @@ function AdminLayout() {
             <button className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground">
               <Bell className="h-4 w-4" />
             </button>
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-navy text-white text-xs font-semibold ring-1 ring-border">SA</div>
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-navy text-white text-xs font-semibold ring-1 ring-border">
+              SA
+            </div>
           </div>
         </header>
         <main className="flex-1 px-6 py-8">

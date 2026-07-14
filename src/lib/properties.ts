@@ -34,10 +34,7 @@ export type Property = {
   updated_at: string;
 };
 
-export type PropertyInput = Omit<
-  Property,
-  "id" | "broker_id" | "created_at" | "updated_at"
->;
+export type PropertyInput = Omit<Property, "id" | "broker_id" | "created_at" | "updated_at">;
 
 export const EMPTY_PROPERTY: PropertyInput = {
   nome: "",
@@ -95,11 +92,7 @@ export async function listProperties(): Promise<Property[]> {
 }
 
 export async function getProperty(id: string): Promise<Property | null> {
-  const { data, error } = await supabase
-    .from("properties")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const { data, error } = await supabase.from("properties").select("*").eq("id", id).maybeSingle();
   if (error) {
     console.error("Falha ao carregar imóvel:", error.message);
     return null;

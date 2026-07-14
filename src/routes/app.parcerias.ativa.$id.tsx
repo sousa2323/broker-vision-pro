@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -829,6 +829,17 @@ function ChatBlock({
   const [valor, setValor] = useState("");
   const [sending, setSending] = useState(false);
   const sugestoes = ["Enviar proposta", "Confirmar visita", "Aguardando retorno"];
+  const messagesRef = useRef<HTMLDivElement | null>(null);
+  const lastMessageId = mensagens[mensagens.length - 1]?.id;
+
+  useEffect(() => {
+    if (loading) return;
+    const frame = window.requestAnimationFrame(() => {
+      const messagesEl = messagesRef.current;
+      if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [lastMessageId, loading]);
 
   async function send() {
     const t = valor.trim();
@@ -847,7 +858,11 @@ function ChatBlock({
       <div className="mt-1 text-[11px] text-muted-foreground">
         Conversa vinculada a esta parceria.
       </div>
-      <div className="mt-4 flex-1 space-y-2 overflow-y-auto pr-1" style={{ maxHeight: 240 }}>
+      <div
+        ref={messagesRef}
+        className="partnership-chat-scroll mt-4 flex-1 space-y-2 overflow-y-auto pr-2"
+        style={{ maxHeight: 240 }}
+      >
         {loading ? (
           <div className="grid h-full place-items-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

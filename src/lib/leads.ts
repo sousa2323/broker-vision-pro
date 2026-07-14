@@ -13,13 +13,7 @@ export const LEAD_STATUSES = [
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
-export const LEAD_ORIGINS = [
-  "Instagram",
-  "WhatsApp",
-  "Marketplace",
-  "Indicação",
-  "Outro",
-] as const;
+export const LEAD_ORIGINS = ["Instagram", "WhatsApp", "Marketplace", "Indicação", "Outro"] as const;
 export type LeadOrigin = (typeof LEAD_ORIGINS)[number];
 
 export type LeadEvent = { data: string; tipo: string; texto: string; created_at: string };

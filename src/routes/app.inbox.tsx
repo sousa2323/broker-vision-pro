@@ -6,7 +6,11 @@ export const Route = createFileRoute("/app/inbox")({
 });
 
 const canais = [
-  { icon: MessageCircle, nome: "WhatsApp Business", desc: "Centralize as conversas do seu WhatsApp." },
+  {
+    icon: MessageCircle,
+    nome: "WhatsApp Business",
+    desc: "Centralize as conversas do seu WhatsApp.",
+  },
   { icon: Instagram, nome: "Instagram Direct", desc: "Receba e responda DMs de interessados." },
   { icon: Store, nome: "Marketplace B2C", desc: "Mensagens de compradores dos seus anúncios." },
 ];

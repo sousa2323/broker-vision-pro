@@ -1,6 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { Plus, Target, Brain, AlertTriangle, Clock, ListChecks, Activity, Zap, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Target,
+  Brain,
+  AlertTriangle,
+  Clock,
+  ListChecks,
+  Activity,
+  Zap,
+  Loader2,
+} from "lucide-react";
 import { formatBRL } from "@/lib/format";
 import { useLeads, type Lead } from "@/lib/leads";
 import { cn } from "@/lib/utils";
@@ -224,17 +234,16 @@ function PipelinePage() {
 
   const fila = buildFilaDoDia(stages);
 
-  const ativas = stages
-    .filter((s) => s.id !== "Fechado")
-    .reduce((a, s) => a + s.cards.length, 0);
+  const ativas = stages.filter((s) => s.id !== "Fechado").reduce((a, s) => a + s.cards.length, 0);
   const negligenciados = allValues.filter((c) => c.dias >= 4).length;
   const cadenciasAtraso = allCards.filter(
     ({ c, stageId }) => (stageId === "Visita" || stageId === "Proposta") && c.dias >= 3,
   ).length;
   const propostasAbertas = stages.find((s) => s.id === "Proposta")?.cards.length ?? 0;
-  const taxaConversao = totalCount > 0
-    ? Math.round(((stages.find((s) => s.id === "Fechado")?.cards.length ?? 0) / totalCount) * 100)
-    : 0;
+  const taxaConversao =
+    totalCount > 0
+      ? Math.round(((stages.find((s) => s.id === "Fechado")?.cards.length ?? 0) / totalCount) * 100)
+      : 0;
 
   if (loading) {
     return (
@@ -250,7 +259,8 @@ function PipelinePage() {
         <div>
           <h1 className="font-display text-2xl">Pipeline</h1>
           <p className="text-sm text-muted-foreground">
-            {totalCount} {totalCount === 1 ? "oportunidade" : "oportunidades"} · VGV {formatBRL(totalVgv)}
+            {totalCount} {totalCount === 1 ? "oportunidade" : "oportunidades"} · VGV{" "}
+            {formatBRL(totalVgv)}
           </p>
           <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-brand">
             <Target className="h-4 w-4" />
@@ -297,7 +307,9 @@ function PipelinePage() {
               </span>
             </div>
             {fila.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma execução pendente — bom trabalho.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhuma execução pendente — bom trabalho.
+              </p>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-1">
                 {fila.map(({ card, stageId }) => {
@@ -316,12 +328,21 @@ function PipelinePage() {
                             {acao}
                           </div>
                         </div>
-                        <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium", riscoClass[risco])}>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                            riscoClass[risco],
+                          )}
+                        >
                           {riscoLabel[risco]}
                         </span>
                       </div>
-                      <p className="mt-2 line-clamp-1 text-[11px] text-muted-foreground">{motivo}</p>
-                      <div className="mt-2 num text-[12px] font-semibold">{formatBRL(card.valor)}</div>
+                      <p className="mt-2 line-clamp-1 text-[11px] text-muted-foreground">
+                        {motivo}
+                      </p>
+                      <div className="mt-2 num text-[12px] font-semibold">
+                        {formatBRL(card.valor)}
+                      </div>
                       <Link
                         to="/app/leads"
                         className="mt-3 inline-flex h-8 items-center justify-center rounded-md bg-navy px-3 text-xs font-medium text-navy-foreground transition active:scale-[0.98]"
@@ -338,11 +359,36 @@ function PipelinePage() {
           {/* KPIs operacionais (reais) */}
           <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {[
-              { icon: ListChecks, label: "Oportunidades ativas", value: String(ativas), hint: "em andamento" },
-              { icon: Activity, label: "Propostas abertas", value: String(propostasAbertas), hint: "aguardando decisão" },
-              { icon: AlertTriangle, label: "Leads negligenciados", value: String(negligenciados), hint: "≥ 4 dias" },
-              { icon: Clock, label: "Cadências em atraso", value: String(cadenciasAtraso), hint: "Visita/Proposta" },
-              { icon: Brain, label: "Taxa de conversão", value: `${taxaConversao}%`, hint: "fechados/total" },
+              {
+                icon: ListChecks,
+                label: "Oportunidades ativas",
+                value: String(ativas),
+                hint: "em andamento",
+              },
+              {
+                icon: Activity,
+                label: "Propostas abertas",
+                value: String(propostasAbertas),
+                hint: "aguardando decisão",
+              },
+              {
+                icon: AlertTriangle,
+                label: "Leads negligenciados",
+                value: String(negligenciados),
+                hint: "≥ 4 dias",
+              },
+              {
+                icon: Clock,
+                label: "Cadências em atraso",
+                value: String(cadenciasAtraso),
+                hint: "Visita/Proposta",
+              },
+              {
+                icon: Brain,
+                label: "Taxa de conversão",
+                value: `${taxaConversao}%`,
+                hint: "fechados/total",
+              },
             ].map((k) => {
               const Icon = k.icon;
               return (
@@ -405,7 +451,8 @@ function PipelinePage() {
                             key={c.id}
                             className={cn(
                               "rounded-xl border border-border bg-background p-3 shadow-sm transition hover:shadow-md",
-                              prioritario && "border-l-2 border-l-brand shadow-md ring-1 ring-brand/20",
+                              prioritario &&
+                                "border-l-2 border-l-brand shadow-md ring-1 ring-brand/20",
                             )}
                           >
                             <div className="mb-1 flex items-start justify-between gap-2">
@@ -421,14 +468,21 @@ function PipelinePage() {
                                   Fechado
                                 </span>
                               ) : (
-                                <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", urgenciaClass[urg])}>
+                                <span
+                                  className={cn(
+                                    "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                                    urgenciaClass[urg],
+                                  )}
+                                >
                                   {urgenciaLabel(c.dias)}
                                 </span>
                               )}
                             </div>
                             <div className="text-sm font-medium">{c.cliente}</div>
                             <div className="mt-0.5 text-xs text-muted-foreground">{c.imovel}</div>
-                            <div className="mt-2 num text-sm font-semibold">{formatBRL(c.valor)}</div>
+                            <div className="mt-2 num text-sm font-semibold">
+                              {formatBRL(c.valor)}
+                            </div>
                             <div className="num text-[11px] text-emerald-700">
                               Comissão est. {formatBRL(getComissao(c.valor))}
                             </div>
@@ -436,9 +490,15 @@ function PipelinePage() {
                               <div className="mt-1.5 flex items-center gap-2">
                                 <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                                   <Brain className="h-3 w-3" />
-                                  Score <span className={cn("font-semibold", scoreColor)}>{score}</span>
+                                  Score{" "}
+                                  <span className={cn("font-semibold", scoreColor)}>{score}</span>
                                 </span>
-                                <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", riscoClass[risco])}>
+                                <span
+                                  className={cn(
+                                    "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                                    riscoClass[risco],
+                                  )}
+                                >
                                   {riscoLabel[risco]}
                                 </span>
                               </div>
@@ -447,7 +507,9 @@ function PipelinePage() {
                               Ação: <span className="font-semibold text-foreground">{acao}</span>
                             </div>
                             {c.tag && (
-                              <div className="mt-2 inline-block rounded-full bg-brand/10 px-2 py-0.5 text-[10px] text-brand">{c.tag}</div>
+                              <div className="mt-2 inline-block rounded-full bg-brand/10 px-2 py-0.5 text-[10px] text-brand">
+                                {c.tag}
+                              </div>
                             )}
                           </li>
                         );

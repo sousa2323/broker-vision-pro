@@ -7,8 +7,7 @@ export const broker = {
   region: "Niterói / RJ",
   plan: "Free",
   creci: "RJ-78342",
-  avatar:
-    "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=256&h=256&fit=crop&q=80",
+  avatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=256&h=256&fit=crop&q=80",
 };
 
 export const kpis = {
@@ -63,7 +62,11 @@ export const leads: Lead[] = [
     ultimaInteracao: "há 2h",
     orcamento: 1_000_000,
     historico: [
-      { data: "Hoje, 09:14", tipo: "WhatsApp", texto: "Pediu fotos da varanda do imóvel em Icaraí." },
+      {
+        data: "Hoje, 09:14",
+        tipo: "WhatsApp",
+        texto: "Pediu fotos da varanda do imóvel em Icaraí.",
+      },
       { data: "Ontem, 18:02", tipo: "Visita", texto: "Visita confirmada para sábado às 10h." },
       { data: "Seg, 14:20", tipo: "IA", texto: "Lead qualificado pela assistente. Score 87." },
     ],
@@ -80,7 +83,11 @@ export const leads: Lead[] = [
     ultimaInteracao: "há 30min",
     orcamento: 1_600_000,
     historico: [
-      { data: "Hoje, 11:30", tipo: "WhatsApp", texto: "Confirmou visita à cobertura do Edifício Marine." },
+      {
+        data: "Hoje, 11:30",
+        tipo: "WhatsApp",
+        texto: "Confirmou visita à cobertura do Edifício Marine.",
+      },
       { data: "Hoje, 09:01", tipo: "E-mail", texto: "Enviado dossiê com 3 opções." },
     ],
   },
@@ -97,7 +104,11 @@ export const leads: Lead[] = [
     ultimaInteracao: "ontem",
     orcamento: 1_200_000,
     historico: [
-      { data: "Ontem, 17:48", tipo: "Proposta", texto: "Proposta enviada: R$ 1.150.000 com financiamento Caixa." },
+      {
+        data: "Ontem, 17:48",
+        tipo: "Proposta",
+        texto: "Proposta enviada: R$ 1.150.000 com financiamento Caixa.",
+      },
       { data: "Ontem, 10:15", tipo: "Visita", texto: "Segunda visita realizada com a filha." },
     ],
   },
@@ -112,7 +123,13 @@ export const leads: Lead[] = [
     status: "Novo",
     ultimaInteracao: "há 4h",
     orcamento: 1_400_000,
-    historico: [{ data: "Hoje, 08:12", tipo: "Marketplace", texto: "Lead capturado via PilarHomes-like portal." }],
+    historico: [
+      {
+        data: "Hoje, 08:12",
+        tipo: "Marketplace",
+        texto: "Lead capturado via PilarHomes-like portal.",
+      },
+    ],
   },
   {
     id: "L-1038",
@@ -127,7 +144,11 @@ export const leads: Lead[] = [
     ultimaInteracao: "há 1d",
     orcamento: 950_000,
     historico: [
-      { data: "Ontem, 19:30", tipo: "Ligação", texto: "Conversa de 22min sobre prédios dos anos 60 no Ingá." },
+      {
+        data: "Ontem, 19:30",
+        tipo: "Ligação",
+        texto: "Conversa de 22min sobre prédios dos anos 60 no Ingá.",
+      },
     ],
   },
   {
@@ -136,11 +157,14 @@ export const leads: Lead[] = [
     email: "marcelo.p@empresa.com",
     telefone: "+55 21 99001-4488",
     origem: "Instagram",
-    interesse: "Investidor. Quer 2 unidades para locação por temporada em Itacoatiara. R$ 600k cada.",
+    interesse:
+      "Investidor. Quer 2 unidades para locação por temporada em Itacoatiara. R$ 600k cada.",
     status: "Novo",
     ultimaInteracao: "há 6h",
     orcamento: 1_200_000,
-    historico: [{ data: "Hoje, 06:44", tipo: "DM Instagram", texto: "Pediu rentabilidade média da região." }],
+    historico: [
+      { data: "Hoje, 06:44", tipo: "DM Instagram", texto: "Pediu rentabilidade média da região." },
+    ],
   },
   {
     id: "L-1036",
@@ -192,7 +216,8 @@ export const leads: Lead[] = [
     email: "gustavo.helena@gmail.com",
     telefone: "+55 21 99332-8821",
     origem: "WhatsApp",
-    interesse: "Casal jovem com bebê. Apartamento 3 quartos com lazer completo em Charitas. R$ 1.5mi.",
+    interesse:
+      "Casal jovem com bebê. Apartamento 3 quartos com lazer completo em Charitas. R$ 1.5mi.",
     status: "Proposta",
     ultimaInteracao: "ontem",
     orcamento: 1_500_000,
@@ -210,7 +235,13 @@ export const leads: Lead[] = [
     status: "Perdido",
     ultimaInteracao: "há 5d",
     orcamento: 480_000,
-    historico: [{ data: "Quinta", tipo: "Nota", texto: "Fechou com outro corretor — apto na Av. Roberto Silveira." }],
+    historico: [
+      {
+        data: "Quinta",
+        tipo: "Nota",
+        texto: "Fechou com outro corretor — apto na Av. Roberto Silveira.",
+      },
+    ],
   },
   {
     id: "L-1031",
@@ -225,7 +256,11 @@ export const leads: Lead[] = [
     ultimaInteracao: "há 1d",
     orcamento: 3_500_000,
     historico: [
-      { data: "Ontem", tipo: "Visita", texto: "Visita à Casa Camboinhas Beach realizada — bem impressionados." },
+      {
+        data: "Ontem",
+        tipo: "Visita",
+        texto: "Visita à Casa Camboinhas Beach realizada — bem impressionados.",
+      },
     ],
   },
   {
@@ -234,7 +269,8 @@ export const leads: Lead[] = [
     email: "larissa.moura@gmail.com",
     telefone: "+55 21 98442-9911",
     origem: "WhatsApp",
-    interesse: "Mãe solo, 2 filhas. Apartamento 3 quartos Pendotiba, condomínio com playground. R$ 720k.",
+    interesse:
+      "Mãe solo, 2 filhas. Apartamento 3 quartos Pendotiba, condomínio com playground. R$ 720k.",
     status: "Qualificado",
     ultimaInteracao: "há 2d",
     orcamento: 720_000,
@@ -261,11 +297,18 @@ export const leads: Lead[] = [
     email: "vanessa.r@gmail.com",
     telefone: "+55 21 98521-7766",
     origem: "Instagram",
-    interesse: "Designer de interiores. Busca loft no Centro Histórico para morar e atender clientes. R$ 690k.",
+    interesse:
+      "Designer de interiores. Busca loft no Centro Histórico para morar e atender clientes. R$ 690k.",
     status: "Novo",
     ultimaInteracao: "há 9h",
     orcamento: 690_000,
-    historico: [{ data: "Hoje, 02:44", tipo: "DM Instagram", texto: "Curtiu 4 publicações e enviou mensagem." }],
+    historico: [
+      {
+        data: "Hoje, 02:44",
+        tipo: "DM Instagram",
+        texto: "Curtiu 4 publicações e enviou mensagem.",
+      },
+    ],
   },
   {
     id: "L-1027",
@@ -274,11 +317,14 @@ export const leads: Lead[] = [
     telefone: "+55 21 99887-2200",
     origem: "Outro",
     origemDetalhe: "Conhecido do clube",
-    interesse: "Aposentado, viúvo. Quer trocar casa em Itaipu por apartamento térreo Icaraí. R$ 900k.",
+    interesse:
+      "Aposentado, viúvo. Quer trocar casa em Itaipu por apartamento térreo Icaraí. R$ 900k.",
     status: "Qualificado",
     ultimaInteracao: "há 3d",
     orcamento: 900_000,
-    historico: [{ data: "3 dias", tipo: "Ligação", texto: "Conversa sobre permuta + diferença em dinheiro." }],
+    historico: [
+      { data: "3 dias", tipo: "Ligação", texto: "Conversa sobre permuta + diferença em dinheiro." },
+    ],
   },
   {
     id: "L-1026",
@@ -303,7 +349,9 @@ export const leads: Lead[] = [
     status: "Visita",
     ultimaInteracao: "há 1d",
     orcamento: 2_800_000,
-    historico: [{ data: "Ontem", tipo: "Visita", texto: "Visita à Casa Piratininga Sul agendada." }],
+    historico: [
+      { data: "Ontem", tipo: "Visita", texto: "Visita à Casa Piratininga Sul agendada." },
+    ],
   },
   {
     id: "L-1024",
@@ -315,7 +363,13 @@ export const leads: Lead[] = [
     status: "Fechado",
     ultimaInteracao: "há 8d",
     orcamento: 380_000,
-    historico: [{ data: "Semana passada", tipo: "Fechamento", texto: "Contrato assinado. Comissão R$ 11.400." }],
+    historico: [
+      {
+        data: "Semana passada",
+        tipo: "Fechamento",
+        texto: "Contrato assinado. Comissão R$ 11.400.",
+      },
+    ],
   },
   {
     id: "L-1023",
@@ -323,11 +377,14 @@ export const leads: Lead[] = [
     email: "sofia.caldas@gmail.com",
     telefone: "+55 21 99332-1166",
     origem: "Instagram",
-    interesse: "Família, 2 filhos pequenos. Cobertura linear em Icaraí com playground privativo. R$ 2.1mi.",
+    interesse:
+      "Família, 2 filhos pequenos. Cobertura linear em Icaraí com playground privativo. R$ 2.1mi.",
     status: "Fechado",
     ultimaInteracao: "há 12d",
     orcamento: 2_100_000,
-    historico: [{ data: "12 dias", tipo: "Fechamento", texto: "Venda concluída. Comissão R$ 84.600." }],
+    historico: [
+      { data: "12 dias", tipo: "Fechamento", texto: "Venda concluída. Comissão R$ 84.600." },
+    ],
   },
   {
     id: "L-1022",
@@ -682,14 +739,73 @@ export type ActivityItem = {
 };
 
 export const atividades: ActivityItem[] = [
-  { id: "A-01", data: "Hoje", hora: "09:30", tipo: "Ligação", cliente: "Camila Andrade", nota: "Confirmar visita de sábado." },
-  { id: "A-02", data: "Hoje", hora: "11:00", tipo: "Visita", cliente: "Família Castilho", imovel: "Casa contemporânea em Piratininga", nota: "Acompanhar arquiteta da família." },
-  { id: "A-03", data: "Hoje", hora: "14:00", tipo: "Reunião", cliente: "Aldemar (Homesphere)", nota: "Alinhamento de comissão sobre Casa Camboinhas." },
-  { id: "A-04", data: "Hoje", hora: "16:30", tipo: "Follow-up", cliente: "Felipe Goulart", nota: "Enviar 3 opções por e-mail e marcar visita virtual." },
-  { id: "A-05", data: "Amanhã", hora: "10:00", tipo: "Visita", cliente: "Eduardo Bastos", imovel: "Sala comercial no Centro Empresarial", nota: "Levar planta da sala 1208." },
-  { id: "A-06", data: "Amanhã", hora: "15:00", tipo: "Ligação", cliente: "Patrícia Lemos", nota: "Apresentar 2 opções em São Francisco." },
-  { id: "A-07", data: "Sex 28", hora: "11:30", tipo: "Visita", cliente: "Família Okamura", imovel: "Casa de praia em Camboinhas", nota: "Segunda visita com pais dos compradores." },
-  { id: "A-08", data: "Sex 28", hora: "17:00", tipo: "E-mail", cliente: "Dr. Carlos Andrade", nota: "Enviar proposta revisada com condições à vista." },
+  {
+    id: "A-01",
+    data: "Hoje",
+    hora: "09:30",
+    tipo: "Ligação",
+    cliente: "Camila Andrade",
+    nota: "Confirmar visita de sábado.",
+  },
+  {
+    id: "A-02",
+    data: "Hoje",
+    hora: "11:00",
+    tipo: "Visita",
+    cliente: "Família Castilho",
+    imovel: "Casa contemporânea em Piratininga",
+    nota: "Acompanhar arquiteta da família.",
+  },
+  {
+    id: "A-03",
+    data: "Hoje",
+    hora: "14:00",
+    tipo: "Reunião",
+    cliente: "Aldemar (Homesphere)",
+    nota: "Alinhamento de comissão sobre Casa Camboinhas.",
+  },
+  {
+    id: "A-04",
+    data: "Hoje",
+    hora: "16:30",
+    tipo: "Follow-up",
+    cliente: "Felipe Goulart",
+    nota: "Enviar 3 opções por e-mail e marcar visita virtual.",
+  },
+  {
+    id: "A-05",
+    data: "Amanhã",
+    hora: "10:00",
+    tipo: "Visita",
+    cliente: "Eduardo Bastos",
+    imovel: "Sala comercial no Centro Empresarial",
+    nota: "Levar planta da sala 1208.",
+  },
+  {
+    id: "A-06",
+    data: "Amanhã",
+    hora: "15:00",
+    tipo: "Ligação",
+    cliente: "Patrícia Lemos",
+    nota: "Apresentar 2 opções em São Francisco.",
+  },
+  {
+    id: "A-07",
+    data: "Sex 28",
+    hora: "11:30",
+    tipo: "Visita",
+    cliente: "Família Okamura",
+    imovel: "Casa de praia em Camboinhas",
+    nota: "Segunda visita com pais dos compradores.",
+  },
+  {
+    id: "A-08",
+    data: "Sex 28",
+    hora: "17:00",
+    tipo: "E-mail",
+    cliente: "Dr. Carlos Andrade",
+    nota: "Enviar proposta revisada com condições à vista.",
+  },
 ];
 
 export const aiConversations = [
@@ -701,13 +817,22 @@ export const aiConversations = [
     score: 64,
     mensagens: [
       { from: "lead", text: "Oi, vi um anúncio de apartamento 2 suítes em Icaraí." },
-      { from: "ai", text: "Olá Felipe! Sou a assistente virtual do Ramon. Posso te ajudar a encontrar o imóvel ideal — você está pensando em mudança em quanto tempo?" },
+      {
+        from: "ai",
+        text: "Olá Felipe! Sou a assistente virtual do Ramon. Posso te ajudar a encontrar o imóvel ideal — você está pensando em mudança em quanto tempo?",
+      },
       { from: "lead", text: "Próximos 60 dias. Estou vindo de SP." },
-      { from: "ai", text: "Perfeito. Para acelerar, você prefere prédio com academia e coworking?" },
+      {
+        from: "ai",
+        text: "Perfeito. Para acelerar, você prefere prédio com academia e coworking?",
+      },
       { from: "lead", text: "Sim, e home office é essencial." },
       { from: "ai", text: "Anotado. Qual o ticket que você está considerando?" },
       { from: "lead", text: "Até 1.4mi." },
-      { from: "ai", text: "Ótimo. Tenho 3 opções alinhadas. Posso pedir ao Ramon para te mandar agora?" },
+      {
+        from: "ai",
+        text: "Ótimo. Tenho 3 opções alinhadas. Posso pedir ao Ramon para te mandar agora?",
+      },
     ],
     extracted: {
       Orçamento: "R$ 1.400.000",
@@ -729,9 +854,15 @@ export const aiConversations = [
       { from: "lead", text: "Financiar 80%. Tenho 110k de entrada." },
       { from: "ai", text: "Anotado. É seu primeiro imóvel?" },
       { from: "lead", text: "Sim!" },
-      { from: "ai", text: "Você se beneficia do Minha Casa Minha Vida ampliado. Posso reservar 3 visitas para sábado?" },
+      {
+        from: "ai",
+        text: "Você se beneficia do Minha Casa Minha Vida ampliado. Posso reservar 3 visitas para sábado?",
+      },
       { from: "lead", text: "Pode sim, manhã se possível." },
-      { from: "ai", text: "Marquei sábado 10h, 11h e 12h. O Ramon vai confirmar com você ainda hoje 👋" },
+      {
+        from: "ai",
+        text: "Marquei sábado 10h, 11h e 12h. O Ramon vai confirmar com você ainda hoje 👋",
+      },
     ],
     extracted: {
       Orçamento: "R$ 550.000",
@@ -749,7 +880,10 @@ export const aiConversations = [
     score: 51,
     mensagens: [
       { from: "lead", text: "Quanto rende um imóvel de temporada em Itacoatiara?" },
-      { from: "ai", text: "Boa pergunta Marcelo! A média da região em 2025 está em 0,9% a 1,1% ao mês líquido. Posso te mandar um relatório?" },
+      {
+        from: "ai",
+        text: "Boa pergunta Marcelo! A média da região em 2025 está em 0,9% a 1,1% ao mês líquido. Posso te mandar um relatório?",
+      },
       { from: "lead", text: "Manda sim" },
     ],
     extracted: {
@@ -772,7 +906,11 @@ export const inboxConversations = [
     online: true,
     avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80",
     mensagens: [
-      { from: "you" as const, text: "Camila, confirmando: visita sábado às 10h, encontro na portaria do Marine.", hora: "10:14" },
+      {
+        from: "you" as const,
+        text: "Camila, confirmando: visita sábado às 10h, encontro na portaria do Marine.",
+        hora: "10:14",
+      },
       { from: "them" as const, text: "Confirmo a visita sábado 10h ✨", hora: "11:32" },
     ],
   },
@@ -801,9 +939,7 @@ export const inboxConversations = [
     naoLidas: 1,
     online: false,
     avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80",
-    mensagens: [
-      { from: "them" as const, text: "Adorei o loft do Centro 🤍", hora: "Ontem 21:04" },
-    ],
+    mensagens: [{ from: "them" as const, text: "Adorei o loft do Centro 🤍", hora: "Ontem 21:04" }],
   },
   {
     id: "C-4",
@@ -817,7 +953,11 @@ export const inboxConversations = [
     avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80",
     mensagens: [
       { from: "them" as const, text: "Vi o anúncio do 2 suítes em Icaraí.", hora: "08:10" },
-      { from: "you" as const, text: "[IA] Olá Felipe! Sou a assistente virtual do Ramon...", hora: "08:11" },
+      {
+        from: "you" as const,
+        text: "[IA] Olá Felipe! Sou a assistente virtual do Ramon...",
+        hora: "08:11",
+      },
     ],
   },
   {
@@ -831,7 +971,11 @@ export const inboxConversations = [
     online: false,
     avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80",
     mensagens: [
-      { from: "you" as const, text: "Roberto, segue proposta R$ 1.150.000 com Caixa.", hora: "17:48" },
+      {
+        from: "you" as const,
+        text: "Roberto, segue proposta R$ 1.150.000 com Caixa.",
+        hora: "17:48",
+      },
       { from: "them" as const, text: "Vou conversar com a Lúcia hoje à noite", hora: "18:02" },
     ],
   },
@@ -842,12 +986,48 @@ export const earnings = {
   comissao: 96_000,
   saas: 480,
   transactions: [
-    { id: "T-01", data: "20 out 2025", tipo: "Comissão", descricao: "Venda Cobertura Linear · Sofia Caldas", valor: 84_600 },
-    { id: "T-02", data: "12 out 2025", tipo: "Comissão", descricao: "Venda Studio São Francisco · Igor Mascarenhas", valor: 11_400 },
-    { id: "T-03", data: "01 out 2025", tipo: "SaaS", descricao: "Recorrência indicação · Joana M.", valor: 120 },
-    { id: "T-04", data: "01 out 2025", tipo: "SaaS", descricao: "Recorrência indicação · Pedro V.", valor: 120 },
-    { id: "T-05", data: "01 out 2025", tipo: "SaaS", descricao: "Recorrência indicação · Carla F.", valor: 120 },
-    { id: "T-06", data: "01 out 2025", tipo: "SaaS", descricao: "Recorrência indicação · Tiago S.", valor: 120 },
+    {
+      id: "T-01",
+      data: "20 out 2025",
+      tipo: "Comissão",
+      descricao: "Venda Cobertura Linear · Sofia Caldas",
+      valor: 84_600,
+    },
+    {
+      id: "T-02",
+      data: "12 out 2025",
+      tipo: "Comissão",
+      descricao: "Venda Studio São Francisco · Igor Mascarenhas",
+      valor: 11_400,
+    },
+    {
+      id: "T-03",
+      data: "01 out 2025",
+      tipo: "SaaS",
+      descricao: "Recorrência indicação · Joana M.",
+      valor: 120,
+    },
+    {
+      id: "T-04",
+      data: "01 out 2025",
+      tipo: "SaaS",
+      descricao: "Recorrência indicação · Pedro V.",
+      valor: 120,
+    },
+    {
+      id: "T-05",
+      data: "01 out 2025",
+      tipo: "SaaS",
+      descricao: "Recorrência indicação · Carla F.",
+      valor: 120,
+    },
+    {
+      id: "T-06",
+      data: "01 out 2025",
+      tipo: "SaaS",
+      descricao: "Recorrência indicação · Tiago S.",
+      valor: 120,
+    },
   ],
 };
 
@@ -855,7 +1035,13 @@ export const referrals = {
   link: "ubroker.com.br/r/ramon-capone",
   ativos: [
     { nome: "Joana Maciel", agencia: "Maciel Imóveis", plano: "Pro", mrr: 120, status: "Ativo" },
-    { nome: "Pedro Verissimo", agencia: "Verissimo & Co.", plano: "Pro", mrr: 120, status: "Ativo" },
+    {
+      nome: "Pedro Verissimo",
+      agencia: "Verissimo & Co.",
+      plano: "Pro",
+      mrr: 120,
+      status: "Ativo",
+    },
     { nome: "Carla Fontes", agencia: "Fontes Boutique", plano: "Pro", mrr: 120, status: "Ativo" },
     { nome: "Tiago Sá", agencia: "TS Negócios", plano: "Pro", mrr: 120, status: "Ativo" },
   ],
@@ -873,7 +1059,8 @@ export const formatBRL = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 
 export const formatBRLcompact = (n: number) => {
-  if (n >= 1_000_000) return `R$ ${(n / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}mi`;
+  if (n >= 1_000_000)
+    return `R$ ${(n / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}mi`;
   if (n >= 1_000) return `R$ ${(n / 1_000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}k`;
   return formatBRL(n);
 };

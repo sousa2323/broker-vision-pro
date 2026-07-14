@@ -59,10 +59,9 @@ function SettingsPage() {
     s.autoSugestoes,
     s.autoLembretePipeline,
   ].filter(Boolean).length;
-  const integracoesAtivas = [
-    profile?.channels?.whatsapp,
-    profile?.channels?.instagram,
-  ].filter(Boolean).length;
+  const integracoesAtivas = [profile?.channels?.whatsapp, profile?.channels?.instagram].filter(
+    Boolean,
+  ).length;
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -74,8 +73,8 @@ function SettingsPage() {
             </div>
             <h1 className="mt-2 font-display text-3xl leading-tight">Configurações</h1>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Ajuste notificações, automações, privacidade, preferências e integrações em um
-              painel mais fácil de escanear.
+              Ajuste notificações, automações, privacidade, preferências e integrações em um painel
+              mais fácil de escanear.
             </p>
           </div>
 
@@ -147,7 +146,11 @@ function SettingsPage() {
             </SubGroup>
           </Section>
 
-          <Section icon={Zap} title="Automação de processos" desc="Tarefas repetitivas com menos atrito.">
+          <Section
+            icon={Zap}
+            title="Automação de processos"
+            desc="Tarefas repetitivas com menos atrito."
+          >
             <Rows>
               <Toggle
                 label="Criar atividade automática ao receber lead"
@@ -251,7 +254,9 @@ function SettingsPage() {
               <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-sm font-medium">Densidade da interface</div>
-                  <div className="text-xs text-muted-foreground">Escolha o espaçamento das telas.</div>
+                  <div className="text-xs text-muted-foreground">
+                    Escolha o espaçamento das telas.
+                  </div>
                 </div>
                 <div className="flex shrink-0 gap-1.5">
                   {(["compacto", "confortavel"] as const).map((d) => (
@@ -361,7 +366,12 @@ function Section({
   className?: string;
 }) {
   return (
-    <section className={cn("overflow-hidden rounded-2xl border border-border bg-card shadow-sm", className)}>
+    <section
+      className={cn(
+        "overflow-hidden rounded-2xl border border-border bg-card shadow-sm",
+        className,
+      )}
+    >
       <div className="flex items-start gap-3 border-b border-border px-5 py-5">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
           <Icon className="h-5 w-5" />

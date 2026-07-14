@@ -182,13 +182,15 @@ function InventoryPage() {
                   </div>
                   <h3 className="mt-1 line-clamp-1 text-sm font-medium">{p.nome}</h3>
                   <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="h-3 w-3" /> {[p.bairro, p.cidade].filter(Boolean).join(", ") || "—"}
+                    <MapPin className="h-3 w-3" />{" "}
+                    {[p.bairro, p.cidade].filter(Boolean).join(", ") || "—"}
                   </div>
 
                   {/* Performance real */}
                   <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
-                      <DoorOpen className="h-3 w-3" /> {visitas} {visitas === 1 ? "visita" : "visitas"}
+                      <DoorOpen className="h-3 w-3" /> {visitas}{" "}
+                      {visitas === 1 ? "visita" : "visitas"}
                     </span>
                     <span className="text-xs font-medium text-emerald-700">
                       Comissão estimada {formatBRL(comissao)}
@@ -197,10 +199,22 @@ function InventoryPage() {
 
                   {/* Specs */}
                   <div className="mt-4 flex items-center gap-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><Bed className="h-3.5 w-3.5" />{p.quartos}</span>
-                    <span className="inline-flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{p.suites}</span>
-                    <span className="inline-flex items-center gap-1"><Car className="h-3.5 w-3.5" />{p.vagas}</span>
-                    <span className="inline-flex items-center gap-1"><Maximize2 className="h-3.5 w-3.5" />{p.area}m²</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Bed className="h-3.5 w-3.5" />
+                      {p.quartos}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Bath className="h-3.5 w-3.5" />
+                      {p.suites}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Car className="h-3.5 w-3.5" />
+                      {p.vagas}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Maximize2 className="h-3.5 w-3.5" />
+                      {p.area}m²
+                    </span>
                   </div>
 
                   {/* Ações rápidas */}
@@ -435,15 +449,67 @@ function PropertyFormModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-          <FormField label="Nome do imóvel" full value={form.nome} onChange={(v) => upd("nome", v)} placeholder="Apartamento 3 quartos em Icaraí" />
-          <FormField label="Endereço" full value={form.endereco ?? ""} onChange={(v) => upd("endereco", v)} placeholder="Rua Tavares de Macedo, 421" />
-          <FormField label="Bairro" value={form.bairro ?? ""} onChange={(v) => upd("bairro", v)} placeholder="Icaraí" />
-          <FormField label="Cidade" value={form.cidade ?? ""} onChange={(v) => upd("cidade", v)} placeholder="Niterói" />
-          <FormField label="Valor (R$)" type="number" value={String(form.valor || "")} onChange={(v) => upd("valor", Number(v) || 0)} placeholder="850000" />
-          <FormField label="Área (m²)" type="number" value={String(form.area || "")} onChange={(v) => upd("area", Number(v) || 0)} placeholder="110" />
-          <FormField label="Quartos" type="number" value={String(form.quartos || "")} onChange={(v) => upd("quartos", Number(v) || 0)} placeholder="3" />
-          <FormField label="Suítes" type="number" value={String(form.suites || "")} onChange={(v) => upd("suites", Number(v) || 0)} placeholder="1" />
-          <FormField label="Vagas" type="number" value={String(form.vagas || "")} onChange={(v) => upd("vagas", Number(v) || 0)} placeholder="2" />
+          <FormField
+            label="Nome do imóvel"
+            full
+            value={form.nome}
+            onChange={(v) => upd("nome", v)}
+            placeholder="Apartamento 3 quartos em Icaraí"
+          />
+          <FormField
+            label="Endereço"
+            full
+            value={form.endereco ?? ""}
+            onChange={(v) => upd("endereco", v)}
+            placeholder="Rua Tavares de Macedo, 421"
+          />
+          <FormField
+            label="Bairro"
+            value={form.bairro ?? ""}
+            onChange={(v) => upd("bairro", v)}
+            placeholder="Icaraí"
+          />
+          <FormField
+            label="Cidade"
+            value={form.cidade ?? ""}
+            onChange={(v) => upd("cidade", v)}
+            placeholder="Niterói"
+          />
+          <FormField
+            label="Valor (R$)"
+            type="number"
+            value={String(form.valor || "")}
+            onChange={(v) => upd("valor", Number(v) || 0)}
+            placeholder="850000"
+          />
+          <FormField
+            label="Área (m²)"
+            type="number"
+            value={String(form.area || "")}
+            onChange={(v) => upd("area", Number(v) || 0)}
+            placeholder="110"
+          />
+          <FormField
+            label="Quartos"
+            type="number"
+            value={String(form.quartos || "")}
+            onChange={(v) => upd("quartos", Number(v) || 0)}
+            placeholder="3"
+          />
+          <FormField
+            label="Suítes"
+            type="number"
+            value={String(form.suites || "")}
+            onChange={(v) => upd("suites", Number(v) || 0)}
+            placeholder="1"
+          />
+          <FormField
+            label="Vagas"
+            type="number"
+            value={String(form.vagas || "")}
+            onChange={(v) => upd("vagas", Number(v) || 0)}
+            placeholder="2"
+          />
           <div className="col-span-2">
             <PropertyMediaUpload
               items={mediaItems}
@@ -475,7 +541,9 @@ function PropertyFormModal({
             Disponibilizar no marketplace B2C
           </label>
           <DialogFooter className="col-span-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancelar
+            </Button>
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
               {editing ? "Salvar alterações" : "Cadastrar imóvel"}
@@ -506,7 +574,8 @@ function VendaModal({
         <DialogHeader>
           <DialogTitle>Registrar venda do imóvel</DialogTitle>
           <DialogDescription>
-            Para manter a rastreabilidade da operação, registre as informações principais desta venda.
+            Para manter a rastreabilidade da operação, registre as informações principais desta
+            venda.
           </DialogDescription>
         </DialogHeader>
 
@@ -541,7 +610,9 @@ function VendaModal({
               />
             </div>
             <DialogFooter className="col-span-2">
-              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
               <Button type="submit">Confirmar venda</Button>
             </DialogFooter>
           </form>
@@ -606,8 +677,12 @@ function ExclusaoModal({
               />
             </div>
             <DialogFooter className="col-span-2">
-              <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-              <Button type="submit" variant="destructive">Confirmar exclusão</Button>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="destructive">
+                Confirmar exclusão
+              </Button>
             </DialogFooter>
           </form>
         )}
@@ -657,7 +732,11 @@ function MidiaModal({ state, onClose }: { state: ModalState; onClose: () => void
                   Galeria atual
                 </p>
                 <div className="grid grid-cols-3 gap-2">
-                  <img src={property.foto} alt="" className="aspect-square rounded-md object-cover" />
+                  <img
+                    src={property.foto}
+                    alt=""
+                    className="aspect-square rounded-md object-cover"
+                  />
                   <div className="aspect-square rounded-md bg-surface" />
                   <div className="aspect-square rounded-md bg-surface" />
                 </div>
@@ -665,7 +744,9 @@ function MidiaModal({ state, onClose }: { state: ModalState; onClose: () => void
             )}
 
             <DialogFooter>
-              <Button type="button" onClick={onClose}>Fechar</Button>
+              <Button type="button" onClick={onClose}>
+                Fechar
+              </Button>
             </DialogFooter>
           </div>
         )}

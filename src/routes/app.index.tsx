@@ -96,7 +96,8 @@ function Dashboard() {
 
   // Mensalidade que as indicações ajudam a cobrir
   const metaIsencao = (profile?.plan ?? "Free") === "Pro" ? 149 : 149;
-  const progressPct = metaIsencao > 0 ? Math.min(100, (kpis.ganhosIndicacao / metaIsencao) * 100) : 0;
+  const progressPct =
+    metaIsencao > 0 ? Math.min(100, (kpis.ganhosIndicacao / metaIsencao) * 100) : 0;
   const vendaProgress = Math.min(100, (kpis.vendidosMes / META_VENDAS_MES) * 100);
 
   const quentes = leads.filter((l) => l.status === "Visita" || l.status === "Proposta").length;
@@ -129,11 +130,35 @@ function Dashboard() {
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-        <Kpi label="VGV do mês" value={formatBRLcompact(kpis.vgv)} delta="Vendas do mês atual" icon={TrendingUp} accent />
-        <Kpi label="Faturamento" value={formatBRL(kpis.faturamento)} delta="Comissão estimada (3%)" icon={Wallet} accent />
-        <Kpi label="Comissão média" value={`${(kpis.comissaoMedia * 100).toFixed(1)}%`} delta="padrão" icon={Target} muted />
+        <Kpi
+          label="VGV do mês"
+          value={formatBRLcompact(kpis.vgv)}
+          delta="Vendas do mês atual"
+          icon={TrendingUp}
+          accent
+        />
+        <Kpi
+          label="Faturamento"
+          value={formatBRL(kpis.faturamento)}
+          delta="Comissão estimada (3%)"
+          icon={Wallet}
+          accent
+        />
+        <Kpi
+          label="Comissão média"
+          value={`${(kpis.comissaoMedia * 100).toFixed(1)}%`}
+          delta="padrão"
+          icon={Target}
+          muted
+        />
         <KpiMeta vendidos={kpis.vendidosMes} pct={vendaProgress} />
-        <Kpi label="Ticket médio" value={formatBRLcompact(kpis.ticketMedio)} delta="por venda" icon={ArrowUpRight} muted />
+        <Kpi
+          label="Ticket médio"
+          value={formatBRLcompact(kpis.ticketMedio)}
+          delta="por venda"
+          icon={ArrowUpRight}
+          muted
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -150,16 +175,34 @@ function Dashboard() {
           </div>
           <div className="h-64">
             <ResponsiveContainer>
-              <AreaChart data={salesEvolution} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+              <AreaChart
+                data={salesEvolution}
+                margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
+              >
                 <defs>
                   <linearGradient id="vgvGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="oklch(0.55 0.22 262)" stopOpacity={0.35} />
                     <stop offset="100%" stopColor="oklch(0.55 0.22 262)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.91 0.01 255)" vertical={false} />
-                <XAxis dataKey="mes" stroke="oklch(0.5 0.02 255)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="oklch(0.5 0.02 255)" fontSize={12} tickLine={false} axisLine={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="oklch(0.91 0.01 255)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="mes"
+                  stroke="oklch(0.5 0.02 255)"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke="oklch(0.5 0.02 255)"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <Tooltip
                   contentStyle={{
                     background: "white",
@@ -168,7 +211,13 @@ function Dashboard() {
                     fontSize: 12,
                   }}
                 />
-                <Area type="monotone" dataKey="vgv" stroke="oklch(0.55 0.22 262)" strokeWidth={2.5} fill="url(#vgvGrad)" />
+                <Area
+                  type="monotone"
+                  dataKey="vgv"
+                  stroke="oklch(0.55 0.22 262)"
+                  strokeWidth={2.5}
+                  fill="url(#vgvGrad)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -194,7 +243,9 @@ function Dashboard() {
               ) : (
                 <>
                   Faltam{" "}
-                  <span className="num text-white">{formatBRL(metaIsencao - kpis.ganhosIndicacao)}</span>{" "}
+                  <span className="num text-white">
+                    {formatBRL(metaIsencao - kpis.ganhosIndicacao)}
+                  </span>{" "}
                   para isentar sua mensalidade
                 </>
               )}
@@ -222,12 +273,17 @@ function Dashboard() {
             ].map((o) => (
               <div key={o.l} className="rounded-xl bg-surface p-4 text-center">
                 <div className="num font-display text-3xl">{o.n}</div>
-                <div className="mt-1 text-[11px] uppercase tracking-widest text-muted-foreground">{o.l}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-widest text-muted-foreground">
+                  {o.l}
+                </div>
                 <div className="mt-1 text-[10px] text-muted-foreground/80">{o.c}</div>
               </div>
             ))}
           </div>
-          <Link to="/app/pipeline" className="mt-5 inline-flex items-center gap-1 text-sm text-brand">
+          <Link
+            to="/app/pipeline"
+            className="mt-5 inline-flex items-center gap-1 text-sm text-brand"
+          >
             Abrir pipeline <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
@@ -235,10 +291,14 @@ function Dashboard() {
         <div className="rounded-2xl border border-border bg-card p-6 lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <div className="text-xs uppercase tracking-widest text-muted-foreground">Últimos leads</div>
+              <div className="text-xs uppercase tracking-widest text-muted-foreground">
+                Últimos leads
+              </div>
               <div className="font-display text-lg">Atividade recente</div>
             </div>
-            <Link to="/app/leads" className="text-xs text-brand">Ver todos</Link>
+            <Link to="/app/leads" className="text-xs text-brand">
+              Ver todos
+            </Link>
           </div>
           {ultimosLeads.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
@@ -250,17 +310,25 @@ function Dashboard() {
                 <li key={l.id} className="flex items-center justify-between gap-4 py-3 text-sm">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-xs font-medium">
-                      {l.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                      {l.nome
+                        .split(" ")
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join("")}
                     </div>
                     <div className="min-w-0">
                       <div className="font-medium">{l.nome}</div>
-                      <div className="truncate text-xs text-foreground/70">{truncate(l.interesse)}</div>
+                      <div className="truncate text-xs text-foreground/70">
+                        {truncate(l.interesse)}
+                      </div>
                       <div className="text-[11px] text-muted-foreground">
                         {l.origem} · {l.ultimaInteracao}
                       </div>
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full border border-border px-2.5 py-0.5 text-xs">{l.status}</span>
+                  <span className="shrink-0 rounded-full border border-border px-2.5 py-0.5 text-xs">
+                    {l.status}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -275,7 +343,9 @@ function Dashboard() {
             <div className="text-xs uppercase tracking-widest text-muted-foreground">Agenda</div>
             <div className="font-display text-lg">Próximas atividades</div>
           </div>
-          <Link to="/app/atividades" className="text-xs text-brand">Ver agenda completa</Link>
+          <Link to="/app/atividades" className="text-xs text-brand">
+            Ver agenda completa
+          </Link>
         </div>
         {proximas.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
@@ -290,7 +360,9 @@ function Dashboard() {
                   key={a.id}
                   className={`flex items-start gap-3 rounded-xl bg-surface p-4 ${isHoje ? "border-l-2 border-brand" : ""}`}
                 >
-                  <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${isHoje ? "bg-brand/15 text-brand" : "bg-brand/10 text-brand"}`}>
+                  <div
+                    className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${isHoje ? "bg-brand/15 text-brand" : "bg-brand/10 text-brand"}`}
+                  >
                     <Users className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -303,9 +375,13 @@ function Dashboard() {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground">{a.data} · {a.hora}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {a.data} · {a.hora}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">{a.tipo} {a.imovel ? `· ${a.imovel}` : ""}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {a.tipo} {a.imovel ? `· ${a.imovel}` : ""}
+                    </div>
                     <div className="mt-1 text-sm">{a.nota}</div>
                   </div>
                 </li>
@@ -341,13 +417,17 @@ function Kpi({
   return (
     <div className={`rounded-2xl border p-5 ${tone}`}>
       <div className="flex items-start justify-between">
-        <div className={`text-xs uppercase tracking-widest ${accent ? "text-white/60" : "text-muted-foreground"}`}>
+        <div
+          className={`text-xs uppercase tracking-widest ${accent ? "text-white/60" : "text-muted-foreground"}`}
+        >
           {label}
         </div>
         <Icon className={`h-4 w-4 ${accent ? "text-warm" : "text-muted-foreground"}`} />
       </div>
       <div className={`mt-3 num font-display ${accent ? "text-3xl" : "text-2xl"}`}>{value}</div>
-      <div className={`mt-1 text-xs ${accent ? "text-white/70" : "text-muted-foreground"}`}>{delta}</div>
+      <div className={`mt-1 text-xs ${accent ? "text-white/70" : "text-muted-foreground"}`}>
+        {delta}
+      </div>
     </div>
   );
 }
@@ -357,7 +437,9 @@ function KpiMeta({ vendidos, pct }: { vendidos: number; pct: number }) {
   return (
     <div className="rounded-2xl border border-border bg-card/60 p-5">
       <div className="flex items-start justify-between">
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">Vendidos no mês</div>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">
+          Vendidos no mês
+        </div>
         <Building2 className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="mt-3 num font-display text-2xl">

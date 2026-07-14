@@ -179,7 +179,9 @@ function ReferralsPage() {
                       <td className="px-5 py-3">
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs ${
-                            r.plano === "Pro" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                            r.plano === "Pro"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-amber-50 text-amber-700"
                           }`}
                         >
                           {r.plano}
@@ -215,18 +217,23 @@ function ReferralsPage() {
           <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> Potencial de crescimento
         </div>
         <div className="mt-2 font-display text-xl text-ink">
-          Se você ativar mais 3 corretores Pro, pode gerar {formatBRL(metaProxima)}/mês em recorrência.
+          Se você ativar mais 3 corretores Pro, pode gerar {formatBRL(metaProxima)}/mês em
+          recorrência.
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">Ganho atual</div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">
+              Ganho atual
+            </div>
             <div className="num mt-1 font-display text-2xl text-ink">
               {formatBRL(mrrTotal)}
               <span className="text-base text-muted-foreground">/mês</span>
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-widest text-muted-foreground">Meta próxima</div>
+            <div className="text-xs uppercase tracking-widest text-muted-foreground">
+              Meta próxima
+            </div>
             <div className="num mt-1 font-display text-2xl text-emerald-700">
               {formatBRL(metaProxima)}
               <span className="text-base text-muted-foreground">/mês</span>

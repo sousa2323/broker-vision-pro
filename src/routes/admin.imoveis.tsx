@@ -10,12 +10,7 @@ import {
 } from "@/data/mock";
 import { adminBrokers, type AdminBroker } from "@/data/admin-mock";
 import { cn } from "@/lib/utils";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -35,12 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -179,14 +169,22 @@ function getTipoImovel(nome: string): string {
 // ============ Camada de inteligência ============
 
 type AcaoKey =
-  | "fotos" | "suspender" | "atendimento" | "priorizar"
-  | "atualizar" | "reativar" | "nenhuma";
+  | "fotos"
+  | "suspender"
+  | "atendimento"
+  | "priorizar"
+  | "atualizar"
+  | "reativar"
+  | "nenhuma";
 
 function getInsightsImovel(i: {
-  demanda: Demanda; conversao: number; dias: number;
+  demanda: Demanda;
+  conversao: number;
+  dias: number;
   midia: { completo: boolean; qualidadePct: number };
   leadsInfo: { total: number; semana: number };
-  marketplaceStatus: MarketplaceStatus; destaque?: boolean;
+  marketplaceStatus: MarketplaceStatus;
+  destaque?: boolean;
 }): string[] {
   const out: string[] = [];
   if (i.demanda === "Alta" && i.conversao < 10) out.push("Alta demanda com baixa conversão");
@@ -194,53 +192,104 @@ function getInsightsImovel(i: {
   if (i.dias > 45 && i.destaque) out.push("Imóvel premium sem atualização recente");
   if (i.leadsInfo.total > 10 && i.conversao >= 20) out.push("Boa taxa de resposta operacional");
   if (i.leadsInfo.total === 0 && i.dias > 30) out.push("Sem leads há mais de 30 dias");
-  if (i.demanda === "Alta" && i.leadsInfo.semana === 0) out.push("Procura alta, atendimento parado esta semana");
+  if (i.demanda === "Alta" && i.leadsInfo.semana === 0)
+    out.push("Procura alta, atendimento parado esta semana");
   return out.slice(0, 3);
 }
 
 function getScoresMarketplace(i: {
   midia: { qualidadePct: number; completo: boolean; fotos: number };
   leadsInfo: { total: number; semana: number };
-  conversao: number; dias: number;
+  conversao: number;
+  dias: number;
 }): { seo: number; midia: number; atendimento: number; conversao: number } {
   const seo = Math.max(20, Math.min(100, i.midia.qualidadePct - (i.dias > 30 ? 15 : 0)));
-  const midia = Math.max(10, Math.min(100, i.midia.qualidadePct + (i.midia.fotos >= 10 ? 10 : -10)));
+  const midia = Math.max(
+    10,
+    Math.min(100, i.midia.qualidadePct + (i.midia.fotos >= 10 ? 10 : -10)),
+  );
   const atendimento = Math.max(10, Math.min(100, 40 + i.leadsInfo.semana * 8));
   const conversao = Math.max(0, Math.min(100, i.conversao * 4));
   return { seo, midia, atendimento, conversao };
 }
 
 function getAcaoRecomendada(i: {
-  midia: { completo: boolean }; risco: Risco; marketplaceStatus: MarketplaceStatus;
-  demanda: Demanda; conversao: number; dias: number; leadsInfo: { total: number };
+  midia: { completo: boolean };
+  risco: Risco;
+  marketplaceStatus: MarketplaceStatus;
+  demanda: Demanda;
+  conversao: number;
+  dias: number;
+  leadsInfo: { total: number };
   origem: Origem;
 }): { key: AcaoKey; titulo: string; racional: string } {
   if (!i.midia.completo)
-    return { key: "fotos", titulo: "Solicitar novas fotos", racional: "Mídia incompleta está reduzindo CTR no marketplace." };
+    return {
+      key: "fotos",
+      titulo: "Solicitar novas fotos",
+      racional: "Mídia incompleta está reduzindo CTR no marketplace.",
+    };
   if (i.risco === "critico" && i.marketplaceStatus !== "Bloqueado" && i.origem !== "Próprio")
-    return { key: "suspender", titulo: "Suspender marketplace", racional: "Risco crítico combinado a baixo desempenho operacional." };
+    return {
+      key: "suspender",
+      titulo: "Suspender marketplace",
+      racional: "Risco crítico combinado a baixo desempenho operacional.",
+    };
   if (i.demanda === "Alta" && i.conversao < 8)
-    return { key: "atendimento", titulo: "Reforçar atendimento dos leads", racional: "Procura alta sem conversão correspondente." };
+    return {
+      key: "atendimento",
+      titulo: "Reforçar atendimento dos leads",
+      racional: "Procura alta sem conversão correspondente.",
+    };
   if (i.demanda === "Alta" && i.marketplaceStatus !== "Publicado" && i.origem !== "Próprio")
-    return { key: "priorizar", titulo: "Priorizar no marketplace", racional: "Imóvel com tração que ainda não está em vitrine." };
+    return {
+      key: "priorizar",
+      titulo: "Priorizar no marketplace",
+      racional: "Imóvel com tração que ainda não está em vitrine.",
+    };
   if (i.dias > 30)
-    return { key: "atualizar", titulo: "Atualizar descrição e preço", racional: "Anúncio sem manutenção há mais de 30 dias." };
+    return {
+      key: "atualizar",
+      titulo: "Atualizar descrição e preço",
+      racional: "Anúncio sem manutenção há mais de 30 dias.",
+    };
   if (i.leadsInfo.total === 0 && i.dias > 45)
-    return { key: "reativar", titulo: "Reativar anúncio", racional: "Sem leads e sem atualização — perdendo relevância." };
-  return { key: "nenhuma", titulo: "Sem ação prioritária", racional: "Imóvel operando dentro do esperado." };
+    return {
+      key: "reativar",
+      titulo: "Reativar anúncio",
+      racional: "Sem leads e sem atualização — perdendo relevância.",
+    };
+  return {
+    key: "nenhuma",
+    titulo: "Sem ação prioritária",
+    racional: "Imóvel operando dentro do esperado.",
+  };
 }
 
 function getPrevisaoPerformance(i: {
-  demanda: Demanda; conversao: number; leadsInfo: { total: number };
+  demanda: Demanda;
+  conversao: number;
+  leadsInfo: { total: number };
 }): { label: string; tone: "emerald" | "amber" | "red" | "neutral" } {
-  if (i.demanda === "Alta" && i.conversao >= 15) return { label: "Potencial alto de conversão", tone: "emerald" };
+  if (i.demanda === "Alta" && i.conversao >= 15)
+    return { label: "Potencial alto de conversão", tone: "emerald" };
   if (i.demanda === "Alta") return { label: "Alta disputa no marketplace", tone: "amber" };
-  if (i.demanda === "Baixa" && i.leadsInfo.total < 3) return { label: "Baixa competitividade na região", tone: "neutral" };
+  if (i.demanda === "Baixa" && i.leadsInfo.total < 3)
+    return { label: "Baixa competitividade na região", tone: "neutral" };
   return { label: "Desempenho dentro da média", tone: "neutral" };
 }
 
-function getOperacaoImovel(p: Property, leadsTotal: number, demanda: Demanda, conversao: number): {
-  leads: number; visitas: number; propostas: number; negligenciados: number; leitura: string;
+function getOperacaoImovel(
+  p: Property,
+  leadsTotal: number,
+  demanda: Demanda,
+  conversao: number,
+): {
+  leads: number;
+  visitas: number;
+  propostas: number;
+  negligenciados: number;
+  leitura: string;
 } {
   const s = seedFromId(p.id + "op");
   const visitas = Math.max(0, Math.floor(leadsTotal / 4) + (s % 4));
@@ -256,8 +305,11 @@ function getOperacaoImovel(p: Property, leadsTotal: number, demanda: Demanda, co
 }
 
 function getSaudeImovel(i: {
-  dias: number; conversao: number; demanda: Demanda;
-  midia: { completo: boolean }; leadsInfo: { total: number; semana: number };
+  dias: number;
+  conversao: number;
+  demanda: Demanda;
+  midia: { completo: boolean };
+  leadsInfo: { total: number; semana: number };
 }): { nivel: Risco; pontos: { label: string; ok: boolean }[] } {
   const pontos = [
     { label: "Atualização recente", ok: i.dias <= 30 },
@@ -456,7 +508,8 @@ function ImoveisAdmin() {
       if (filtros.regiao !== "all" && i.cidade !== filtros.regiao) return false;
       if (filtros.tipo !== "all" && i.tipo !== filtros.tipo) return false;
       if (filtros.status !== "all" && i.status !== filtros.status) return false;
-      if (filtros.marketplace !== "all" && i.marketplaceStatus !== filtros.marketplace) return false;
+      if (filtros.marketplace !== "all" && i.marketplaceStatus !== filtros.marketplace)
+        return false;
       if (filtros.demanda !== "all" && i.demanda !== filtros.demanda) return false;
       if (filtros.atualizacao === "rec" && i.dias > 14) return false;
       if (filtros.atualizacao === "30" && i.dias <= 30) return false;
@@ -500,30 +553,92 @@ function ImoveisAdmin() {
 
       {/* Camada 1 — KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-        <KpiCard label="Imóveis ativos" value={kpis.ativos} hint="Publicados na rede" delta="+12" tone="emerald" />
-        <KpiCard label="Alta demanda" value={kpis.altaDemanda} hint="Alta geração de leads" delta="+6" tone="emerald" />
-        <KpiCard label="Sem atualização" value={kpis.semAtualizacao} hint="Há mais de 30 dias" delta="+4" tone="amber" />
-        <KpiCard label="Sem leads" value={kpis.semLeads} hint="Baixa tração comercial" delta="+9" tone="amber" />
-        <KpiCard label="Vendas do mês" value={kpis.vendasMes} hint="Imóveis convertidos" delta="+3" tone="emerald" />
-        <KpiCard label="VGV ativo da rede" value={formatBRLcompact(kpis.vgvAtivo)} hint="Estoque ativo" delta="+R$ 8M" tone="emerald" />
-        <KpiCard label="Em risco" value={kpis.emRisco} hint="Problemas operacionais" delta="+2" tone="red" />
+        <KpiCard
+          label="Imóveis ativos"
+          value={kpis.ativos}
+          hint="Publicados na rede"
+          delta="+12"
+          tone="emerald"
+        />
+        <KpiCard
+          label="Alta demanda"
+          value={kpis.altaDemanda}
+          hint="Alta geração de leads"
+          delta="+6"
+          tone="emerald"
+        />
+        <KpiCard
+          label="Sem atualização"
+          value={kpis.semAtualizacao}
+          hint="Há mais de 30 dias"
+          delta="+4"
+          tone="amber"
+        />
+        <KpiCard
+          label="Sem leads"
+          value={kpis.semLeads}
+          hint="Baixa tração comercial"
+          delta="+9"
+          tone="amber"
+        />
+        <KpiCard
+          label="Vendas do mês"
+          value={kpis.vendasMes}
+          hint="Imóveis convertidos"
+          delta="+3"
+          tone="emerald"
+        />
+        <KpiCard
+          label="VGV ativo da rede"
+          value={formatBRLcompact(kpis.vgvAtivo)}
+          hint="Estoque ativo"
+          delta="+R$ 8M"
+          tone="emerald"
+        />
+        <KpiCard
+          label="Em risco"
+          value={kpis.emRisco}
+          hint="Problemas operacionais"
+          delta="+2"
+          tone="red"
+        />
       </div>
 
       {/* Camada 2 — Alertas */}
       <div className="flex flex-wrap gap-2">
-        <AlertaPill cor="yellow" ativo={alerta === "semAtualizacao"} onClick={() => aplicarAlerta("semAtualizacao")}>
+        <AlertaPill
+          cor="yellow"
+          ativo={alerta === "semAtualizacao"}
+          onClick={() => aplicarAlerta("semAtualizacao")}
+        >
           {alertas.semAtualizacao} imóveis sem atualização há mais de 30 dias
         </AlertaPill>
-        <AlertaPill cor="red" ativo={alerta === "altaDemandaSemAtendimento"} onClick={() => aplicarAlerta("altaDemandaSemAtendimento")}>
+        <AlertaPill
+          cor="red"
+          ativo={alerta === "altaDemandaSemAtendimento"}
+          onClick={() => aplicarAlerta("altaDemandaSemAtendimento")}
+        >
           {alertas.altaDemandaSemAtendimento} marketplace com alta demanda sem atendimento
         </AlertaPill>
-        <AlertaPill cor="yellow" ativo={alerta === "premiumSemFotos"} onClick={() => aplicarAlerta("premiumSemFotos")}>
+        <AlertaPill
+          cor="yellow"
+          ativo={alerta === "premiumSemFotos"}
+          onClick={() => aplicarAlerta("premiumSemFotos")}
+        >
           {alertas.premiumSemFotos} anúncios premium sem fotos completas
         </AlertaPill>
-        <AlertaPill cor="amber" ativo={alerta === "semLeads45"} onClick={() => aplicarAlerta("semLeads45")}>
+        <AlertaPill
+          cor="amber"
+          ativo={alerta === "semLeads45"}
+          onClick={() => aplicarAlerta("semLeads45")}
+        >
           {alertas.semLeads45} imóveis sem leads há mais de 45 dias
         </AlertaPill>
-        <AlertaPill cor="red" ativo={alerta === "precoBrusco"} onClick={() => aplicarAlerta("precoBrusco")}>
+        <AlertaPill
+          cor="red"
+          ativo={alerta === "precoBrusco"}
+          onClick={() => aplicarAlerta("precoBrusco")}
+        >
           {alertas.precoBrusco} imóveis com alteração brusca de preço
         </AlertaPill>
       </div>
@@ -540,33 +655,109 @@ function ImoveisAdmin() {
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <FiltroSelect placeholder="Região" value={filtros.regiao} onChange={(v) => setFiltros({ ...filtros, regiao: v })}
-            options={[{ v: "all", l: "Todas as regiões" }, ...regioesUnicas.map((r) => ({ v: r, l: r }))]} />
-          <FiltroSelect placeholder="Tipo" value={filtros.tipo} onChange={(v) => setFiltros({ ...filtros, tipo: v })}
-            options={[{ v: "all", l: "Todos os tipos" }, ...tiposUnicos.map((t) => ({ v: t, l: t }))]} />
-          <FiltroSelect placeholder="Status" value={filtros.status} onChange={(v) => setFiltros({ ...filtros, status: v })} options={[
-            { v: "all", l: "Todos status" }, { v: "Ativo", l: "Ativo" }, { v: "Vendido", l: "Vendido" }, { v: "Suspenso", l: "Suspenso" }, { v: "Removido", l: "Removido" },
-          ]} />
-          <FiltroSelect placeholder="Marketplace" value={filtros.marketplace} onChange={(v) => setFiltros({ ...filtros, marketplace: v })} options={[
-            { v: "all", l: "Marketplace: todos" }, { v: "Publicado", l: "Publicado" }, { v: "Oculto", l: "Oculto" }, { v: "Pendente", l: "Pendente" }, { v: "Bloqueado", l: "Bloqueado" },
-          ]} />
-          <FiltroSelect placeholder="Demanda" value={filtros.demanda} onChange={(v) => setFiltros({ ...filtros, demanda: v })} options={[
-            { v: "all", l: "Demanda: todas" }, { v: "Alta", l: "Alta" }, { v: "Média", l: "Média" }, { v: "Baixa", l: "Baixa" },
-          ]} />
-          <FiltroSelect placeholder="Atualização" value={filtros.atualizacao} onChange={(v) => setFiltros({ ...filtros, atualizacao: v })} options={[
-            { v: "all", l: "Atualização: todas" }, { v: "rec", l: "Recente (≤14d)" }, { v: "30", l: "> 30 dias" }, { v: "60", l: "> 60 dias" },
-          ]} />
-          <FiltroSelect placeholder="Risco" value={filtros.risco} onChange={(v) => setFiltros({ ...filtros, risco: v })} options={[
-            { v: "all", l: "Todos riscos" }, { v: "saudavel", l: "Saudável" }, { v: "atencao", l: "Atenção" }, { v: "critico", l: "Crítico" },
-          ]} />
-          <FiltroSelect placeholder="VGV" value={filtros.vgvFx} onChange={(v) => setFiltros({ ...filtros, vgvFx: v })} options={[
-            { v: "all", l: "VGV: todos" }, { v: "ate500", l: "Até R$ 500k" }, { v: "500a1m", l: "R$ 500k–1M" }, { v: "1ma3m", l: "R$ 1M–3M" }, { v: "3m+", l: "Acima de R$ 3M" },
-          ]} />
-          <FiltroSelect placeholder="Corretor" value={filtros.corretor} onChange={(v) => setFiltros({ ...filtros, corretor: v })}
-            options={[{ v: "all", l: "Todos corretores" }, ...activeBrokers.map((b) => ({ v: b.id, l: b.nome }))]} />
+          <FiltroSelect
+            placeholder="Região"
+            value={filtros.regiao}
+            onChange={(v) => setFiltros({ ...filtros, regiao: v })}
+            options={[
+              { v: "all", l: "Todas as regiões" },
+              ...regioesUnicas.map((r) => ({ v: r, l: r })),
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Tipo"
+            value={filtros.tipo}
+            onChange={(v) => setFiltros({ ...filtros, tipo: v })}
+            options={[
+              { v: "all", l: "Todos os tipos" },
+              ...tiposUnicos.map((t) => ({ v: t, l: t })),
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Status"
+            value={filtros.status}
+            onChange={(v) => setFiltros({ ...filtros, status: v })}
+            options={[
+              { v: "all", l: "Todos status" },
+              { v: "Ativo", l: "Ativo" },
+              { v: "Vendido", l: "Vendido" },
+              { v: "Suspenso", l: "Suspenso" },
+              { v: "Removido", l: "Removido" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Marketplace"
+            value={filtros.marketplace}
+            onChange={(v) => setFiltros({ ...filtros, marketplace: v })}
+            options={[
+              { v: "all", l: "Marketplace: todos" },
+              { v: "Publicado", l: "Publicado" },
+              { v: "Oculto", l: "Oculto" },
+              { v: "Pendente", l: "Pendente" },
+              { v: "Bloqueado", l: "Bloqueado" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Demanda"
+            value={filtros.demanda}
+            onChange={(v) => setFiltros({ ...filtros, demanda: v })}
+            options={[
+              { v: "all", l: "Demanda: todas" },
+              { v: "Alta", l: "Alta" },
+              { v: "Média", l: "Média" },
+              { v: "Baixa", l: "Baixa" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Atualização"
+            value={filtros.atualizacao}
+            onChange={(v) => setFiltros({ ...filtros, atualizacao: v })}
+            options={[
+              { v: "all", l: "Atualização: todas" },
+              { v: "rec", l: "Recente (≤14d)" },
+              { v: "30", l: "> 30 dias" },
+              { v: "60", l: "> 60 dias" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Risco"
+            value={filtros.risco}
+            onChange={(v) => setFiltros({ ...filtros, risco: v })}
+            options={[
+              { v: "all", l: "Todos riscos" },
+              { v: "saudavel", l: "Saudável" },
+              { v: "atencao", l: "Atenção" },
+              { v: "critico", l: "Crítico" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="VGV"
+            value={filtros.vgvFx}
+            onChange={(v) => setFiltros({ ...filtros, vgvFx: v })}
+            options={[
+              { v: "all", l: "VGV: todos" },
+              { v: "ate500", l: "Até R$ 500k" },
+              { v: "500a1m", l: "R$ 500k–1M" },
+              { v: "1ma3m", l: "R$ 1M–3M" },
+              { v: "3m+", l: "Acima de R$ 3M" },
+            ]}
+          />
+          <FiltroSelect
+            placeholder="Corretor"
+            value={filtros.corretor}
+            onChange={(v) => setFiltros({ ...filtros, corretor: v })}
+            options={[
+              { v: "all", l: "Todos corretores" },
+              ...activeBrokers.map((b) => ({ v: b.id, l: b.nome })),
+            ]}
+          />
           {filtrosAtivos && (
             <button
-              onClick={() => { setFiltros(filtrosVazios); setBusca(""); setAlerta(null); }}
+              onClick={() => {
+                setFiltros(filtrosVazios);
+                setBusca("");
+                setAlerta(null);
+              }}
               className="text-xs text-muted-foreground underline-offset-2 hover:underline"
             >
               Limpar filtros
@@ -631,12 +822,19 @@ function ImoveisAdmin() {
                       <TooltipProvider delayDuration={200}>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonOrigem[i.origem])}>
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-0.5 text-[11px]",
+                                tonOrigem[i.origem],
+                              )}
+                            >
                               {i.origem}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs text-xs">
-                            {i.origem === "Plataforma" || i.origem === "Construtora" || i.origem === "Parceiro"
+                            {i.origem === "Plataforma" ||
+                            i.origem === "Construtora" ||
+                            i.origem === "Parceiro"
                               ? "Ativo de marketplace da plataforma — admin pode priorizar ou suspender."
                               : "Imóvel pertence operacionalmente ao corretor. Admin apenas supervisiona."}
                           </TooltipContent>
@@ -645,7 +843,9 @@ function ImoveisAdmin() {
                     </td>
                     <td className="px-3 py-3 text-xs">
                       <div className="font-medium">{i.leadsInfo.total}</div>
-                      <div className="text-[10px] text-muted-foreground">{i.leadsInfo.semana} esta semana</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {i.leadsInfo.semana} esta semana
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-xs">
                       <div className="flex items-center gap-2">
@@ -654,7 +854,11 @@ function ImoveisAdmin() {
                           <div
                             className={cn(
                               "h-1 rounded-full",
-                              i.conversao >= 20 ? "bg-emerald-500" : i.conversao >= 10 ? "bg-amber-500" : "bg-red-500",
+                              i.conversao >= 20
+                                ? "bg-emerald-500"
+                                : i.conversao >= 10
+                                  ? "bg-amber-500"
+                                  : "bg-red-500",
                             )}
                             style={{ width: `${Math.min(100, i.conversao * 3)}%` }}
                           />
@@ -662,27 +866,53 @@ function ImoveisAdmin() {
                       </div>
                     </td>
                     <td className="px-3 py-3">
-                      <span className={cn(
-                        "rounded-full px-2 py-0.5 text-[11px]",
-                        i.dias > 60 ? "bg-red-50 text-red-700" :
-                        i.dias > 30 ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700",
-                      )}>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[11px]",
+                          i.dias > 60
+                            ? "bg-red-50 text-red-700"
+                            : i.dias > 30
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-emerald-50 text-emerald-700",
+                        )}
+                      >
                         há {i.dias}d
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonDemanda[i.demanda])}>{i.demanda}</span>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[11px]",
+                          tonDemanda[i.demanda],
+                        )}
+                      >
+                        {i.demanda}
+                      </span>
                     </td>
                     <td className="px-3 py-3">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonMarketplace[i.marketplaceStatus])}>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[11px]",
+                          tonMarketplace[i.marketplaceStatus],
+                        )}
+                      >
                         {i.marketplaceStatus}
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonStatus[i.status])}>{i.status}</span>
+                      <span
+                        className={cn("rounded-full px-2 py-0.5 text-[11px]", tonStatus[i.status])}
+                      >
+                        {i.status}
+                      </span>
                     </td>
                     <td className="px-3 py-3">
-                      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", tonRisco[i.risco])}>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
+                          tonRisco[i.risco],
+                        )}
+                      >
                         <span className={cn("h-1.5 w-1.5 rounded-full", dotRisco[i.risco])} />
                         {labelRisco[i.risco]}
                       </span>
@@ -690,19 +920,34 @@ function ImoveisAdmin() {
                     <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuItem onClick={() => setSelecionado(i)}>Ver operação</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSelecionado(i)}>Ver leads vinculados</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSelecionado(i)}>Ver histórico</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSelecionado(i)}>
+                            Ver operação
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSelecionado(i)}>
+                            Ver leads vinculados
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSelecionado(i)}>
+                            Ver histórico
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => toast.success("Risco sinalizado para revisão da governança")}>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              toast.success("Risco sinalizado para revisão da governança")
+                            }
+                          >
                             Sinalizar risco
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             disabled={invasivasBloqueadas}
-                            onClick={() => { setSelecionado(i); setSuspenderOpen(true); }}
+                            onClick={() => {
+                              setSelecionado(i);
+                              setSuspenderOpen(true);
+                            }}
                           >
                             Suspender anúncio
                           </DropdownMenuItem>
@@ -719,7 +964,11 @@ function ImoveisAdmin() {
                 );
               })}
               {lista.length === 0 && (
-                <tr><td colSpan={11} className="px-3 py-12 text-center text-sm text-muted-foreground">Nenhum imóvel corresponde aos filtros atuais.</td></tr>
+                <tr>
+                  <td colSpan={11} className="px-3 py-12 text-center text-sm text-muted-foreground">
+                    Nenhum imóvel corresponde aos filtros atuais.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -742,16 +991,24 @@ function ImoveisAdmin() {
             <AlertDialogDescription>
               {selecionado && (
                 <>
-                  O anúncio <strong>{selecionado.nome}</strong> será removido temporariamente da vitrine pública. O corretor continua com acesso operacional ao imóvel.
-                  <br /><br />
-                  Apenas ativos da plataforma podem ser suspensos pela administração. Imóveis próprios são preservados.
+                  O anúncio <strong>{selecionado.nome}</strong> será removido temporariamente da
+                  vitrine pública. O corretor continua com acesso operacional ao imóvel.
+                  <br />
+                  <br />
+                  Apenas ativos da plataforma podem ser suspensos pela administração. Imóveis
+                  próprios são preservados.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setSuspenderOpen(false); toast.success("Anúncio suspenso no marketplace"); }}>
+            <AlertDialogAction
+              onClick={() => {
+                setSuspenderOpen(false);
+                toast.success("Anúncio suspenso no marketplace");
+              }}
+            >
               Confirmar suspensão
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -767,10 +1024,23 @@ function ImoveisAdmin() {
               Mensagem enviada ao responsável pelo imóvel. Registrada na auditoria.
             </DialogDescription>
           </DialogHeader>
-          <Textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Ex.: anúncio sem atualização há mais de 30 dias, verificar preço e fotos." rows={4} />
+          <Textarea
+            value={observacao}
+            onChange={(e) => setObservacao(e.target.value)}
+            placeholder="Ex.: anúncio sem atualização há mais de 30 dias, verificar preço e fotos."
+            rows={4}
+          />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setSolicitarOpen(false)}>Cancelar</Button>
-            <Button onClick={() => { setSolicitarOpen(false); setObservacao(""); toast.success("Solicitação enviada ao corretor"); }}>
+            <Button variant="ghost" onClick={() => setSolicitarOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                setSolicitarOpen(false);
+                setObservacao("");
+                toast.success("Solicitação enviada ao corretor");
+              }}
+            >
               Enviar solicitação
             </Button>
           </DialogFooter>
@@ -783,12 +1053,26 @@ function ImoveisAdmin() {
 // ============ Subcomponentes ============
 
 function KpiCard({
-  label, value, hint, delta, tone = "neutral",
-}: { label: string; value: string | number; hint: string; delta?: string; tone?: "neutral" | "emerald" | "amber" | "red" }) {
+  label,
+  value,
+  hint,
+  delta,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string | number;
+  hint: string;
+  delta?: string;
+  tone?: "neutral" | "emerald" | "amber" | "red";
+}) {
   const tonClass =
-    tone === "emerald" ? "text-emerald-700" :
-    tone === "amber" ? "text-amber-700" :
-    tone === "red" ? "text-red-700" : "text-muted-foreground";
+    tone === "emerald"
+      ? "text-emerald-700"
+      : tone === "amber"
+        ? "text-amber-700"
+        : tone === "red"
+          ? "text-red-700"
+          : "text-muted-foreground";
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
@@ -802,12 +1086,22 @@ function KpiCard({
 }
 
 function AlertaPill({
-  children, cor, ativo, onClick,
-}: { children: React.ReactNode; cor: "red" | "amber" | "yellow"; ativo: boolean; onClick: () => void }) {
+  children,
+  cor,
+  ativo,
+  onClick,
+}: {
+  children: React.ReactNode;
+  cor: "red" | "amber" | "yellow";
+  ativo: boolean;
+  onClick: () => void;
+}) {
   const bg =
-    cor === "red" ? "bg-red-50 text-red-700 border-red-100" :
-    cor === "amber" ? "bg-amber-50 text-amber-700 border-amber-100" :
-    "bg-yellow-50 text-yellow-700 border-yellow-100";
+    cor === "red"
+      ? "bg-red-50 text-red-700 border-red-100"
+      : cor === "amber"
+        ? "bg-amber-50 text-amber-700 border-amber-100"
+        : "bg-yellow-50 text-yellow-700 border-yellow-100";
   const dot = cor === "red" ? "bg-red-500" : cor === "amber" ? "bg-amber-500" : "bg-yellow-500";
   return (
     <button
@@ -825,8 +1119,16 @@ function AlertaPill({
 }
 
 function FiltroSelect({
-  placeholder, value, onChange, options,
-}: { placeholder: string; value: string; onChange: (v: string) => void; options: { v: string; l: string }[] }) {
+  placeholder,
+  value,
+  onChange,
+  options,
+}: {
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { v: string; l: string }[];
+}) {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="h-8 w-auto min-w-[8rem] text-xs">
@@ -834,7 +1136,9 @@ function FiltroSelect({
       </SelectTrigger>
       <SelectContent>
         {options.map((o) => (
-          <SelectItem key={o.v} value={o.v} className="text-xs">{o.l}</SelectItem>
+          <SelectItem key={o.v} value={o.v} className="text-xs">
+            {o.l}
+          </SelectItem>
         ))}
       </SelectContent>
     </Select>
@@ -844,8 +1148,16 @@ function FiltroSelect({
 // ============ Drawer ============
 
 function ImovelDrawer({
-  imovel, onClose, onSuspender, onSolicitar,
-}: { imovel: ImovelView | null; onClose: () => void; onSuspender: () => void; onSolicitar: () => void }) {
+  imovel,
+  onClose,
+  onSuspender,
+  onSolicitar,
+}: {
+  imovel: ImovelView | null;
+  onClose: () => void;
+  onSuspender: () => void;
+  onSolicitar: () => void;
+}) {
   if (!imovel) return null;
   const invasivasBloqueadas = imovel.origem === "Próprio";
 
@@ -874,28 +1186,53 @@ function ImovelDrawer({
       ? `Imóvel com ${imovel.demanda === "Alta" ? "alta procura" : "demanda " + imovel.demanda.toLowerCase()} em ${imovel.bairro}. Sem atualização há ${imovel.dias} dias.`
       : `Imóvel com ${imovel.demanda === "Alta" ? "alta procura" : "demanda " + imovel.demanda.toLowerCase()} em ${imovel.bairro}. Atualização recente, fluxo operacional normal.`;
 
-  const canais = imovel.marketplaceStatus === "Publicado"
-    ? ["Ubroker Marketplace", "Portal de parceiros", "Vitrine pública"]
-    : imovel.marketplaceStatus === "Oculto" ? ["—"]
-    : imovel.marketplaceStatus === "Pendente" ? ["Pendente de aprovação"]
-    : ["Bloqueado pela governança"];
+  const canais =
+    imovel.marketplaceStatus === "Publicado"
+      ? ["Ubroker Marketplace", "Portal de parceiros", "Vitrine pública"]
+      : imovel.marketplaceStatus === "Oculto"
+        ? ["—"]
+        : imovel.marketplaceStatus === "Pendente"
+          ? ["Pendente de aprovação"]
+          : ["Bloqueado pela governança"];
 
   const qualidadeAnuncio: { label: string; tone: "emerald" | "amber" | "red" } =
-    imovel.midia.completo && imovel.destaque ? { label: "Anúncio premium", tone: "emerald" }
-    : !imovel.midia.completo ? { label: "Anúncio incompleto", tone: "amber" }
-    : { label: "Mídia suficiente", tone: "emerald" };
+    imovel.midia.completo && imovel.destaque
+      ? { label: "Anúncio premium", tone: "emerald" }
+      : !imovel.midia.completo
+        ? { label: "Anúncio incompleto", tone: "amber" }
+        : { label: "Mídia suficiente", tone: "emerald" };
 
   const atualizacoes = [
     { data: "Há 2 dias", evento: "Republicação", detalhe: "Anúncio reapresentado ao marketplace" },
-    { data: `Há ${Math.min(imovel.dias, 10)} dias`, evento: "Troca de fotos", detalhe: "5 imagens substituídas" },
-    { data: `Há ${imovel.dias} dias`, evento: "Última atualização", detalhe: "Edição de descrição" },
-    ...(imovel.precoAlterado ? [{ data: "Há 4 dias", evento: "Alteração de preço", detalhe: "Variação > 8% sinalizada pela IA" }] : []),
+    {
+      data: `Há ${Math.min(imovel.dias, 10)} dias`,
+      evento: "Troca de fotos",
+      detalhe: "5 imagens substituídas",
+    },
+    {
+      data: `Há ${imovel.dias} dias`,
+      evento: "Última atualização",
+      detalhe: "Edição de descrição",
+    },
+    ...(imovel.precoAlterado
+      ? [
+          {
+            data: "Há 4 dias",
+            evento: "Alteração de preço",
+            detalhe: "Variação > 8% sinalizada pela IA",
+          },
+        ]
+      : []),
   ];
 
   const auditoria = [
     { data: "Hoje", autor: imovel.corretor.nome, acao: "Atualizou descrição do imóvel" },
-    ...(imovel.precoAlterado ? [{ data: "Há 4 dias", autor: imovel.corretor.nome, acao: "Alterou preço do imóvel" }] : []),
-    ...(imovel.marketplaceStatus === "Bloqueado" ? [{ data: "Há 7 dias", autor: "Admin", acao: "Suspendeu anúncio no marketplace" }] : []),
+    ...(imovel.precoAlterado
+      ? [{ data: "Há 4 dias", autor: imovel.corretor.nome, acao: "Alterou preço do imóvel" }]
+      : []),
+    ...(imovel.marketplaceStatus === "Bloqueado"
+      ? [{ data: "Há 7 dias", autor: "Admin", acao: "Suspendeu anúncio no marketplace" }]
+      : []),
     { data: "Há 14 dias", autor: imovel.corretor.nome, acao: "Publicou o imóvel na rede" },
   ];
 
@@ -904,7 +1241,12 @@ function ImovelDrawer({
   const saude = getSaudeImovel(imovel);
   const scores = getScoresMarketplace(imovel);
   const previsao = getPrevisaoPerformance(imovel);
-  const operacao = getOperacaoImovel(imovel, imovel.leadsInfo.total, imovel.demanda, imovel.conversao);
+  const operacao = getOperacaoImovel(
+    imovel,
+    imovel.leadsInfo.total,
+    imovel.demanda,
+    imovel.conversao,
+  );
   const insights = getInsightsImovel(imovel);
   const temVideo = seedFromId(imovel.id + "vd") % 3 === 0;
   const descricaoCompleta = imovel.midia.qualidadePct >= 60;
@@ -928,7 +1270,10 @@ function ImovelDrawer({
   const leadEmRisco = Math.max(0, Math.floor(imovel.leadsInfo.total * 0.18));
   const leadSemResposta = Math.max(0, Math.floor(imovel.leadsInfo.total * 0.22));
   const leadEmProposta = operacao.propostas;
-  const leadConvertidos = Math.max(0, Math.floor(imovel.leadsInfo.total * (imovel.conversao / 100)));
+  const leadConvertidos = Math.max(
+    0,
+    Math.floor(imovel.leadsInfo.total * (imovel.conversao / 100)),
+  );
 
   return (
     <Sheet open={!!imovel} onOpenChange={(o) => !o && onClose()}>
@@ -938,15 +1283,24 @@ function ImovelDrawer({
             <img src={imovel.foto} alt="" className="h-16 w-24 rounded-md object-cover" />
             <div className="min-w-0">
               <SheetTitle className="text-lg leading-tight">{imovel.nome}</SheetTitle>
-              <div className="mt-1 font-mono text-[11px] text-muted-foreground">{imovel.id} · {imovel.bairro} · {imovel.cidade}</div>
+              <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                {imovel.id} · {imovel.bairro} · {imovel.cidade}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 pt-3">
-            <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonOrigem[imovel.origem])}>{imovel.origem}</span>
+            <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonOrigem[imovel.origem])}>
+              {imovel.origem}
+            </span>
             <TooltipProvider delayDuration={200}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className={cn("inline-flex cursor-help items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", tonRisco[saude.nivel])}>
+                  <span
+                    className={cn(
+                      "inline-flex cursor-help items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
+                      tonRisco[saude.nivel],
+                    )}
+                  >
                     <span className={cn("h-1.5 w-1.5 rounded-full", dotRisco[saude.nivel])} />
                     Saúde: {labelRisco[saude.nivel]}
                   </span>
@@ -955,7 +1309,11 @@ function ImovelDrawer({
                   <ul className="space-y-0.5">
                     {saude.pontos.map((p) => (
                       <li key={p.label} className="flex items-center gap-1.5">
-                        {p.ok ? <Check className="h-3 w-3 text-emerald-600" /> : <XIcon className="h-3 w-3 text-red-600" />}
+                        {p.ok ? (
+                          <Check className="h-3 w-3 text-emerald-600" />
+                        ) : (
+                          <XIcon className="h-3 w-3 text-red-600" />
+                        )}
                         <span>{p.label}</span>
                       </li>
                     ))}
@@ -963,10 +1321,25 @@ function ImovelDrawer({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonDemanda[imovel.demanda])}>Demanda {imovel.demanda}</span>
-            <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonStatus[imovel.status])}>{imovel.status}</span>
-            <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonMarketplace[imovel.marketplaceStatus])}>{imovel.marketplaceStatus}</span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">VGV {formatBRLcompact(imovel.valor)}</span>
+            <span
+              className={cn("rounded-full px-2 py-0.5 text-[11px]", tonDemanda[imovel.demanda])}
+            >
+              Demanda {imovel.demanda}
+            </span>
+            <span className={cn("rounded-full px-2 py-0.5 text-[11px]", tonStatus[imovel.status])}>
+              {imovel.status}
+            </span>
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[11px]",
+                tonMarketplace[imovel.marketplaceStatus],
+              )}
+            >
+              {imovel.marketplaceStatus}
+            </span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              VGV {formatBRLcompact(imovel.valor)}
+            </span>
           </div>
         </SheetHeader>
 
@@ -980,7 +1353,10 @@ function ImovelDrawer({
           {insights.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {insights.map((s) => (
-                <span key={s} className="rounded-full bg-card px-2 py-0.5 text-[10px] text-muted-foreground border border-border">
+                <span
+                  key={s}
+                  className="rounded-full bg-card px-2 py-0.5 text-[10px] text-muted-foreground border border-border"
+                >
                   {s}
                 </span>
               ))}
@@ -1000,31 +1376,51 @@ function ImovelDrawer({
 
           <TabsContent value="resumo" className="mt-4 space-y-3 text-sm">
             <div className="grid grid-cols-2 gap-3">
-              <Info label="Corretor responsável" value={imovel.corretor.nome} sub={`${imovel.corretor.plano} · ${imovel.corretor.cidade}`} />
+              <Info
+                label="Corretor responsável"
+                value={imovel.corretor.nome}
+                sub={`${imovel.corretor.plano} · ${imovel.corretor.cidade}`}
+              />
               <Info label="Origem" value={imovel.origem} />
               <Info label="VGV" value={formatBRL(imovel.valor)} />
               <Info label="Score do imóvel" value={String(imovel.scoreImovel)} />
               <Info label="Status" value={imovel.status} />
               <Info label="Demanda" value={imovel.demanda} />
-              <Info label="Leads gerados" value={String(imovel.leadsInfo.total)} sub={`${imovel.leadsInfo.semana} esta semana`} />
+              <Info
+                label="Leads gerados"
+                value={String(imovel.leadsInfo.total)}
+                sub={`${imovel.leadsInfo.semana} esta semana`}
+              />
               <Info label="Conversão" value={`${imovel.conversao}%`} />
               <Info label="Tempo anunciado" value={`${imovel.dias} dias`} />
-              <Info label="Tipo" value={imovel.tipo} sub={`${imovel.area}m² · ${imovel.quartos}q`} />
+              <Info
+                label="Tipo"
+                value={imovel.tipo}
+                sub={`${imovel.area}m² · ${imovel.quartos}q`}
+              />
             </div>
 
             {/* Operação do imóvel */}
             <div className="rounded-xl border border-border bg-card p-3">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Operação do imóvel</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Operação do imóvel
+              </div>
               <div className="mt-2 grid grid-cols-4 gap-2 text-center">
                 <OpStat label="Leads" value={operacao.leads} />
                 <OpStat label="Visitas" value={operacao.visitas} />
                 <OpStat label="Propostas" value={operacao.propostas} />
-                <OpStat label="Negligenciados" value={operacao.negligenciados} tone={operacao.negligenciados > 0 ? "red" : "neutral"} />
+                <OpStat
+                  label="Negligenciados"
+                  value={operacao.negligenciados}
+                  tone={operacao.negligenciados > 0 ? "red" : "neutral"}
+                />
               </div>
               <div className="mt-2 text-[11px] text-muted-foreground">{operacao.leitura}</div>
             </div>
 
-            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraResumo}</div>
+            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">
+              {leituraResumo}
+            </div>
           </TabsContent>
 
           <TabsContent value="leads" className="mt-4 space-y-3">
@@ -1046,18 +1442,30 @@ function ImovelDrawer({
             ) : (
               <ul className="space-y-2">
                 {leadsVinculados.map((l) => (
-                  <li key={l.id} className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
+                  <li
+                    key={l.id}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-sm"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="font-medium">{l.nome}</div>
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{l.status}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                        {l.status}
+                      </span>
                     </div>
-                    <div className="mt-1 text-[11px] text-muted-foreground">{l.id} · {l.origem} · {l.ultimaInteracao}</div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">
+                      {l.id} · {l.origem} · {l.ultimaInteracao}
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
             <div className="mt-3 text-xs">
-              <Link to="/admin/leads" className="text-foreground underline-offset-2 hover:underline">Ver todos no painel de leads →</Link>
+              <Link
+                to="/admin/leads"
+                className="text-foreground underline-offset-2 hover:underline"
+              >
+                Ver todos no painel de leads →
+              </Link>
             </div>
           </TabsContent>
 
@@ -1070,13 +1478,17 @@ function ImovelDrawer({
               <Mini label="Conversão" value={`${imovel.conversao}%`} />
               <Mini label="Tempo médio de venda" value={`${tempoMedioVenda}d`} />
             </div>
-            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraPerformance}</div>
+            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">
+              {leituraPerformance}
+            </div>
           </TabsContent>
 
           <TabsContent value="marketplace" className="mt-4 space-y-4 text-sm">
             {/* Scores */}
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Saúde comercial do ativo</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                Saúde comercial do ativo
+              </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <ScoreCard label="SEO" value={scores.seo} />
                 <ScoreCard label="Mídia" value={scores.midia} />
@@ -1087,13 +1499,17 @@ function ImovelDrawer({
 
             {/* Indicadores */}
             <div className="rounded-xl border border-border bg-card p-3">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Indicadores do anúncio</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                Indicadores do anúncio
+              </div>
               <ul className="grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2">
                 {indicadores.map((ind) => (
                   <li key={ind.label} className="flex items-center gap-1.5">
-                    {ind.ok
-                      ? <Check className="h-3.5 w-3.5 text-emerald-600" />
-                      : <XIcon className="h-3.5 w-3.5 text-amber-600" />}
+                    {ind.ok ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    ) : (
+                      <XIcon className="h-3.5 w-3.5 text-amber-600" />
+                    )}
                     <span className={cn(!ind.ok && "text-muted-foreground")}>{ind.label}</span>
                   </li>
                 ))}
@@ -1102,24 +1518,40 @@ function ImovelDrawer({
 
             {/* Canais */}
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Canais publicados</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                Canais publicados
+              </div>
               <ul className="space-y-1 text-xs">
-                {canais.map((c, i) => <li key={i} className="rounded-md border border-border bg-card px-3 py-1.5">{c}</li>)}
+                {canais.map((c, i) => (
+                  <li key={i} className="rounded-md border border-border bg-card px-3 py-1.5">
+                    {c}
+                  </li>
+                ))}
               </ul>
             </div>
 
             {/* Leitura operacional */}
-            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">{leituraMkt}</div>
+            <div className="rounded-lg bg-surface p-3 text-xs text-muted-foreground">
+              {leituraMkt}
+            </div>
 
             {/* Previsão */}
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Previsão de performance</span>
-              <span className={cn(
-                "rounded-full px-2 py-0.5 text-[11px]",
-                previsao.tone === "emerald" ? "bg-emerald-50 text-emerald-700" :
-                previsao.tone === "amber" ? "bg-amber-50 text-amber-700" :
-                previsao.tone === "red" ? "bg-red-50 text-red-700" : "bg-muted text-muted-foreground",
-              )}>
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Previsão de performance
+              </span>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px]",
+                  previsao.tone === "emerald"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : previsao.tone === "amber"
+                      ? "bg-amber-50 text-amber-700"
+                      : previsao.tone === "red"
+                        ? "bg-red-50 text-red-700"
+                        : "bg-muted text-muted-foreground",
+                )}
+              >
                 {previsao.label}
               </span>
             </div>
@@ -1130,7 +1562,9 @@ function ImovelDrawer({
               {atualizacoes.map((a, i) => (
                 <li key={i} className="relative">
                   <span className="absolute -left-[26px] mt-1 h-2 w-2 rounded-full bg-foreground" />
-                  <div className="text-[11px] text-muted-foreground">{a.data} · {a.evento}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {a.data} · {a.evento}
+                  </div>
                   <div>{a.detalhe}</div>
                 </li>
               ))}
@@ -1141,16 +1575,22 @@ function ImovelDrawer({
             <ul className="space-y-2 text-sm">
               {auditoria.map((a, i) => (
                 <li key={i} className="rounded-lg border border-border bg-card px-3 py-2">
-                  <div className="text-[11px] text-muted-foreground">{a.data} · {a.autor}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {a.data} · {a.autor}
+                  </div>
                   <div>{a.acao}</div>
                 </li>
               ))}
             </ul>
             {imovel.motivosRisco.length > 0 && (
               <div className="mt-4 rounded-lg border border-border bg-card p-3 text-sm">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Motivos do risco operacional</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                  Motivos do risco operacional
+                </div>
                 <ul className="space-y-1 text-xs">
-                  {imovel.motivosRisco.map((m, i) => <li key={i}>• {m}</li>)}
+                  {imovel.motivosRisco.map((m, i) => (
+                    <li key={i}>• {m}</li>
+                  ))}
                 </ul>
               </div>
             )}
@@ -1160,10 +1600,16 @@ function ImovelDrawer({
         <div className="mt-6 flex flex-wrap gap-2 border-t border-border pt-4">
           {(() => {
             const isPrimary = (k: AcaoKey) => acao.key === k;
-            const verLeadsV: "default" | "outline" = isPrimary("atendimento") ? "default" : "outline";
-            const priorV: "default" | "outline" = (isPrimary("priorizar") || isPrimary("reativar")) ? "default" : "outline";
-            const solicitarV: "default" | "outline" = (isPrimary("fotos") || isPrimary("atualizar")) ? "default" : "outline";
-            const suspenderV: "default" | "outline" = isPrimary("suspender") ? "default" : "outline";
+            const verLeadsV: "default" | "outline" = isPrimary("atendimento")
+              ? "default"
+              : "outline";
+            const priorV: "default" | "outline" =
+              isPrimary("priorizar") || isPrimary("reativar") ? "default" : "outline";
+            const solicitarV: "default" | "outline" =
+              isPrimary("fotos") || isPrimary("atualizar") ? "default" : "outline";
+            const suspenderV: "default" | "outline" = isPrimary("suspender")
+              ? "default"
+              : "outline";
             return (
               <>
                 <Button variant={verLeadsV} size="sm" asChild>
@@ -1184,12 +1630,20 @@ function ImovelDrawer({
                       </span>
                     </TooltipTrigger>
                     {invasivasBloqueadas && (
-                      <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
+                      <TooltipContent className="text-xs">
+                        Imóvel próprio do corretor — supervisão apenas.
+                      </TooltipContent>
                     )}
                   </Tooltip>
                 </TooltipProvider>
-                <Button variant={solicitarV} size="sm" onClick={onSolicitar}>Solicitar atualização</Button>
-                <Button variant="ghost" size="sm" onClick={() => toast.success("Risco sinalizado para revisão da governança")}>
+                <Button variant={solicitarV} size="sm" onClick={onSolicitar}>
+                  Solicitar atualização
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toast.success("Risco sinalizado para revisão da governança")}
+                >
                   Sinalizar risco
                 </Button>
                 <TooltipProvider delayDuration={200}>
@@ -1207,7 +1661,9 @@ function ImovelDrawer({
                       </span>
                     </TooltipTrigger>
                     {invasivasBloqueadas && (
-                      <TooltipContent className="text-xs">Imóvel próprio do corretor — supervisão apenas.</TooltipContent>
+                      <TooltipContent className="text-xs">
+                        Imóvel próprio do corretor — supervisão apenas.
+                      </TooltipContent>
                     )}
                   </Tooltip>
                 </TooltipProvider>
@@ -1239,22 +1695,53 @@ function Mini({ label, value }: { label: string; value: string }) {
   );
 }
 
-function OpStat({ label, value, tone = "neutral" }: { label: string; value: number; tone?: "neutral" | "red" }) {
+function OpStat({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  tone?: "neutral" | "red";
+}) {
   return (
     <div className="rounded-lg bg-surface p-2">
-      <div className={cn("text-lg font-medium leading-none", tone === "red" ? "text-red-700" : "text-foreground")}>{value}</div>
-      <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div
+        className={cn(
+          "text-lg font-medium leading-none",
+          tone === "red" ? "text-red-700" : "text-foreground",
+        )}
+      >
+        {value}
+      </div>
+      <div className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+        {label}
+      </div>
     </div>
   );
 }
 
-function QuickPill({ label, value, tone }: { label: string; value: number; tone: "red" | "amber" | "blue" | "emerald" }) {
+function QuickPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "red" | "amber" | "blue" | "emerald";
+}) {
   const cls =
-    tone === "red" ? "bg-red-50 text-red-700" :
-    tone === "amber" ? "bg-amber-50 text-amber-700" :
-    tone === "blue" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700";
+    tone === "red"
+      ? "bg-red-50 text-red-700"
+      : tone === "amber"
+        ? "bg-amber-50 text-amber-700"
+        : tone === "blue"
+          ? "bg-blue-50 text-blue-700"
+          : "bg-emerald-50 text-emerald-700";
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", cls)}>
+    <span
+      className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", cls)}
+    >
       <span className="font-medium">{value}</span> {label}
     </span>
   );

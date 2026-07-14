@@ -151,7 +151,9 @@ export function PropertyMediaUpload({
             </button>
           )}
         </div>
-        <p className="mt-1.5 text-[11px] text-muted-foreground">JPG, PNG ou WebP · até 5 MB cada.</p>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          JPG, PNG ou WebP · até 5 MB cada.
+        </p>
         <input
           ref={fotoInput}
           type="file"

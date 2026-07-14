@@ -23,12 +23,7 @@ import { toast } from "sonner";
 import { adminBrokers, corretorRisco, type AdminBroker } from "@/data/admin-mock";
 import { formatBRL, formatBRLcompact } from "@/data/mock";
 import { cn } from "@/lib/utils";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -49,12 +44,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/admin/usuarios")({
@@ -157,7 +147,11 @@ function getNegligenciaPlataforma(u: AdminBroker): number {
 }
 
 function getPipelineComposicao(u: AdminBroker): {
-  novos: number; qualificados: number; visitas: number; propostas: number; criticos: number;
+  novos: number;
+  qualificados: number;
+  visitas: number;
+  propostas: number;
+  criticos: number;
 } {
   const total = getLeadsAtivos(u);
   if (total === 0) return { novos: 0, qualificados: 0, visitas: 0, propostas: 0, criticos: 0 };
@@ -165,7 +159,7 @@ function getPipelineComposicao(u: AdminBroker): {
   const novos = Math.max(1, Math.round(total * 0.18));
   const qualificados = Math.max(1, Math.round(total * 0.32));
   const visitas = Math.max(0, Math.round(total * 0.18));
-  const propostas = Math.max(0, Math.round(total * 0.20));
+  const propostas = Math.max(0, Math.round(total * 0.2));
   const criticos = Math.max(0, total - novos - qualificados - visitas - propostas);
   return { novos, qualificados, visitas, propostas, criticos };
 }
@@ -173,7 +167,10 @@ function getPipelineComposicao(u: AdminBroker): {
 type Direcao = "up" | "down" | "flat";
 type MetricaTendencia = "execucao" | "conversao" | "negligencia" | "tempoResposta";
 
-function getTendencia(u: AdminBroker, m: MetricaTendencia): { atual: string; delta: number; direcao: Direcao } {
+function getTendencia(
+  u: AdminBroker,
+  m: MetricaTendencia,
+): { atual: string; delta: number; direcao: Direcao } {
   const seed = m === "execucao" ? 81 : m === "conversao" ? 82 : m === "negligencia" ? 83 : 84;
   const delta = rng(u.id, seed, -18, 18);
   const direcao: Direcao = delta > 1 ? "up" : delta < -1 ? "down" : "flat";
@@ -203,12 +200,22 @@ function getAlertasInteligentes(u: AdminBroker): AlertaInteligente[] {
   const conv = getConversao(u);
   const tendExec = getTendencia(u, "execucao");
 
-  if (negPlat >= 3) out.push({ tom: "red", texto: `${negPlat} leads da plataforma sem follow-up há mais de 5 dias` });
+  if (negPlat >= 3)
+    out.push({
+      tom: "red",
+      texto: `${negPlat} leads da plataforma sem follow-up há mais de 5 dias`,
+    });
   if (tendExec.direcao === "down" && Math.abs(tendExec.delta) >= 8)
     out.push({ tom: "amber", texto: `Execução caiu ${Math.abs(tendExec.delta)}% nesta semana` });
-  if (dias >= 7) out.push({ tom: "yellow", texto: `Sem login há ${dias} dias — vale um contato de acompanhamento` });
-  if (conv >= 25) out.push({ tom: "emerald", texto: `Conversão acima da média da rede (${conv}%)` });
-  if (exec < 50 && out.length < 4) out.push({ tom: "amber", texto: `Execução abaixo do ideal (${exec}%) — priorizar suporte` });
+  if (dias >= 7)
+    out.push({
+      tom: "yellow",
+      texto: `Sem login há ${dias} dias — vale um contato de acompanhamento`,
+    });
+  if (conv >= 25)
+    out.push({ tom: "emerald", texto: `Conversão acima da média da rede (${conv}%)` });
+  if (exec < 50 && out.length < 4)
+    out.push({ tom: "amber", texto: `Execução abaixo do ideal (${exec}%) — priorizar suporte` });
   return out.slice(0, 4);
 }
 
@@ -225,10 +232,12 @@ function getAcaoRecomendada(u: AdminBroker): { titulo: string; motivos: string[]
   if (tendConv.direcao === "down") motivos.push(`conversão caindo ${Math.abs(tendConv.delta)}%`);
 
   let titulo = `Acompanhar ${u.nome.split(" ")[0]}`;
-  if (negPlat >= 3) titulo = `Priorizar contato com ${u.nome.split(" ")[0]} — leads da plataforma em risco`;
+  if (negPlat >= 3)
+    titulo = `Priorizar contato com ${u.nome.split(" ")[0]} — leads da plataforma em risco`;
   else if (dias >= 7) titulo = `Reativar ${u.nome.split(" ")[0]} — operação parada`;
   else if (exec < 50) titulo = `Apoiar ${u.nome.split(" ")[0]} a retomar execução`;
-  else if (tendConv.direcao === "up" && tendConv.delta > 5) titulo = `Reconhecer ${u.nome.split(" ")[0]} pela melhora de conversão`;
+  else if (tendConv.direcao === "up" && tendConv.delta > 5)
+    titulo = `Reconhecer ${u.nome.split(" ")[0]} pela melhora de conversão`;
 
   return { titulo, motivos: motivos.slice(0, 4) };
 }
@@ -294,7 +303,9 @@ function UsuariosAdmin() {
       return next;
     });
   }
-  function clearSelection() { setSelectedIds(new Set()); }
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
   function bulkAction(label: string) {
     toast.success(`${label}`, {
       description: `${selectedIds.size} corretor(es) selecionado(s).`,
@@ -302,10 +313,7 @@ function UsuariosAdmin() {
     clearSelection();
   }
 
-  const regioes = useMemo(
-    () => Array.from(new Set(adminBrokers.map(getRegiao))).sort(),
-    [],
-  );
+  const regioes = useMemo(() => Array.from(new Set(adminBrokers.map(getRegiao))).sort(), []);
 
   // Linhas enriquecidas
   const enriched = useMemo(
@@ -333,15 +341,11 @@ function UsuariosAdmin() {
 
   // KPIs da rede
   const kpiAtivos = enriched.filter((x) => x.u.status === "Ativo").length * 63; // escala visual → ~752
-  const kpiExec = Math.round(
-    enriched.reduce((s, x) => s + x.exec, 0) / enriched.length,
-  );
+  const kpiExec = Math.round(enriched.reduce((s, x) => s + x.exec, 0) / enriched.length);
   const kpiNeg = enriched.reduce((s, x) => s + x.neg, 0) * 6;
   const kpiCriticos = enriched.filter((x) => x.risco === "critico").length * 4;
   const kpiReceita = enriched.reduce((s, x) => s + x.u.receita, 0);
-  const kpiConv = Math.round(
-    enriched.reduce((s, x) => s + x.conv, 0) / enriched.length,
-  );
+  const kpiConv = Math.round(enriched.reduce((s, x) => s + x.conv, 0) / enriched.length);
 
   // Alertas
   const alertNeg = enriched.filter((x) => x.neg > 10).length;
@@ -350,8 +354,7 @@ function UsuariosAdmin() {
   const alertTop = enriched.filter((x) => x.conv > 25).length;
 
   const filtered = enriched.filter((x) => {
-    if (busca && !x.u.nome.toLowerCase().includes(busca.toLowerCase()))
-      return false;
+    if (busca && !x.u.nome.toLowerCase().includes(busca.toLowerCase())) return false;
     if (exec === "alta" && x.exec < 75) return false;
     if (exec === "media" && (x.exec < 50 || x.exec >= 75)) return false;
     if (exec === "baixa" && x.exec >= 50) return false;
@@ -379,10 +382,28 @@ function UsuariosAdmin() {
       {/* KPIs executivos */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <KpiCard label="Corretores ativos" value={kpiAtivos.toString()} sub="Operando este mês" />
-        <KpiCard label="Execução média" value={`${kpiExec}%`} sub="Tarefas e cadências concluídas" />
-        <KpiCard label="Leads negligenciados" value={kpiNeg.toString()} sub="Sem interação acima do SLA" tone={kpiNeg > 30 ? "danger" : "muted"} />
-        <KpiCard label="Corretores em risco" value={kpiCriticos.toString()} sub="Execução baixa, sem login ou bloqueados" tone={kpiCriticos > 8 ? "danger" : "muted"} />
-        <KpiCard label="Receita da plataforma" value={formatBRLcompact(kpiReceita)} sub="Receita do mês" />
+        <KpiCard
+          label="Execução média"
+          value={`${kpiExec}%`}
+          sub="Tarefas e cadências concluídas"
+        />
+        <KpiCard
+          label="Leads negligenciados"
+          value={kpiNeg.toString()}
+          sub="Sem interação acima do SLA"
+          tone={kpiNeg > 30 ? "danger" : "muted"}
+        />
+        <KpiCard
+          label="Corretores em risco"
+          value={kpiCriticos.toString()}
+          sub="Execução baixa, sem login ou bloqueados"
+          tone={kpiCriticos > 8 ? "danger" : "muted"}
+        />
+        <KpiCard
+          label="Receita da plataforma"
+          value={formatBRLcompact(kpiReceita)}
+          sub="Receita do mês"
+        />
         <KpiCard label="Conversão média" value={`${kpiConv}%`} sub="Leads convertidos em venda" />
       </div>
 
@@ -396,14 +417,22 @@ function UsuariosAdmin() {
             const total = enriched.length;
             const saudaveis = enriched.filter((x) => x.risco === "saudavel").length;
             const pct = Math.round((saudaveis / total) * 100);
-            const tom: "emerald" | "amber" | "red" = pct >= 70 ? "emerald" : pct >= 45 ? "amber" : "red";
+            const tom: "emerald" | "amber" | "red" =
+              pct >= 70 ? "emerald" : pct >= 45 ? "amber" : "red";
             const label = pct >= 70 ? "Saudável" : pct >= 45 ? "Atenção" : "Crítica";
-            const dot = tom === "emerald" ? "bg-emerald-500" : tom === "amber" ? "bg-amber-500" : "bg-red-500";
+            const dot =
+              tom === "emerald"
+                ? "bg-emerald-500"
+                : tom === "amber"
+                  ? "bg-amber-500"
+                  : "bg-red-500";
             return (
               <span className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-xs">
                 <span className={cn("h-2 w-2 rounded-full", dot)} />
                 <span className="text-muted-foreground">Saúde da rede:</span>
-                <span className="font-medium">{label} ({pct}%)</span>
+                <span className="font-medium">
+                  {label} ({pct}%)
+                </span>
               </span>
             );
           })()}
@@ -433,39 +462,69 @@ function UsuariosAdmin() {
       {/* Filtros + busca */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          <FilterSelect label="Execução" value={exec} onChange={(v) => setExec(v as FExec)} options={[
-            { v: "todas", l: "Execução: todas" },
-            { v: "alta", l: "Execução: alta" },
-            { v: "media", l: "Execução: média" },
-            { v: "baixa", l: "Execução: baixa" },
-          ]} />
-          <FilterSelect label="Risco" value={risco} onChange={(v) => setRisco(v as FRisco)} options={[
-            { v: "todos", l: "Risco: todos" },
-            { v: "saudavel", l: "Risco: saudável" },
-            { v: "atencao", l: "Risco: atenção" },
-            { v: "critico", l: "Risco: crítico" },
-          ]} />
-          <FilterSelect label="Conversão" value={conv} onChange={(v) => setConv(v as FConv)} options={[
-            { v: "todas", l: "Conversão: todas" },
-            { v: "alta", l: "Conversão: alta" },
-            { v: "baixa", l: "Conversão: baixa" },
-          ]} />
-          <FilterSelect label="Status" value={statusOp} onChange={(v) => setStatusOp(v as FStatus)} options={[
-            { v: "todos", l: "Status: todos" },
-            { v: "sem-login", l: "Sem login recente" },
-            { v: "negligenciando", l: "Negligenciando leads" },
-            { v: "cadencia", l: "Cadência atrasada" },
-            { v: "parado", l: "Pipeline parado" },
-          ]} />
-          <FilterSelect label="Plano" value={plano} onChange={(v) => setPlano(v as FPlano)} options={[
-            { v: "todos", l: "Plano: todos" },
-            { v: "Pro", l: "Plano: Pro" },
-            { v: "Free", l: "Plano: Free" },
-          ]} />
-          <FilterSelect label="Região" value={regiao} onChange={(v) => setRegiao(v)} options={[
-            { v: "todas", l: "Região: todas" },
-            ...regioes.map((r) => ({ v: r, l: `Região: ${r}` })),
-          ]} />
+          <FilterSelect
+            label="Execução"
+            value={exec}
+            onChange={(v) => setExec(v as FExec)}
+            options={[
+              { v: "todas", l: "Execução: todas" },
+              { v: "alta", l: "Execução: alta" },
+              { v: "media", l: "Execução: média" },
+              { v: "baixa", l: "Execução: baixa" },
+            ]}
+          />
+          <FilterSelect
+            label="Risco"
+            value={risco}
+            onChange={(v) => setRisco(v as FRisco)}
+            options={[
+              { v: "todos", l: "Risco: todos" },
+              { v: "saudavel", l: "Risco: saudável" },
+              { v: "atencao", l: "Risco: atenção" },
+              { v: "critico", l: "Risco: crítico" },
+            ]}
+          />
+          <FilterSelect
+            label="Conversão"
+            value={conv}
+            onChange={(v) => setConv(v as FConv)}
+            options={[
+              { v: "todas", l: "Conversão: todas" },
+              { v: "alta", l: "Conversão: alta" },
+              { v: "baixa", l: "Conversão: baixa" },
+            ]}
+          />
+          <FilterSelect
+            label="Status"
+            value={statusOp}
+            onChange={(v) => setStatusOp(v as FStatus)}
+            options={[
+              { v: "todos", l: "Status: todos" },
+              { v: "sem-login", l: "Sem login recente" },
+              { v: "negligenciando", l: "Negligenciando leads" },
+              { v: "cadencia", l: "Cadência atrasada" },
+              { v: "parado", l: "Pipeline parado" },
+            ]}
+          />
+          <FilterSelect
+            label="Plano"
+            value={plano}
+            onChange={(v) => setPlano(v as FPlano)}
+            options={[
+              { v: "todos", l: "Plano: todos" },
+              { v: "Pro", l: "Plano: Pro" },
+              { v: "Free", l: "Plano: Free" },
+            ]}
+          />
+          <FilterSelect
+            label="Região"
+            value={regiao}
+            onChange={(v) => setRegiao(v)}
+            options={[
+              { v: "todas", l: "Região: todas" },
+              ...regioes.map((r) => ({ v: r, l: `Região: ${r}` })),
+            ]}
+          />
         </div>
         <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-sm">
           <Search className="h-4 w-4 text-muted-foreground" />
@@ -484,30 +543,46 @@ function UsuariosAdmin() {
           <span className="ml-1 text-xs text-muted-foreground">
             <span className="font-medium text-foreground">{selectedIds.size}</span> selecionado(s)
           </span>
-          <button onClick={clearSelection} className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-surface">
+          <button
+            onClick={clearSelection}
+            className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-surface"
+          >
             Limpar
           </button>
           <span className="mx-1 h-4 w-px bg-border" />
-          <BulkBtn icon={<Send className="h-3.5 w-3.5" />} onClick={() => bulkAction("Alerta operacional enviado")}>
+          <BulkBtn
+            icon={<Send className="h-3.5 w-3.5" />}
+            onClick={() => bulkAction("Alerta operacional enviado")}
+          >
             Enviar alerta operacional
           </BulkBtn>
-          <BulkBtn icon={<Activity className="h-3.5 w-3.5" />} onClick={() => bulkAction("Cadência padrão atualizada")}>
+          <BulkBtn
+            icon={<Activity className="h-3.5 w-3.5" />}
+            onClick={() => bulkAction("Cadência padrão atualizada")}
+          >
             Alterar cadência padrão
           </BulkBtn>
-          <BulkBtn icon={<CalendarClock className="h-3.5 w-3.5" />} onClick={() => bulkAction("Acompanhamento agendado")}>
+          <BulkBtn
+            icon={<CalendarClock className="h-3.5 w-3.5" />}
+            onClick={() => bulkAction("Acompanhamento agendado")}
+          >
             Agendar acompanhamento
           </BulkBtn>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
-                  <BulkBtn icon={<PauseCircle className="h-3.5 w-3.5" />} onClick={() => bulkAction("Distribuição de leads Ubroker pausada")}>
+                  <BulkBtn
+                    icon={<PauseCircle className="h-3.5 w-3.5" />}
+                    onClick={() => bulkAction("Distribuição de leads Ubroker pausada")}
+                  >
                     Pausar distribuição de leads da plataforma
                   </BulkBtn>
                 </span>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
-                Não bloqueia o corretor — apenas interrompe a entrada de novos leads Ubroker até a normalização operacional.
+                Não bloqueia o corretor — apenas interrompe a entrada de novos leads Ubroker até a
+                normalização operacional.
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -547,86 +622,119 @@ function UsuariosAdmin() {
               {filtered.map((x) => {
                 const origem = getOrigemLeads(x.u);
                 return (
-                <tr
-                  key={x.u.id}
-                  onClick={() => setSelected(x.u)}
-                  className={cn(
-                    "cursor-pointer hover:bg-surface/60",
-                    selectedIds.has(x.u.id) && "bg-surface/50",
-                  )}
-                >
-                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedIds.has(x.u.id)}
-                      onCheckedChange={() => toggleSelect(x.u.id)}
-                      aria-label={`Selecionar ${x.u.nome}`}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <img src={x.u.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
-                      <div>
-                        <div className="font-medium">{x.u.nome}</div>
-                        <div className="text-xs text-muted-foreground">{x.u.creci}</div>
+                  <tr
+                    key={x.u.id}
+                    onClick={() => setSelected(x.u)}
+                    className={cn(
+                      "cursor-pointer hover:bg-surface/60",
+                      selectedIds.has(x.u.id) && "bg-surface/50",
+                    )}
+                  >
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.has(x.u.id)}
+                        onCheckedChange={() => toggleSelect(x.u.id)}
+                        aria-label={`Selecionar ${x.u.nome}`}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={x.u.avatar}
+                          alt=""
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                        <div>
+                          <div className="font-medium">{x.u.nome}</div>
+                          <div className="text-xs text-muted-foreground">{x.u.creci}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={cn(
-                      "rounded-full px-2 py-0.5 text-xs",
-                      x.u.plano === "Pro" ? "bg-warm/15 text-warm" : "bg-surface text-muted-foreground",
-                    )}>{x.u.plano}</span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{x.regiao}</td>
-                  <td className="px-4 py-3 text-right num">{x.leads}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-0.5 text-[11px] leading-tight">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-blue-700">
-                        Plataforma <span className="num">{origem.plataforma}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs",
+                          x.u.plano === "Pro"
+                            ? "bg-warm/15 text-warm"
+                            : "bg-surface text-muted-foreground",
+                        )}
+                      >
+                        {x.u.plano}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-surface px-1.5 py-0.5 text-muted-foreground">
-                        Própria <span className="num">{origem.propria}</span>
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("rounded-md px-1.5 py-0.5 text-xs num", tonExecucao(x.exec))}>
-                        {x.exec}%
-                      </span>
-                      <div className="h-1 w-14 overflow-hidden rounded-full bg-surface">
-                        <div className={cn("h-full", tonExecBar(x.exec))} style={{ width: `${x.exec}%` }} />
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{x.regiao}</td>
+                    <td className="px-4 py-3 text-right num">{x.leads}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-0.5 text-[11px] leading-tight">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-blue-700">
+                          Plataforma <span className="num">{origem.plataforma}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-surface px-1.5 py-0.5 text-muted-foreground">
+                          Própria <span className="num">{origem.propria}</span>
+                        </span>
                       </div>
-                    </div>
-                  </td>
-                  <td className={cn("px-4 py-3 text-right num", tonConversao(x.conv))}>{x.conv}%</td>
-                  <td className="px-4 py-3 text-right">
-                    <span className={cn(
-                      "inline-flex items-center gap-1 num",
-                      x.neg > 10 ? "text-red-700" : x.neg > 5 ? "text-amber-700" : "text-muted-foreground",
-                    )}>
-                      {x.neg > 10 && <AlertTriangle className="h-3 w-3" />}
-                      {x.neg}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right num">{formatBRL(x.u.receita)}</td>
-                  <td className="px-4 py-3">
-                    <span className={cn("rounded-full px-2 py-0.5 text-xs", tonRisco(x.risco))}>
-                      {labelRisco(x.risco)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex justify-end gap-1">
-                      <button className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-surface hover:text-foreground" title="Alterar plano">
-                        <ArrowUpRight className="h-4 w-4" />
-                      </button>
-                      <button className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-700" title="Bloquear">
-                        <Ban className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );})}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "rounded-md px-1.5 py-0.5 text-xs num",
+                            tonExecucao(x.exec),
+                          )}
+                        >
+                          {x.exec}%
+                        </span>
+                        <div className="h-1 w-14 overflow-hidden rounded-full bg-surface">
+                          <div
+                            className={cn("h-full", tonExecBar(x.exec))}
+                            style={{ width: `${x.exec}%` }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className={cn("px-4 py-3 text-right num", tonConversao(x.conv))}>
+                      {x.conv}%
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 num",
+                          x.neg > 10
+                            ? "text-red-700"
+                            : x.neg > 5
+                              ? "text-amber-700"
+                              : "text-muted-foreground",
+                        )}
+                      >
+                        {x.neg > 10 && <AlertTriangle className="h-3 w-3" />}
+                        {x.neg}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right num">{formatBRL(x.u.receita)}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn("rounded-full px-2 py-0.5 text-xs", tonRisco(x.risco))}>
+                        {labelRisco(x.risco)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <button
+                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-surface hover:text-foreground"
+                          title="Alterar plano"
+                        >
+                          <ArrowUpRight className="h-4 w-4" />
+                        </button>
+                        <button
+                          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-700"
+                          title="Bloquear"
+                        >
+                          <Ban className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={12} className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -665,10 +773,12 @@ function KpiCard({
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className={cn(
-        "mt-1 text-xl font-medium num",
-        tone === "danger" ? "text-red-700" : "text-foreground",
-      )}>
+      <div
+        className={cn(
+          "mt-1 text-xl font-medium num",
+          tone === "danger" ? "text-red-700" : "text-foreground",
+        )}
+      >
         {value}
       </div>
       <div className="mt-0.5 text-[11px] text-muted-foreground">{sub}</div>
@@ -686,10 +796,13 @@ function AlertChip({
   onClick?: () => void;
 }) {
   const dot =
-    color === "red" ? "bg-red-500" :
-    color === "amber" ? "bg-amber-500" :
-    color === "yellow" ? "bg-yellow-500" :
-    "bg-emerald-500";
+    color === "red"
+      ? "bg-red-500"
+      : color === "amber"
+        ? "bg-amber-500"
+        : color === "yellow"
+          ? "bg-yellow-500"
+          : "bg-emerald-500";
   return (
     <button
       onClick={onClick}
@@ -718,7 +831,9 @@ function FilterSelect({
       className="rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground outline-none transition hover:border-foreground/30"
     >
       {options.map((o) => (
-        <option key={o.v} value={o.v}>{o.l}</option>
+        <option key={o.v} value={o.v}>
+          {o.l}
+        </option>
       ))}
     </select>
   );
@@ -753,7 +868,10 @@ function BrokerDrawer({ broker, onClose }: { broker: AdminBroker; onClose: () =>
               </span>
             </div>
           </div>
-          <button onClick={onClose} className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-surface">
+          <button
+            onClick={onClose}
+            className="grid h-8 w-8 place-items-center rounded-md text-muted-foreground hover:bg-surface"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -793,7 +911,9 @@ function BrokerDrawer({ broker, onClose }: { broker: AdminBroker; onClose: () =>
             <Mini label="Leads em risco" value={Math.round(neg * 0.6).toString()} />
           </Grid2>
           <div className="mt-4 rounded-lg border border-border p-3">
-            <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">Pipeline operacional</div>
+            <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+              Pipeline operacional
+            </div>
             <div className="space-y-1.5 text-sm">
               {["Novo", "Qualificado", "Visita", "Proposta", "Fechado"].map((s, i) => (
                 <div key={s} className="flex items-center justify-between">
@@ -844,7 +964,11 @@ function BrokerDrawer({ broker, onClose }: { broker: AdminBroker; onClose: () =>
             {[
               { dot: "bg-amber-500", t: "Alteração crítica em política de comissão", d: "12/05" },
               { dot: "bg-red-500", t: "Lead perdido após 14 dias sem interação", d: "08/05" },
-              { dot: "bg-slate-400", t: "Bloqueio temporário revertido por superadmin", d: "02/05" },
+              {
+                dot: "bg-slate-400",
+                t: "Bloqueio temporário revertido por superadmin",
+                d: "02/05",
+              },
               { dot: "bg-amber-500", t: "Disputa aberta por parceria #PR-118", d: "29/04" },
               { dot: "bg-slate-400", t: "Login realizado de novo dispositivo", d: "27/04" },
             ].map((e, i) => (
@@ -896,13 +1020,24 @@ function BulkBtn({
   );
 }
 
-function DeltaLabel({ direcao, delta, m }: { direcao: Direcao; delta: number; m: MetricaTendencia }) {
+function DeltaLabel({
+  direcao,
+  delta,
+  m,
+}: {
+  direcao: Direcao;
+  delta: number;
+  m: MetricaTendencia;
+}) {
   const Icon = direcao === "up" ? TrendingUp : direcao === "down" ? TrendingDown : Minus;
   const sign = delta > 0 ? "+" : "";
   return (
     <div className={cn("mt-1 inline-flex items-center gap-1 text-[11px]", tonDelta(direcao, m))}>
       <Icon className="h-3 w-3" />
-      <span className="num">{sign}{delta}%</span>
+      <span className="num">
+        {sign}
+        {delta}%
+      </span>
       <span className="text-muted-foreground">últimos 7 dias</span>
     </div>
   );
@@ -998,12 +1133,18 @@ function DrawerIntelligence({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button size="sm" variant="outline" onClick={() => setRedistOpen(true)} className="h-8">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setRedistOpen(true)}
+                    className="h-8"
+                  >
                     <Shuffle className="h-3.5 w-3.5" /> Redistribuir leads Ubroker
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
-                  Apenas leads originados pela plataforma podem ser redistribuídos. Carteira própria do corretor é preservada.
+                  Apenas leads originados pela plataforma podem ser redistribuídos. Carteira própria
+                  do corretor é preservada.
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -1013,7 +1154,9 @@ function DrawerIntelligence({
 
       {/* Saúde operacional */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3">
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Saúde operacional</div>
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Saúde operacional
+        </div>
         <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", tonRisco(risco))}>
           {labelRisco(risco)}
         </span>
@@ -1029,15 +1172,26 @@ function DrawerIntelligence({
           <div className="flex flex-col gap-1.5">
             {alertas.map((a, i) => {
               const dot =
-                a.tom === "red" ? "bg-red-500" :
-                a.tom === "amber" ? "bg-amber-500" :
-                a.tom === "yellow" ? "bg-yellow-500" : "bg-emerald-500";
+                a.tom === "red"
+                  ? "bg-red-500"
+                  : a.tom === "amber"
+                    ? "bg-amber-500"
+                    : a.tom === "yellow"
+                      ? "bg-yellow-500"
+                      : "bg-emerald-500";
               const bg =
-                a.tom === "red" ? "bg-red-50/60" :
-                a.tom === "amber" ? "bg-amber-50/60" :
-                a.tom === "yellow" ? "bg-yellow-50/60" : "bg-emerald-50/60";
+                a.tom === "red"
+                  ? "bg-red-50/60"
+                  : a.tom === "amber"
+                    ? "bg-amber-50/60"
+                    : a.tom === "yellow"
+                      ? "bg-yellow-50/60"
+                      : "bg-emerald-50/60";
               return (
-                <div key={i} className={cn("flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs", bg)}>
+                <div
+                  key={i}
+                  className={cn("flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs", bg)}
+                >
                   <span className={cn("h-2 w-2 rounded-full", dot)} />
                   <span className="text-foreground">{a.texto}</span>
                 </div>
@@ -1107,17 +1261,23 @@ function DrawerIntelligence({
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-border bg-surface p-3 text-sm">
-            "Você possui leads da plataforma sem interação acima do SLA. Vamos te ajudar a priorizar essas oportunidades."
+            "Você possui leads da plataforma sem interação acima do SLA. Vamos te ajudar a priorizar
+            essas oportunidades."
           </div>
           <div className="flex flex-wrap gap-1.5">
             {["WhatsApp", "Notificação no app", "Aviso interno"].map((c) => (
-              <span key={c} className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground">
+              <span
+                key={c}
+                className="rounded-full border border-border bg-surface px-2 py-0.5 text-[11px] text-muted-foreground"
+              >
                 {c}
               </span>
             ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAlertOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setAlertOpen(false)}>
+              Cancelar
+            </Button>
             <Button onClick={confirmarAlerta}>Enviar alerta</Button>
           </DialogFooter>
         </DialogContent>
@@ -1129,8 +1289,8 @@ function DrawerIntelligence({
           <AlertDialogHeader>
             <AlertDialogTitle>Redistribuir leads da plataforma?</AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="num font-medium text-foreground">{negPlat}</span> leads originados pela
-              Ubroker serão redistribuídos para outros corretores da rede.{" "}
+              <span className="num font-medium text-foreground">{negPlat}</span> leads originados
+              pela Ubroker serão redistribuídos para outros corretores da rede.{" "}
               <span className="num font-medium text-foreground">{origem.propria}</span> leads de
               carteira própria permanecem com {broker.nome.split(" ")[0]}.
             </AlertDialogDescription>

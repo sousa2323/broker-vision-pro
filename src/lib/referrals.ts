@@ -15,20 +15,29 @@ const PRO_MRR = 120;
 
 export async function listReferred(brokerId: string): Promise<ReferredBroker[]> {
   const { data, error } = await supabase
-    .from("broker_directory")
-    .select("id, full_name, plan, avatar_url")
-    .eq("referred_by", brokerId);
+    .from("broker_referrals")
+    .select(
+      "referred_id, profile:broker_public_profiles!broker_referrals_referred_id_fkey(full_name, plan, avatar_url)",
+    )
+    .eq("referrer_id", brokerId);
   if (error) {
     console.error("Falha ao listar indicações:", error.message);
     return [];
   }
-  return (data ?? []).map((b) => ({
-    id: b.id as string,
-    nome: b.full_name as string,
-    plano: (b.plan as "Free" | "Pro") ?? "Free",
-    avatar_url: (b.avatar_url as string | null) ?? null,
-    mrr: b.plan === "Pro" ? PRO_MRR : 0,
-  }));
+  return (data ?? []).flatMap((referral) => {
+    const profile = Array.isArray(referral.profile) ? referral.profile[0] : referral.profile;
+    if (!profile) return [];
+    const plan = (profile.plan as "Free" | "Pro") ?? "Free";
+    return [
+      {
+        id: referral.referred_id as string,
+        nome: profile.full_name as string,
+        plano: plan,
+        avatar_url: (profile.avatar_url as string | null) ?? null,
+        mrr: plan === "Pro" ? PRO_MRR : 0,
+      },
+    ];
+  });
 }
 
 /**

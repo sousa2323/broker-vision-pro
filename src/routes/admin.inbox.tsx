@@ -21,7 +21,9 @@ function InboxAdmin() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl">Inbox</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Canais conectados e volume de conversas da rede.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Canais conectados e volume de conversas da rede.
+        </p>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-3">
@@ -41,16 +43,24 @@ function InboxAdmin() {
                 </span>
                 <div>
                   <div className="font-display text-lg">{c.canal}</div>
-                  <div className="text-xs text-muted-foreground">{c.conectados} corretores conectados</div>
+                  <div className="text-xs text-muted-foreground">
+                    {c.conectados} corretores conectados
+                  </div>
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Conversas</div>
-                  <div className="num font-display text-xl">{c.conversas.toLocaleString("pt-BR")}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Conversas
+                  </div>
+                  <div className="num font-display text-xl">
+                    {c.conversas.toLocaleString("pt-BR")}
+                  </div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Sem resposta</div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    Sem resposta
+                  </div>
                   <div className="num font-display text-xl text-amber-700">{c.semResposta}</div>
                 </div>
               </div>
@@ -65,8 +75,12 @@ function InboxAdmin() {
 function KPI({ label, value, tone }: { label: string; value: string; tone?: "amber" }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className={`mt-2 num font-display text-2xl ${tone === "amber" ? "text-amber-700" : ""}`}>{value}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+        {label}
+      </div>
+      <div className={`mt-2 num font-display text-2xl ${tone === "amber" ? "text-amber-700" : ""}`}>
+        {value}
+      </div>
     </div>
   );
 }

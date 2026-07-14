@@ -63,7 +63,12 @@ const ROOT_ID = "RI-000";
 
 // ============== Helpers ==============
 
-function downloadCSV(filename: string, header: string[], rows: (string | number)[][], context?: string) {
+function downloadCSV(
+  filename: string,
+  header: string[],
+  rows: (string | number)[][],
+  context?: string,
+) {
   const lines: string[] = [];
   if (context) lines.push(`# ${context}`);
   lines.push(header.map(escapeCsv).join(","));
@@ -90,7 +95,9 @@ function pctBadge(pct: number) {
       : "text-red-700 bg-red-50";
   const Icon = neutral ? null : positive ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}>
+    <span
+      className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}
+    >
       {Icon && <Icon className="h-3 w-3" />}
       {pct > 0 ? "+" : ""}
       {pct}%
@@ -104,23 +111,42 @@ function statusBadge(s: RedeIndicacaoItem["status"]) {
     Teste: "bg-blue-100 text-blue-800",
     Inativo: "bg-red-100 text-red-800",
   };
-  return <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${map[s]}`}>{s}</span>;
+  return (
+    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${map[s]}`}>
+      {s}
+    </span>
+  );
 }
 
 function nivelBadge(n: number) {
   const palette =
-    n === 1 ? "bg-blue-100 text-blue-800"
-    : n === 2 ? "bg-amber-100 text-amber-800"
-    : n === 3 ? "bg-emerald-100 text-emerald-800"
-    : "bg-purple-100 text-purple-800";
-  return <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${palette}`}>N{n}</span>;
+    n === 1
+      ? "bg-blue-100 text-blue-800"
+      : n === 2
+        ? "bg-amber-100 text-amber-800"
+        : n === 3
+          ? "bg-emerald-100 text-emerald-800"
+          : "bg-purple-100 text-purple-800";
+  return (
+    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${palette}`}>
+      N{n}
+    </span>
+  );
 }
 
 function avatar(nome: string, size: "sm" | "md" | "lg" = "md") {
-  const initials = nome.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
-  const dim = size === "sm" ? "h-7 w-7 text-[10px]" : size === "lg" ? "h-12 w-12 text-sm" : "h-9 w-9 text-xs";
+  const initials = nome
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  const dim =
+    size === "sm" ? "h-7 w-7 text-[10px]" : size === "lg" ? "h-12 w-12 text-sm" : "h-9 w-9 text-xs";
   return (
-    <span className={`grid ${dim} flex-none place-items-center rounded-full bg-navy font-semibold text-white`}>
+    <span
+      className={`grid ${dim} flex-none place-items-center rounded-full bg-navy font-semibold text-white`}
+    >
       {initials}
     </span>
   );
@@ -170,14 +196,20 @@ function IndicacoesAdmin() {
     <div className="space-y-6">
       {mode === "global" ? (
         <GlobalView
-          onOpenSearch={() => { setSearchQuery(""); setSearchOpen(true); }}
+          onOpenSearch={() => {
+            setSearchQuery("");
+            setSearchOpen(true);
+          }}
           onEnterBroker={entrarBroker}
           onOpenDetalhe={setDetalhe}
         />
       ) : (
         <BrokerView
           baseId={baseId!}
-          onOpenSearch={() => { setSearchQuery(""); setSearchOpen(true); }}
+          onOpenSearch={() => {
+            setSearchQuery("");
+            setSearchOpen(true);
+          }}
           onSetBase={setBaseId}
           onBackGlobal={voltarGlobal}
           onOpenDetalhe={setDetalhe}
@@ -208,14 +240,18 @@ function IndicacoesAdmin() {
               {candidatos.map((c) => (
                 <li key={c.id}>
                   <button
-                    onClick={() => { entrarBroker(c.id); setSearchOpen(false); }}
+                    onClick={() => {
+                      entrarBroker(c.id);
+                      setSearchOpen(false);
+                    }}
                     className="flex w-full items-center gap-3 px-2 py-2 text-left hover:bg-muted/60"
                   >
                     {avatar(c.nome, "sm")}
                     <div className="flex-1">
                       <div className="text-sm font-medium">{c.nome}</div>
                       <div className="text-[11px] text-muted-foreground">
-                        {c.indicadorId ? `Indicado por ${c.indicador}` : "Raiz da rede"} · {c.indicados} indicados diretos
+                        {c.indicadorId ? `Indicado por ${c.indicador}` : "Raiz da rede"} ·{" "}
+                        {c.indicados} indicados diretos
                       </div>
                     </div>
                     {c.id === baseId && <Badge variant="secondary">Atual</Badge>}
@@ -223,7 +259,9 @@ function IndicacoesAdmin() {
                 </li>
               ))}
               {candidatos.length === 0 && (
-                <li className="py-6 text-center text-sm text-muted-foreground">Nenhum corretor encontrado.</li>
+                <li className="py-6 text-center text-sm text-muted-foreground">
+                  Nenhum corretor encontrado.
+                </li>
               )}
             </ul>
           </div>
@@ -237,25 +275,39 @@ function IndicacoesAdmin() {
             <DialogTitle>{detalhe?.nome}</DialogTitle>
             <DialogDescription>
               {detalhe && (
-                <>Indicado por {detalhe.indicador} · {detalhe.indicados} indicados diretos · sub-rede de {detalheSubrede?.size ?? 0}</>
+                <>
+                  Indicado por {detalhe.indicador} · {detalhe.indicados} indicados diretos ·
+                  sub-rede de {detalheSubrede?.size ?? 0}
+                </>
               )}
             </DialogDescription>
           </DialogHeader>
           {detalhe && (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-3">
-                <MiniStat label="Gerada" value={formatBRL(detalhe.receitaAcumulada)} tone="default" />
+                <MiniStat
+                  label="Gerada"
+                  value={formatBRL(detalhe.receitaAcumulada)}
+                  tone="default"
+                />
                 <MiniStat label="Paga" value={formatBRL(detalhe.receitaPaga)} tone="ok" />
                 <MiniStat label="Pendente" value={formatBRL(detalhe.receitaPendente)} tone="warn" />
               </div>
               {detalheSubrede && detalheSubrede.size > 0 && (
                 <div>
-                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Composição da sub-rede</div>
+                  <div className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Composição da sub-rede
+                  </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     {[1, 2, 3].map((n) => {
-                      const count = Array.from(detalheSubrede.values()).filter((e) => (e.nivelRelativo >= 3 ? 3 : e.nivelRelativo) === n).length;
+                      const count = Array.from(detalheSubrede.values()).filter(
+                        (e) => (e.nivelRelativo >= 3 ? 3 : e.nivelRelativo) === n,
+                      ).length;
                       return (
-                        <div key={n} className={`rounded-md p-2 ${n === 1 ? "bg-blue-50" : n === 2 ? "bg-amber-50" : "bg-emerald-50"}`}>
+                        <div
+                          key={n}
+                          className={`rounded-md p-2 ${n === 1 ? "bg-blue-50" : n === 2 ? "bg-amber-50" : "bg-emerald-50"}`}
+                        >
                           <div className="text-[10px] uppercase opacity-70">N{n}</div>
                           <div className="num text-sm font-semibold">{count}</div>
                         </div>
@@ -265,17 +317,25 @@ function IndicacoesAdmin() {
                 </div>
               )}
               <div>
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Últimos repasses</div>
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  Últimos repasses
+                </div>
                 <Table>
                   <TableHeader>
-                    <TableRow><TableHead>Data</TableHead><TableHead>Valor</TableHead><TableHead>Status</TableHead></TableRow>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
                   </TableHeader>
                   <TableBody>
                     {redeRepassesMock.map((r, i) => (
                       <TableRow key={i}>
                         <TableCell>{r.data}</TableCell>
                         <TableCell className="num">{formatBRL(r.valor)}</TableCell>
-                        <TableCell><Badge variant="secondary">{r.status}</Badge></TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{r.status}</Badge>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -285,7 +345,13 @@ function IndicacoesAdmin() {
                 <Button variant="outline" size="sm" onClick={() => exportarCorretorCSV(detalhe)}>
                   <Download className="h-4 w-4" /> Exportar
                 </Button>
-                <Button size="sm" onClick={() => { entrarBroker(detalhe.id); setDetalhe(null); }}>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    entrarBroker(detalhe.id);
+                    setDetalhe(null);
+                  }}
+                >
                   <GitBranch className="h-4 w-4" /> Ver rede deste corretor
                 </Button>
               </div>
@@ -322,8 +388,14 @@ function GlobalView({
   const todosCorretores = useMemo(() => redeIndicacoes.filter((r) => r.id !== ROOT_ID), []);
   const totalCorretores = todosCorretores.length;
   const mrrTotal = useMemo(() => todosCorretores.reduce((s, r) => s + r.mrr, 0), [todosCorretores]);
-  const receitaPaga = useMemo(() => todosCorretores.reduce((s, r) => s + r.receitaPaga, 0), [todosCorretores]);
-  const receitaPendente = useMemo(() => todosCorretores.reduce((s, r) => s + r.receitaPendente, 0), [todosCorretores]);
+  const receitaPaga = useMemo(
+    () => todosCorretores.reduce((s, r) => s + r.receitaPaga, 0),
+    [todosCorretores],
+  );
+  const receitaPendente = useMemo(
+    () => todosCorretores.reduce((s, r) => s + r.receitaPendente, 0),
+    [todosCorretores],
+  );
   const crescimentoRede = diff(totalCorretores, redeIndicacoesPeriodoAnterior.totalIndicados);
 
   // ---- Distribuição por nível (global, a partir do Ramon) ----
@@ -362,7 +434,10 @@ function GlobalView({
       .filter((r) => getIndicadosDiretos(r.id).length > 0)
       .map((r) => {
         const sub = getRedeRelativa(r.id);
-        let mrr = 0, acum = 0, pago = 0, pend = 0;
+        let mrr = 0,
+          acum = 0,
+          pago = 0,
+          pend = 0;
         for (const e of sub.values()) {
           mrr += e.item.mrr;
           acum += e.item.receitaAcumulada;
@@ -412,7 +487,10 @@ function GlobalView({
   const paginados = filtrados.slice((paginaAtual - 1) * PAGE_SIZE, paginaAtual * PAGE_SIZE);
 
   function limparFiltros() {
-    setBusca(""); setFiltroStatus("Todos"); setFiltroFaixa("Todos"); setPagina(1);
+    setBusca("");
+    setFiltroStatus("Todos");
+    setFiltroFaixa("Todos");
+    setPagina(1);
   }
 
   // ---- Insights / alertas globais ----
@@ -421,38 +499,79 @@ function GlobalView({
     [todosCorretores],
   );
   const top3 = indicadoresAgg.slice(0, 3);
-  const top3Share = mrrTotal ? Math.round((top3.reduce((s, e) => s + e.mrrGerado, 0) / mrrTotal) * 100) : 0;
+  const top3Share = mrrTotal
+    ? Math.round((top3.reduce((s, e) => s + e.mrrGerado, 0) / mrrTotal) * 100)
+    : 0;
 
   const insights = useMemo(() => {
     const out: { tipo: "ok" | "warn" | "info"; texto: string }[] = [];
-    if (crescimentoRede > 0) out.push({ tipo: "ok", texto: `Rede cresceu ${crescimentoRede}% no período (${totalCorretores} corretores).` });
-    else if (crescimentoRede < 0) out.push({ tipo: "warn", texto: `Rede recuou ${Math.abs(crescimentoRede)}% no período.` });
-    if (top3.length > 0) out.push({ tipo: "info", texto: `Top indicador: ${top3[0].item.nome} gera ${formatBRL(top3[0].mrrGerado)}/mês na sua sub-rede.` });
-    if (top3Share >= 60) out.push({ tipo: "warn", texto: `Concentração: top 3 indicadores respondem por ${top3Share}% do MRR.` });
-    if (inativosComReceita.length > 0) out.push({ tipo: "warn", texto: `${inativosComReceita.length} corretor(es) inativos com receita acumulada relevante.` });
-    if (receitaPendente > 0) out.push({ tipo: "info", texto: `${formatBRL(receitaPendente)} pendentes de repasse na rede.` });
-    if (out.length === 0) out.push({ tipo: "info", texto: "Rede estável: sem variações relevantes." });
+    if (crescimentoRede > 0)
+      out.push({
+        tipo: "ok",
+        texto: `Rede cresceu ${crescimentoRede}% no período (${totalCorretores} corretores).`,
+      });
+    else if (crescimentoRede < 0)
+      out.push({ tipo: "warn", texto: `Rede recuou ${Math.abs(crescimentoRede)}% no período.` });
+    if (top3.length > 0)
+      out.push({
+        tipo: "info",
+        texto: `Top indicador: ${top3[0].item.nome} gera ${formatBRL(top3[0].mrrGerado)}/mês na sua sub-rede.`,
+      });
+    if (top3Share >= 60)
+      out.push({
+        tipo: "warn",
+        texto: `Concentração: top 3 indicadores respondem por ${top3Share}% do MRR.`,
+      });
+    if (inativosComReceita.length > 0)
+      out.push({
+        tipo: "warn",
+        texto: `${inativosComReceita.length} corretor(es) inativos com receita acumulada relevante.`,
+      });
+    if (receitaPendente > 0)
+      out.push({
+        tipo: "info",
+        texto: `${formatBRL(receitaPendente)} pendentes de repasse na rede.`,
+      });
+    if (out.length === 0)
+      out.push({ tipo: "info", texto: "Rede estável: sem variações relevantes." });
     return out;
-  }, [crescimentoRede, totalCorretores, top3, top3Share, inativosComReceita.length, receitaPendente]);
+  }, [
+    crescimentoRede,
+    totalCorretores,
+    top3,
+    top3Share,
+    inativosComReceita.length,
+    receitaPendente,
+  ]);
 
   const alertas = useMemo(() => {
-    const out: { id: string; severidade: "atencao" | "critico"; titulo: string; descricao: string; corretorId?: string }[] = [];
-    inativosComReceita.forEach((r) => out.push({
-      id: `inat-${r.id}`,
-      severidade: "critico",
-      titulo: `${r.nome} parou de gerar receita`,
-      descricao: `Status inativo · acumulada ${formatBRL(r.receitaAcumulada)}.`,
-      corretorId: r.id,
-    }));
+    const out: {
+      id: string;
+      severidade: "atencao" | "critico";
+      titulo: string;
+      descricao: string;
+      corretorId?: string;
+    }[] = [];
+    inativosComReceita.forEach((r) =>
+      out.push({
+        id: `inat-${r.id}`,
+        severidade: "critico",
+        titulo: `${r.nome} parou de gerar receita`,
+        descricao: `Status inativo · acumulada ${formatBRL(r.receitaAcumulada)}.`,
+        corretorId: r.id,
+      }),
+    );
     todosCorretores
       .filter((r) => r.crescimentoPct < -15 && r.status !== "Inativo")
-      .forEach((r) => out.push({
-        id: `queda-${r.id}`,
-        severidade: "atencao",
-        titulo: `Queda de performance: ${r.nome}`,
-        descricao: `Crescimento ${r.crescimentoPct}% no período.`,
-        corretorId: r.id,
-      }));
+      .forEach((r) =>
+        out.push({
+          id: `queda-${r.id}`,
+          severidade: "atencao",
+          titulo: `Queda de performance: ${r.nome}`,
+          descricao: `Crescimento ${r.crescimentoPct}% no período.`,
+          corretorId: r.id,
+        }),
+      );
     if (top3Share >= 60) {
       out.push({
         id: "conc",
@@ -470,8 +589,32 @@ function GlobalView({
   function exportarConsolidado() {
     downloadCSV(
       "rede-ubroker-consolidado.csv",
-      ["ID", "Nome", "Indicador", "Status", "Produto", "Indicados diretos", "MRR", "Acumulada", "Paga", "Pendente", "Data entrada"],
-      todosCorretores.map((r) => [r.id, r.nome, r.indicador, r.status, r.produto, r.indicados, r.mrr, r.receitaAcumulada, r.receitaPaga, r.receitaPendente, r.dataEntrada]),
+      [
+        "ID",
+        "Nome",
+        "Indicador",
+        "Status",
+        "Produto",
+        "Indicados diretos",
+        "MRR",
+        "Acumulada",
+        "Paga",
+        "Pendente",
+        "Data entrada",
+      ],
+      todosCorretores.map((r) => [
+        r.id,
+        r.nome,
+        r.indicador,
+        r.status,
+        r.produto,
+        r.indicados,
+        r.mrr,
+        r.receitaAcumulada,
+        r.receitaPaga,
+        r.receitaPendente,
+        r.dataEntrada,
+      ]),
       ctxLine,
     );
   }
@@ -525,8 +668,12 @@ function GlobalView({
               <DropdownMenuLabel>Visão geral</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={exportarConsolidado}>Consolidado da rede</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarFinanceiroGlobal}>Relatório financeiro global</DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarPendencias}>Pendências de repasse</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarFinanceiroGlobal}>
+                Relatório financeiro global
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarPendencias}>
+                Pendências de repasse
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -534,11 +681,20 @@ function GlobalView({
 
       {/* KPIs globais */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <KPI label="Corretores na rede" value={totalCorretores.toString()} icon={Users} delta={crescimentoRede} />
+        <KPI
+          label="Corretores na rede"
+          value={totalCorretores.toString()}
+          icon={Users}
+          delta={crescimentoRede}
+        />
         <KPI label="MRR total" value={formatBRL(mrrTotal)} />
         <KPI label="Receita paga (período)" value={formatBRL(receitaPaga)} />
         <KPI label="Receita pendente" value={formatBRL(receitaPendente)} />
-        <KPI label="Crescimento da rede" value={`${crescimentoRede > 0 ? "+" : ""}${crescimentoRede}%`} highlight />
+        <KPI
+          label="Crescimento da rede"
+          value={`${crescimentoRede > 0 ? "+" : ""}${crescimentoRede}%`}
+          highlight
+        />
       </section>
 
       {/* Distribuição global em 3 sub-blocos */}
@@ -620,13 +776,30 @@ function GlobalView({
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={busca}
-              onChange={(e) => { setBusca(e.target.value); setPagina(1); }}
+              onChange={(e) => {
+                setBusca(e.target.value);
+                setPagina(1);
+              }}
               placeholder="Buscar indicador..."
               className="pl-8"
             />
           </div>
-          <SelectMini value={filtroStatus} onChange={(v) => { setFiltroStatus(v); setPagina(1); }} options={["Todos", "Ativo", "Teste", "Inativo"]} />
-          <SelectMini value={filtroFaixa} onChange={(v) => { setFiltroFaixa(v); setPagina(1); }} options={["Todos", "Até R$500", "R$500–1500", "R$1500+"]} />
+          <SelectMini
+            value={filtroStatus}
+            onChange={(v) => {
+              setFiltroStatus(v);
+              setPagina(1);
+            }}
+            options={["Todos", "Ativo", "Teste", "Inativo"]}
+          />
+          <SelectMini
+            value={filtroFaixa}
+            onChange={(v) => {
+              setFiltroFaixa(v);
+              setPagina(1);
+            }}
+            options={["Todos", "Até R$500", "R$500–1500", "R$1500+"]}
+          />
           <Button variant="ghost" size="icon" onClick={limparFiltros} title="Limpar filtros">
             <X className="h-4 w-4" />
           </Button>
@@ -638,7 +811,9 @@ function GlobalView({
         <div className="flex items-center justify-between border-b border-border p-5">
           <div>
             <div className="font-display text-lg">Indicadores da rede</div>
-            <div className="text-xs text-muted-foreground">{filtrados.length} corretor(es) com indicações ativas</div>
+            <div className="text-xs text-muted-foreground">
+              {filtrados.length} corretor(es) com indicações ativas
+            </div>
           </div>
         </div>
 
@@ -675,13 +850,28 @@ function GlobalView({
                   <TableCell>{statusBadge(r.item.status)}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => onEnterBroker(r.item.id)} title="Ver rede">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEnterBroker(r.item.id)}
+                        title="Ver rede"
+                      >
                         <GitBranch className="h-3.5 w-3.5" /> Ver rede
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => onOpenDetalhe(r.item)} title="Ver detalhes">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onOpenDetalhe(r.item)}
+                        title="Ver detalhes"
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => exportarCorretorCSV(r.item)} title="Exportar relatório">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => exportarCorretorCSV(r.item)}
+                        title="Exportar relatório"
+                      >
                         <Download className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -701,10 +891,26 @@ function GlobalView({
 
         {totalPaginas > 1 && (
           <div className="flex items-center justify-between border-t border-border p-3 text-xs text-muted-foreground">
-            <div>Página {paginaAtual} de {totalPaginas}</div>
+            <div>
+              Página {paginaAtual} de {totalPaginas}
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={paginaAtual === 1} onClick={() => setPagina(paginaAtual - 1)}>Anterior</Button>
-              <Button variant="outline" size="sm" disabled={paginaAtual === totalPaginas} onClick={() => setPagina(paginaAtual + 1)}>Próxima</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={paginaAtual === 1}
+                onClick={() => setPagina(paginaAtual - 1)}
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={paginaAtual === totalPaginas}
+                onClick={() => setPagina(paginaAtual + 1)}
+              >
+                Próxima
+              </Button>
             </div>
           </div>
         )}
@@ -733,13 +939,18 @@ function GlobalView({
       {/* Alertas globais */}
       {alertas.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-5">
-          <div className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Alertas da rede</div>
+          <div className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Alertas da rede
+          </div>
           <ul className="divide-y divide-border">
             {alertas.map((a) => {
               const Icon = a.severidade === "critico" ? AlertCircle : AlertTriangle;
               const cor = a.severidade === "critico" ? "text-red-600" : "text-amber-600";
               return (
-                <li key={a.id} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                <li
+                  key={a.id}
+                  className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                >
                   <div className="flex items-start gap-3">
                     <Icon className={`mt-0.5 h-4 w-4 ${cor}`} />
                     <div>
@@ -748,7 +959,9 @@ function GlobalView({
                     </div>
                   </div>
                   {a.corretorId && (
-                    <Button variant="ghost" size="sm" onClick={() => onEnterBroker(a.corretorId!)}>Ver corretor</Button>
+                    <Button variant="ghost" size="sm" onClick={() => onEnterBroker(a.corretorId!)}>
+                      Ver corretor
+                    </Button>
                   )}
                 </li>
               );
@@ -759,12 +972,17 @@ function GlobalView({
 
       {/* Insights globais */}
       <div className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Insights automáticos</div>
+        <div className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Insights automáticos
+        </div>
         <ul className="space-y-2">
           {insights.map((ins, i) => {
-            const cor = ins.tipo === "warn" ? "border-amber-300 bg-amber-50 text-amber-900"
-              : ins.tipo === "ok" ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-              : "border-border bg-muted text-foreground";
+            const cor =
+              ins.tipo === "warn"
+                ? "border-amber-300 bg-amber-50 text-amber-900"
+                : ins.tipo === "ok"
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                  : "border-border bg-muted text-foreground";
             return (
               <li key={i} className={`rounded-md border px-3 py-2 text-sm ${cor}`}>
                 {ins.texto}
@@ -807,13 +1025,20 @@ function BrokerView({
   const [filtroFaixa, setFiltroFaixa] = useState("Todos");
   const [filtroProduto, setFiltroProduto] = useState("Todos");
   const [pagina, setPagina] = useState(1);
-  const [ordem, setOrdem] = useState<{ campo: "mrr" | "indicados" | "data"; dir: "asc" | "desc" }>({ campo: "mrr", dir: "desc" });
+  const [ordem, setOrdem] = useState<{ campo: "mrr" | "indicados" | "data"; dir: "asc" | "desc" }>({
+    campo: "mrr",
+    dir: "desc",
+  });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   // Reset ao trocar base
   useEffect(() => {
-    setBusca(""); setFiltroNivel("Todos"); setFiltroStatus("Todos");
-    setFiltroFaixa("Todos"); setFiltroProduto("Todos"); setPagina(1);
+    setBusca("");
+    setFiltroNivel("Todos");
+    setFiltroStatus("Todos");
+    setFiltroFaixa("Todos");
+    setFiltroProduto("Todos");
+    setPagina(1);
     setExpanded(new Set());
   }, [baseId]);
 
@@ -849,7 +1074,9 @@ function BrokerView({
     let lista = itensRede.map((e) => ({ ...e.item, _nivelRel: e.nivelRelativo }));
     if (busca.trim()) {
       const q = busca.toLowerCase();
-      lista = lista.filter((r) => r.nome.toLowerCase().includes(q) || r.indicador.toLowerCase().includes(q));
+      lista = lista.filter(
+        (r) => r.nome.toLowerCase().includes(q) || r.indicador.toLowerCase().includes(q),
+      );
     }
     if (filtroNivel !== "Todos") {
       const n = Number(filtroNivel.replace("N", ""));
@@ -879,19 +1106,32 @@ function BrokerView({
   const paginados = filtrados.slice((paginaAtual - 1) * PAGE_SIZE, paginaAtual * PAGE_SIZE);
 
   function limparFiltros() {
-    setBusca(""); setPeriodo("Tudo"); setFiltroNivel("Todos");
-    setFiltroStatus("Todos"); setFiltroFaixa("Todos"); setFiltroProduto("Todos");
+    setBusca("");
+    setPeriodo("Tudo");
+    setFiltroNivel("Todos");
+    setFiltroStatus("Todos");
+    setFiltroFaixa("Todos");
+    setFiltroProduto("Todos");
     setPagina(1);
   }
   function toggleOrdem(campo: "mrr" | "indicados" | "data") {
-    setOrdem((o) => (o.campo === campo ? { campo, dir: o.dir === "asc" ? "desc" : "asc" } : { campo, dir: "desc" }));
+    setOrdem((o) =>
+      o.campo === campo ? { campo, dir: o.dir === "asc" ? "desc" : "asc" } : { campo, dir: "desc" },
+    );
   }
 
   // Insights / alertas relativos
   const inativos = useMemo(() => itensRede.filter((e) => e.item.status === "Inativo"), [itensRede]);
-  const topReceita = useMemo(() => [...itensRede].sort((a, b) => b.item.mrr - a.item.mrr).slice(0, 5), [itensRede]);
+  const topReceita = useMemo(
+    () => [...itensRede].sort((a, b) => b.item.mrr - a.item.mrr).slice(0, 5),
+    [itensRede],
+  );
   const topCrescimento = useMemo(
-    () => [...itensRede].filter((e) => e.item.crescimentoPct > 0).sort((a, b) => b.item.crescimentoPct - a.item.crescimentoPct).slice(0, 5),
+    () =>
+      [...itensRede]
+        .filter((e) => e.item.crescimentoPct > 0)
+        .sort((a, b) => b.item.crescimentoPct - a.item.crescimentoPct)
+        .slice(0, 5),
     [itensRede],
   );
   const concentracaoTop3 = useMemo(() => {
@@ -905,14 +1145,29 @@ function BrokerView({
     if (dN1 <= -10) out.push({ tipo: "warn", texto: `Nível 1 caiu ${Math.abs(dN1)}% este mês.` });
     if (dN2 >= 15) out.push({ tipo: "ok", texto: `Nível 2 está crescendo (+${dN2}%).` });
     if (dN3 >= 15) out.push({ tipo: "ok", texto: `Nível 3 acelerou (+${dN3}%).` });
-    if (inativos.length > 0) out.push({ tipo: "warn", texto: `${inativos.length} usuário(s) inativo(s) impactando a receita.` });
-    if (concentracaoTop3 >= 60) out.push({ tipo: "warn", texto: `Risco de concentração: top 3 = ${concentracaoTop3}% da receita.` });
-    if (out.length === 0) out.push({ tipo: "info", texto: "Rede estável: sem variações relevantes no período." });
+    if (inativos.length > 0)
+      out.push({
+        tipo: "warn",
+        texto: `${inativos.length} usuário(s) inativo(s) impactando a receita.`,
+      });
+    if (concentracaoTop3 >= 60)
+      out.push({
+        tipo: "warn",
+        texto: `Risco de concentração: top 3 = ${concentracaoTop3}% da receita.`,
+      });
+    if (out.length === 0)
+      out.push({ tipo: "info", texto: "Rede estável: sem variações relevantes no período." });
     return out;
   }, [dN1, dN2, dN3, inativos.length, concentracaoTop3]);
 
   const alertas = useMemo(() => {
-    const out: { id: string; severidade: "atencao" | "critico"; titulo: string; descricao: string; corretorId?: string }[] = [];
+    const out: {
+      id: string;
+      severidade: "atencao" | "critico";
+      titulo: string;
+      descricao: string;
+      corretorId?: string;
+    }[] = [];
     inativos.forEach((e) => {
       if (e.item.receitaAcumulada > 500) {
         out.push({
@@ -926,13 +1181,15 @@ function BrokerView({
     });
     itensRede
       .filter((e) => e.item.crescimentoPct < -15 && e.item.status !== "Inativo")
-      .forEach((e) => out.push({
-        id: `queda-${e.item.id}`,
-        severidade: "atencao",
-        titulo: `Queda de performance: ${e.item.nome}`,
-        descricao: `Crescimento ${e.item.crescimentoPct}% no período.`,
-        corretorId: e.item.id,
-      }));
+      .forEach((e) =>
+        out.push({
+          id: `queda-${e.item.id}`,
+          severidade: "atencao",
+          titulo: `Queda de performance: ${e.item.nome}`,
+          descricao: `Crescimento ${e.item.crescimentoPct}% no período.`,
+          corretorId: e.item.id,
+        }),
+      );
     if (concentracaoTop3 >= 60) {
       out.push({
         id: "conc",
@@ -960,8 +1217,36 @@ function BrokerView({
   function exportarRedeFiltrada() {
     downloadCSV(
       `rede-${baseUser.nome.replace(/\s+/g, "-")}.csv`,
-      ["ID", "Nome", "Nível Relativo", "Indicador direto", "Indicados", "Status", "Produto", "MRR", "Receita Acumulada", "Paga", "Pendente", "Data entrada", "Crescimento %"],
-      filtrados.map((r) => [r.id, r.nome, `N${r._nivelRel >= 3 ? 3 : r._nivelRel}`, r.indicador, r.indicados, r.status, r.produto, r.mrr, r.receitaAcumulada, r.receitaPaga, r.receitaPendente, r.dataEntrada, r.crescimentoPct]),
+      [
+        "ID",
+        "Nome",
+        "Nível Relativo",
+        "Indicador direto",
+        "Indicados",
+        "Status",
+        "Produto",
+        "MRR",
+        "Receita Acumulada",
+        "Paga",
+        "Pendente",
+        "Data entrada",
+        "Crescimento %",
+      ],
+      filtrados.map((r) => [
+        r.id,
+        r.nome,
+        `N${r._nivelRel >= 3 ? 3 : r._nivelRel}`,
+        r.indicador,
+        r.indicados,
+        r.status,
+        r.produto,
+        r.mrr,
+        r.receitaAcumulada,
+        r.receitaPaga,
+        r.receitaPendente,
+        r.dataEntrada,
+        r.crescimentoPct,
+      ]),
       ctxLine,
     );
   }
@@ -972,10 +1257,20 @@ function BrokerView({
       const acum = itens.reduce((s, e) => s + e.item.receitaAcumulada, 0);
       return [n, itens.length, mrr, acum];
     });
-    downloadCSV(`rede-${baseUser.nome.replace(/\s+/g, "-")}-por-nivel.csv`, ["Nível", "Indicados", "MRR Total", "Receita Acumulada"], linhas, ctxLine);
+    downloadCSV(
+      `rede-${baseUser.nome.replace(/\s+/g, "-")}-por-nivel.csv`,
+      ["Nível", "Indicados", "MRR Total", "Receita Acumulada"],
+      linhas,
+      ctxLine,
+    );
   }
   function exportarRepasses() {
-    downloadCSV(`repasses-${baseUser.nome.replace(/\s+/g, "-")}.csv`, ["Data", "Valor", "Status"], redeRepassesMock.map((r) => [r.data, r.valor, r.status]), ctxLine);
+    downloadCSV(
+      `repasses-${baseUser.nome.replace(/\s+/g, "-")}.csv`,
+      ["Data", "Valor", "Status"],
+      redeRepassesMock.map((r) => [r.data, r.valor, r.status]),
+      ctxLine,
+    );
   }
 
   return (
@@ -995,9 +1290,15 @@ function BrokerView({
                 </div>
                 <div className="font-display text-xl">{baseUser.nome}</div>
                 <div className="text-xs text-muted-foreground">
-                  {indicadorDireto
-                    ? <>Indicador direto: <span className="font-medium text-foreground">{indicadorDireto.nome}</span> · Entrada {baseUser.dataEntrada}</>
-                    : <>Raiz da rede · Entrada {baseUser.dataEntrada}</>}
+                  {indicadorDireto ? (
+                    <>
+                      Indicador direto:{" "}
+                      <span className="font-medium text-foreground">{indicadorDireto.nome}</span> ·
+                      Entrada {baseUser.dataEntrada}
+                    </>
+                  ) : (
+                    <>Raiz da rede · Entrada {baseUser.dataEntrada}</>
+                  )}
                 </div>
               </div>
             </div>
@@ -1014,10 +1315,16 @@ function BrokerView({
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Contexto: {baseUser.nome}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => exportarCorretorCSV(baseUser)}>Relatório do corretor</DropdownMenuItem>
-                  <DropdownMenuItem onClick={exportarRedeFiltrada}>Rede do corretor</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportarCorretorCSV(baseUser)}>
+                    Relatório do corretor
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportarRedeFiltrada}>
+                    Rede do corretor
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={exportarPorNivel}>Receita por nível</DropdownMenuItem>
-                  <DropdownMenuItem onClick={exportarRepasses}>Repasses do corretor</DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportarRepasses}>
+                    Repasses do corretor
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -1027,7 +1334,12 @@ function BrokerView({
 
       {/* KPIs relativos */}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KPI label="Total de indicados" value={totalIndicados.toString()} icon={Users} delta={dTotal} />
+        <KPI
+          label="Total de indicados"
+          value={totalIndicados.toString()}
+          icon={Users}
+          delta={dTotal}
+        />
         <KPI label="MRR Nível 1" value={formatBRL(mrrN1)} delta={dN1} share={pctN1} />
         <KPI label="MRR Nível 2" value={formatBRL(mrrN2)} delta={dN2} share={pctN2} />
         <KPI label="MRR Nível 3+" value={formatBRL(mrrN3)} delta={dN3} share={pctN3} highlight />
@@ -1039,7 +1351,9 @@ function BrokerView({
           <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             Distribuição de receita por nível (relativa)
           </div>
-          <div className="num font-display text-2xl text-emerald-700">{formatBRL(mrrTotal)}/mês</div>
+          <div className="num font-display text-2xl text-emerald-700">
+            {formatBRL(mrrTotal)}/mês
+          </div>
         </div>
         <div className="space-y-2">
           <ContribBar label="N1" pct={pctN1} valor={mrrN1} color="bg-blue-500" />
@@ -1060,17 +1374,52 @@ function BrokerView({
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={busca}
-              onChange={(e) => { setBusca(e.target.value); setPagina(1); }}
+              onChange={(e) => {
+                setBusca(e.target.value);
+                setPagina(1);
+              }}
               placeholder="Buscar nome ou indicador..."
               className="pl-8"
             />
           </div>
-          <SelectMini value={periodo} onChange={setPeriodo} options={["7 dias", "30 dias", "90 dias", "Personalizado", "Tudo"]} />
-          <SelectMini value={filtroNivel} onChange={(v) => { setFiltroNivel(v); setPagina(1); }} options={["Todos", "N1", "N2", "N3"]} />
-          <SelectMini value={filtroStatus} onChange={(v) => { setFiltroStatus(v); setPagina(1); }} options={["Todos", "Ativo", "Teste", "Inativo"]} />
-          <SelectMini value={filtroProduto} onChange={(v) => { setFiltroProduto(v); setPagina(1); }} options={["Todos", "IA", "Inbox", "Combo"]} />
+          <SelectMini
+            value={periodo}
+            onChange={setPeriodo}
+            options={["7 dias", "30 dias", "90 dias", "Personalizado", "Tudo"]}
+          />
+          <SelectMini
+            value={filtroNivel}
+            onChange={(v) => {
+              setFiltroNivel(v);
+              setPagina(1);
+            }}
+            options={["Todos", "N1", "N2", "N3"]}
+          />
+          <SelectMini
+            value={filtroStatus}
+            onChange={(v) => {
+              setFiltroStatus(v);
+              setPagina(1);
+            }}
+            options={["Todos", "Ativo", "Teste", "Inativo"]}
+          />
+          <SelectMini
+            value={filtroProduto}
+            onChange={(v) => {
+              setFiltroProduto(v);
+              setPagina(1);
+            }}
+            options={["Todos", "IA", "Inbox", "Combo"]}
+          />
           <div className="flex gap-2">
-            <SelectMini value={filtroFaixa} onChange={(v) => { setFiltroFaixa(v); setPagina(1); }} options={["Todos", "Até R$200", "R$200–500", "R$500+"]} />
+            <SelectMini
+              value={filtroFaixa}
+              onChange={(v) => {
+                setFiltroFaixa(v);
+                setPagina(1);
+              }}
+              options={["Todos", "Até R$200", "R$200–500", "R$500+"]}
+            />
             <Button variant="ghost" size="icon" onClick={limparFiltros} title="Limpar filtros">
               <X className="h-4 w-4" />
             </Button>
@@ -1083,7 +1432,9 @@ function BrokerView({
         <div className="flex items-center justify-between border-b border-border p-5">
           <div>
             <div className="font-display text-lg">Rede de indicações de {baseUser.nome}</div>
-            <div className="text-xs text-muted-foreground">{filtrados.length} corretor(es) · níveis relativos a {baseUser.nome}</div>
+            <div className="text-xs text-muted-foreground">
+              {filtrados.length} corretor(es) · níveis relativos a {baseUser.nome}
+            </div>
           </div>
         </div>
 
@@ -1094,13 +1445,19 @@ function BrokerView({
                 <TableHead>Corretor</TableHead>
                 <TableHead>Nível</TableHead>
                 <TableHead>Indicador direto</TableHead>
-                <TableHead className="cursor-pointer" onClick={() => toggleOrdem("indicados")}>Indicados</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => toggleOrdem("indicados")}>
+                  Indicados
+                </TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="cursor-pointer" onClick={() => toggleOrdem("mrr")}>MRR</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => toggleOrdem("mrr")}>
+                  MRR
+                </TableHead>
                 <TableHead>Acumulada</TableHead>
                 <TableHead>Paga</TableHead>
                 <TableHead>Pendente</TableHead>
-                <TableHead className="cursor-pointer" onClick={() => toggleOrdem("data")}>Entrada</TableHead>
+                <TableHead className="cursor-pointer" onClick={() => toggleOrdem("data")}>
+                  Entrada
+                </TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -1121,18 +1478,37 @@ function BrokerView({
                     <TableCell>{statusBadge(r.status)}</TableCell>
                     <TableCell className="num text-emerald-700">{formatBRL(r.mrr)}</TableCell>
                     <TableCell className="num">{formatBRL(r.receitaAcumulada)}</TableCell>
-                    <TableCell className="num text-emerald-700">{formatBRL(r.receitaPaga)}</TableCell>
-                    <TableCell className="num text-amber-700">{formatBRL(r.receitaPendente)}</TableCell>
+                    <TableCell className="num text-emerald-700">
+                      {formatBRL(r.receitaPaga)}
+                    </TableCell>
+                    <TableCell className="num text-amber-700">
+                      {formatBRL(r.receitaPendente)}
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{r.dataEntrada}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => onSetBase(r.id)} title="Ver rede deste corretor">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onSetBase(r.id)}
+                          title="Ver rede deste corretor"
+                        >
                           <GitBranch className="h-3.5 w-3.5" /> Ver rede
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onOpenDetalhe(r)} title="Ver detalhes">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onOpenDetalhe(r)}
+                          title="Ver detalhes"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => exportarCorretorCSV(r)} title="Exportar individual">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => exportarCorretorCSV(r)}
+                          title="Exportar individual"
+                        >
                           <Download className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -1142,7 +1518,10 @@ function BrokerView({
               })}
               {paginados.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    colSpan={11}
+                    className="py-8 text-center text-sm text-muted-foreground"
+                  >
                     {itensRede.length === 0
                       ? `${baseUser.nome} ainda não possui indicados.`
                       : "Nenhum resultado para os filtros aplicados."}
@@ -1155,10 +1534,26 @@ function BrokerView({
 
         {totalPaginas > 1 && (
           <div className="flex items-center justify-between border-t border-border p-3 text-xs text-muted-foreground">
-            <div>Página {paginaAtual} de {totalPaginas}</div>
+            <div>
+              Página {paginaAtual} de {totalPaginas}
+            </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={paginaAtual === 1} onClick={() => setPagina(paginaAtual - 1)}>Anterior</Button>
-              <Button variant="outline" size="sm" disabled={paginaAtual === totalPaginas} onClick={() => setPagina(paginaAtual + 1)}>Próxima</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={paginaAtual === 1}
+                onClick={() => setPagina(paginaAtual - 1)}
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={paginaAtual === totalPaginas}
+                onClick={() => setPagina(paginaAtual + 1)}
+              >
+                Próxima
+              </Button>
             </div>
           </div>
         )}
@@ -1170,7 +1565,9 @@ function BrokerView({
           <div className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             Grafo navegável · {baseUser.nome}
           </div>
-          <div className="mt-0.5 text-xs text-muted-foreground">Clique no chevron para carregar 1 nível de cada vez.</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            Clique no chevron para carregar 1 nível de cada vez.
+          </div>
         </div>
         <LazyNode
           baseId={baseId}
@@ -1185,13 +1582,18 @@ function BrokerView({
       {/* Alertas */}
       {alertas.length > 0 && (
         <div className="rounded-xl border border-border bg-card p-5">
-          <div className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Alertas da rede</div>
+          <div className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Alertas da rede
+          </div>
           <ul className="divide-y divide-border">
             {alertas.map((a) => {
               const Icon = a.severidade === "critico" ? AlertCircle : AlertTriangle;
               const cor = a.severidade === "critico" ? "text-red-600" : "text-amber-600";
               return (
-                <li key={a.id} className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                <li
+                  key={a.id}
+                  className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                >
                   <div className="flex items-start gap-3">
                     <Icon className={`mt-0.5 h-4 w-4 ${cor}`} />
                     <div>
@@ -1200,7 +1602,9 @@ function BrokerView({
                     </div>
                   </div>
                   {a.corretorId && (
-                    <Button variant="ghost" size="sm" onClick={() => onSetBase(a.corretorId!)}>Ver corretor</Button>
+                    <Button variant="ghost" size="sm" onClick={() => onSetBase(a.corretorId!)}>
+                      Ver corretor
+                    </Button>
                   )}
                 </li>
               );
@@ -1214,12 +1618,19 @@ function BrokerView({
         <PerfCard title="Top por receita" icon={Crown}>
           <ul className="divide-y divide-border">
             {topReceita.map((e, i) => (
-              <li key={e.item.id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+              <li
+                key={e.item.id}
+                className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+              >
                 <div className="flex items-center gap-3">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-warm/15 text-[11px] font-semibold text-warm">{i + 1}</span>
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-warm/15 text-[11px] font-semibold text-warm">
+                    {i + 1}
+                  </span>
                   <div>
                     <div className="text-sm font-medium">{e.item.nome}</div>
-                    <div className="text-[11px] text-muted-foreground">N{e.nivelRelativo >= 3 ? 3 : e.nivelRelativo} · {e.item.indicados} indicados</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      N{e.nivelRelativo >= 3 ? 3 : e.nivelRelativo} · {e.item.indicados} indicados
+                    </div>
                   </div>
                 </div>
                 <div className="num text-sm text-emerald-700">{formatBRL(e.item.mrr)}</div>
@@ -1231,44 +1642,67 @@ function BrokerView({
         <PerfCard title="Top por crescimento" icon={TrendingUp}>
           <ul className="divide-y divide-border">
             {topCrescimento.map((e, i) => (
-              <li key={e.item.id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+              <li
+                key={e.item.id}
+                className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+              >
                 <div className="flex items-center gap-3">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 text-[11px] font-semibold text-emerald-700">{i + 1}</span>
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 text-[11px] font-semibold text-emerald-700">
+                    {i + 1}
+                  </span>
                   <div>
                     <div className="text-sm font-medium">{e.item.nome}</div>
-                    <div className="text-[11px] text-muted-foreground">N{e.nivelRelativo >= 3 ? 3 : e.nivelRelativo} · {formatBRL(e.item.mrr)}/mês</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      N{e.nivelRelativo >= 3 ? 3 : e.nivelRelativo} · {formatBRL(e.item.mrr)}/mês
+                    </div>
                   </div>
                 </div>
                 {pctBadge(e.item.crescimentoPct)}
               </li>
             ))}
-            {topCrescimento.length === 0 && <li className="py-2.5 text-sm text-muted-foreground">—</li>}
+            {topCrescimento.length === 0 && (
+              <li className="py-2.5 text-sm text-muted-foreground">—</li>
+            )}
           </ul>
         </PerfCard>
         <PerfCard title="Indicadores inativos" icon={AlertTriangle}>
           <ul className="divide-y divide-border">
             {inativos.map((e) => (
-              <li key={e.item.id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+              <li
+                key={e.item.id}
+                className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0"
+              >
                 <div>
                   <div className="text-sm font-medium">{e.item.nome}</div>
-                  <div className="text-[11px] text-muted-foreground">N{e.nivelRelativo >= 3 ? 3 : e.nivelRelativo} · queda {e.item.crescimentoPct}%</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    N{e.nivelRelativo >= 3 ? 3 : e.nivelRelativo} · queda {e.item.crescimentoPct}%
+                  </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => onSetBase(e.item.id)}>Ver rede</Button>
+                <Button variant="outline" size="sm" onClick={() => onSetBase(e.item.id)}>
+                  Ver rede
+                </Button>
               </li>
             ))}
-            {inativos.length === 0 && <li className="py-2.5 text-sm text-muted-foreground">Nenhum inativo na rede.</li>}
+            {inativos.length === 0 && (
+              <li className="py-2.5 text-sm text-muted-foreground">Nenhum inativo na rede.</li>
+            )}
           </ul>
         </PerfCard>
       </section>
 
       {/* Insights */}
       <div className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Insights automáticos</div>
+        <div className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+          Insights automáticos
+        </div>
         <ul className="space-y-2">
           {insights.map((ins, i) => {
-            const cor = ins.tipo === "warn" ? "border-amber-300 bg-amber-50 text-amber-900"
-              : ins.tipo === "ok" ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-              : "border-border bg-muted text-foreground";
+            const cor =
+              ins.tipo === "warn"
+                ? "border-amber-300 bg-amber-50 text-amber-900"
+                : ins.tipo === "ok"
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                  : "border-border bg-muted text-foreground";
             return (
               <li key={i} className={`rounded-md border px-3 py-2 text-sm ${cor}`}>
                 {ins.texto}
@@ -1289,12 +1723,18 @@ function exportarCorretorCSV(item: RedeIndicacaoItem) {
     `corretor-${item.nome.replace(/\s+/g, "-")}.csv`,
     ["Campo", "Valor"],
     [
-      ["Nome", item.nome], ["Indicador", item.indicador], ["Status", item.status],
-      ["Produto", item.produto], ["Indicados diretos", item.indicados],
+      ["Nome", item.nome],
+      ["Indicador", item.indicador],
+      ["Status", item.status],
+      ["Produto", item.produto],
+      ["Indicados diretos", item.indicados],
       ["Sub-rede total", subrede.size],
-      ["MRR", item.mrr], ["Acumulada", item.receitaAcumulada],
-      ["Paga", item.receitaPaga], ["Pendente", item.receitaPendente],
-      ["Entrada", item.dataEntrada], ["Crescimento %", item.crescimentoPct],
+      ["MRR", item.mrr],
+      ["Acumulada", item.receitaAcumulada],
+      ["Paga", item.receitaPaga],
+      ["Pendente", item.receitaPendente],
+      ["Entrada", item.dataEntrada],
+      ["Crescimento %", item.crescimentoPct],
     ],
     `Contexto: corretor ${item.nome} · Gerado em ${new Date().toLocaleString("pt-BR")}`,
   );
@@ -1302,26 +1742,56 @@ function exportarCorretorCSV(item: RedeIndicacaoItem) {
 
 // ============== Sub-componentes ==============
 
-function KPI({ label, value, icon: Icon, highlight, delta, share }: { label: string; value: string; icon?: React.ComponentType<{ className?: string }>; highlight?: boolean; delta?: number; share?: number }) {
+function KPI({
+  label,
+  value,
+  icon: Icon,
+  highlight,
+  delta,
+  share,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  highlight?: boolean;
+  delta?: number;
+  share?: number;
+}) {
   return (
     <div className={`rounded-xl border border-border p-4 ${highlight ? "bg-warm/5" : "bg-card"}`}>
       <div className="flex items-center justify-between">
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</div>
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          {label}
+        </div>
         {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
       </div>
       <div className="mt-2 num font-display text-2xl">{value}</div>
       <div className="mt-1.5 flex items-center gap-2">
-        {delta !== undefined && <>{pctBadge(delta)}<span className="text-[10px] text-muted-foreground">vs mês ant.</span></>}
-        {share !== undefined && <span className="ml-auto text-[10px] text-muted-foreground">{share}% do MRR</span>}
+        {delta !== undefined && (
+          <>
+            {pctBadge(delta)}
+            <span className="text-[10px] text-muted-foreground">vs mês ant.</span>
+          </>
+        )}
+        {share !== undefined && (
+          <span className="ml-auto text-[10px] text-muted-foreground">{share}% do MRR</span>
+        )}
       </div>
     </div>
   );
 }
 
 function ContribBar({
-  label, pct, valor, color, valorFmt,
+  label,
+  pct,
+  valor,
+  color,
+  valorFmt,
 }: {
-  label: string; pct: number; valor: number; color: string;
+  label: string;
+  pct: number;
+  valor: number;
+  color: string;
   valorFmt?: (v: number) => string;
 }) {
   const display = valorFmt ? valorFmt(valor) : formatBRL(valor);
@@ -1337,21 +1807,38 @@ function ContribBar({
   );
 }
 
-function SelectMini({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
+function SelectMini({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+}) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="h-9 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
-      {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      {options.map((o) => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
     </select>
   );
 }
 
 /** Nó da árvore que carrega filhos sob demanda (lazy, 1 nível por clique). */
 function LazyNode({
-  baseId, nodeId, nivelRelativo, expanded, onToggle, onSetBase,
+  baseId,
+  nodeId,
+  nivelRelativo,
+  expanded,
+  onToggle,
+  onSetBase,
 }: {
   baseId: string;
   nodeId: string;
@@ -1370,9 +1857,15 @@ function LazyNode({
 
   return (
     <div>
-      <div className="flex items-center gap-3 rounded-md py-2" style={{ paddingLeft: `${nivelRelativo * 28}px` }}>
+      <div
+        className="flex items-center gap-3 rounded-md py-2"
+        style={{ paddingLeft: `${nivelRelativo * 28}px` }}
+      >
         {hasChildren ? (
-          <button onClick={() => onToggle(nodeId)} className="text-muted-foreground hover:text-foreground">
+          <button
+            onClick={() => onToggle(nodeId)}
+            className="text-muted-foreground hover:text-foreground"
+          >
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         ) : (
@@ -1380,16 +1873,24 @@ function LazyNode({
         )}
         <div
           className={`grid h-8 w-8 place-items-center rounded-full text-xs font-semibold ${
-            isBase ? "bg-navy text-white"
-              : nivelRelativo === 1 ? "bg-blue-100 text-blue-800"
-              : nivelRelativo === 2 ? "bg-amber-100 text-amber-800"
-              : "bg-emerald-100 text-emerald-800"
+            isBase
+              ? "bg-navy text-white"
+              : nivelRelativo === 1
+                ? "bg-blue-100 text-blue-800"
+                : nivelRelativo === 2
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-emerald-100 text-emerald-800"
           }`}
         >
           {isBase ? "★" : `N${nivelRelativo}`}
         </div>
         <div className="flex-1">
-          <div className="text-sm font-medium">{node.nome}{isBase && <span className="ml-2 text-[10px] uppercase text-muted-foreground">base</span>}</div>
+          <div className="text-sm font-medium">
+            {node.nome}
+            {isBase && (
+              <span className="ml-2 text-[10px] uppercase text-muted-foreground">base</span>
+            )}
+          </div>
           <div className="text-xs text-muted-foreground">
             {hasChildren ? `${totalFilhos} indicado(s) direto(s)` : "Sem indicados"}
             {!isOpen && hasChildren && " · clique para expandir"}
@@ -1402,22 +1903,31 @@ function LazyNode({
           </Button>
         )}
       </div>
-      {isOpen && filhos.map((f) => (
-        <LazyNode
-          key={f.id}
-          baseId={baseId}
-          nodeId={f.id}
-          nivelRelativo={nivelRelativo + 1}
-          expanded={expanded}
-          onToggle={onToggle}
-          onSetBase={onSetBase}
-        />
-      ))}
+      {isOpen &&
+        filhos.map((f) => (
+          <LazyNode
+            key={f.id}
+            baseId={baseId}
+            nodeId={f.id}
+            nivelRelativo={nivelRelativo + 1}
+            expanded={expanded}
+            onToggle={onToggle}
+            onSetBase={onSetBase}
+          />
+        ))}
     </div>
   );
 }
 
-function PerfCard({ title, icon: Icon, children }: { title: string; icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
+function PerfCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -1428,8 +1938,21 @@ function PerfCard({ title, icon: Icon, children }: { title: string; icon: React.
   );
 }
 
-function MiniStat({ label, value, tone }: { label: string; value: string; tone: "default" | "ok" | "warn" }) {
-  const cls = tone === "ok" ? "text-emerald-700 bg-emerald-50" : tone === "warn" ? "text-amber-700 bg-amber-50" : "text-foreground bg-muted";
+function MiniStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "default" | "ok" | "warn";
+}) {
+  const cls =
+    tone === "ok"
+      ? "text-emerald-700 bg-emerald-50"
+      : tone === "warn"
+        ? "text-amber-700 bg-amber-50"
+        : "text-foreground bg-muted";
   return (
     <div className={`rounded-md p-3 ${cls}`}>
       <div className="text-[10px] uppercase tracking-widest opacity-70">{label}</div>

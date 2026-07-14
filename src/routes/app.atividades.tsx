@@ -90,9 +90,7 @@ function ActivitiesPage() {
 
   const hoje = grouped["Hoje"] ?? [];
   const pendentesHoje = hoje.filter((a) => !a.done).length;
-  const atrasadasHoje = hoje.filter(
-    (a) => parseHora(a.hora) < nowMinutes() && !a.done,
-  ).length;
+  const atrasadasHoje = hoje.filter((a) => parseHora(a.hora) < nowMinutes() && !a.done).length;
 
   const concluir = async (a: Activity) => {
     const ok = await setActivityDone(a.id, !a.done);
@@ -174,7 +172,9 @@ function ActivitiesPage() {
           onClick={() => setView("lista")}
           className={cn(
             "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
-            view === "lista" ? "bg-navy text-navy-foreground" : "text-muted-foreground hover:text-foreground",
+            view === "lista"
+              ? "bg-navy text-navy-foreground"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           <LayoutList className="h-4 w-4" />
@@ -184,7 +184,9 @@ function ActivitiesPage() {
           onClick={() => setView("calendario")}
           className={cn(
             "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
-            view === "calendario" ? "bg-navy text-navy-foreground" : "text-muted-foreground hover:text-foreground",
+            view === "calendario"
+              ? "bg-navy text-navy-foreground"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           <CalendarDays className="h-4 w-4" />
@@ -243,7 +245,9 @@ function ActivitiesPage() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between gap-2">
-                            <div className={cn("font-medium", a.done && "line-through")}>{a.cliente}</div>
+                            <div className={cn("font-medium", a.done && "line-through")}>
+                              {a.cliente}
+                            </div>
                             <div className="flex items-center gap-2">
                               {atrasada && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700">
@@ -294,7 +298,9 @@ function ActivitiesPage() {
           </DialogHeader>
           <div className="grid gap-3">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Nome do lead/cliente</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Nome do lead/cliente
+              </label>
               <Input
                 value={form.lead}
                 onChange={(e) => setForm({ ...form, lead: e.target.value })}
@@ -304,28 +310,43 @@ function ActivitiesPage() {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">Tipo</label>
-                <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v as ActivityType })}>
+                <Select
+                  value={form.tipo}
+                  onValueChange={(v) => setForm({ ...form, tipo: v as ActivityType })}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {ACTIVITY_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">Data</label>
-                <Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} />
+                <Input
+                  type="date"
+                  value={form.data}
+                  onChange={(e) => setForm({ ...form, data: e.target.value })}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">Hora</label>
-                <Input type="time" value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} />
+                <Input
+                  type="time"
+                  value={form.hora}
+                  onChange={(e) => setForm({ ...form, hora: e.target.value })}
+                />
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Imóvel vinculado (opcional)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Imóvel vinculado (opcional)
+              </label>
               <Input
                 value={form.imovel}
                 onChange={(e) => setForm({ ...form, imovel: e.target.value })}
@@ -343,8 +364,14 @@ function ActivitiesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenNova(false)}>Cancelar</Button>
-            <Button className="bg-navy text-navy-foreground hover:bg-navy/90" onClick={salvarNova} disabled={saving}>
+            <Button variant="outline" onClick={() => setOpenNova(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-navy text-navy-foreground hover:bg-navy/90"
+              onClick={salvarNova}
+              disabled={saving}
+            >
               {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
               Salvar
             </Button>
@@ -370,7 +397,9 @@ function CalendarioSemanal({ activities }: { activities: Activity[] }) {
       <div className="grid grid-cols-8 border-b border-border bg-muted/30 text-xs text-muted-foreground">
         <div className="p-3" />
         {dias.map((d) => (
-          <div key={d} className="p-3 text-center font-medium">{d}</div>
+          <div key={d} className="p-3 text-center font-medium">
+            {d}
+          </div>
         ))}
       </div>
       <div className="divide-y divide-border">
