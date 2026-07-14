@@ -72,6 +72,9 @@ function ConversationRow({
             </span>
           ) : null}
         </div>
+        <div className="truncate text-[10px] text-muted-foreground">
+          {conversation.property_nome}
+        </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
           <span
             className={cn(
@@ -95,11 +98,13 @@ function ConversationRow({
 function ChatView({
   partnershipId,
   partner,
+  propertyName,
   currentUserId,
   onBack,
 }: {
   partnershipId: string;
   partner?: DirectoryBroker;
+  propertyName?: string;
   currentUserId?: string;
   onBack: () => void;
 }) {
@@ -124,7 +129,12 @@ function ChatView({
           <ArrowLeft className="h-4 w-4" />
         </button>
         <PartnerAvatar partner={partner} className="h-8 w-8" />
-        <span className="truncate text-sm font-medium">{name}</span>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium">{name}</div>
+          {propertyName ? (
+            <div className="truncate text-[10px] text-muted-foreground">{propertyName}</div>
+          ) : null}
+        </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
         <PartnershipChat
@@ -175,6 +185,7 @@ export function PartnershipChatWidget() {
             <ChatView
               partnershipId={active.partnership_id}
               partner={partnerOf(active)}
+              propertyName={active.property_nome}
               currentUserId={currentUserId}
               onBack={() => setActiveId(null)}
             />

@@ -47,6 +47,7 @@ import {
   type PropertyStatus,
 } from "@/lib/properties";
 import { STATUSES, STATUS_STYLES, getComissao, isAltaDemanda } from "@/lib/imoveis";
+import { signPropertyMedia, usePropertyMediaUrls } from "@/lib/media";
 import { PropertyMediaUpload, type MediaItem } from "@/components/property-media-upload";
 
 export const Route = createFileRoute("/app/imoveis/")({
@@ -92,6 +93,7 @@ function InventoryPage() {
   };
 
   const marketplaceCount = properties.filter((p) => p.marketplace).length;
+  const covers = usePropertyMediaUrls(properties.map((p) => p.foto));
 
   return (
     <div className="space-y-6">
@@ -152,8 +154,8 @@ function InventoryPage() {
                 ].join(" ")}
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-surface">
-                  {p.foto ? (
-                    <img src={p.foto} alt={p.nome} className="h-full w-full object-cover" />
+                  {p.foto && covers[p.foto] ? (
+                    <img src={covers[p.foto]} alt={p.nome} className="h-full w-full object-cover" />
                   ) : (
                     <div className="grid h-full w-full place-items-center text-muted-foreground">
                       <ImageIcon className="h-8 w-8" />
@@ -356,7 +358,9 @@ function PropertyFormModal({
   const [saving, setSaving] = useState(false);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  // O banco guarda paths (bucket privado); a exibição usa URLs assinadas.
+  const [videoPath, setVideoPath] = useState<string | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   // reseta o formulário sempre que abre (novo) ou muda o imóvel editado
   const formKey = editing?.id ?? (isOpen ? "novo" : "fechado");
   useEffect(() => {
@@ -376,6 +380,7 @@ function PropertyFormModal({
             descricao: editing.descricao ?? "",
             destaque: editing.destaque,
             marketplace: editing.marketplace,
+            partnership_shared: editing.partnership_shared,
             foto: editing.foto ?? "",
             fotos: editing.fotos ?? [],
             video: editing.video ?? null,
@@ -384,14 +389,33 @@ function PropertyFormModal({
         : EMPTY_PROPERTY,
     );
     setMediaItems(
-      (editing?.fotos ?? []).map((url) => ({
+      (editing?.fotos ?? []).map((path) => ({
         id: crypto.randomUUID(),
         kind: "existing" as const,
-        url,
+        path,
+        url: "",
       })),
     );
     setVideoFile(null);
-    setVideoUrl(editing?.video ?? null);
+    setVideoPath(editing?.video ?? null);
+    setVideoPreview(null);
+
+    const mediaPaths = [...(editing?.fotos ?? []), ...(editing?.video ? [editing.video] : [])];
+    let cancelled = false;
+    if (mediaPaths.length) {
+      void signPropertyMedia(mediaPaths).then((map) => {
+        if (cancelled) return;
+        setMediaItems((prev) =>
+          prev.map((item) =>
+            item.kind === "existing" ? { ...item, url: map.get(item.path) ?? item.url } : item,
+          ),
+        );
+        if (editing?.video) setVideoPreview(map.get(editing.video) ?? null);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formKey]);
 
@@ -412,13 +436,13 @@ function PropertyFormModal({
     const fotos: string[] = [];
     for (const item of mediaItems) {
       if (item.kind === "existing") {
-        fotos.push(item.url);
+        fotos.push(item.path);
       } else {
-        const url = await uploadPropertyMedia(brokerId, folder, item.file);
-        if (url) fotos.push(url);
+        const path = await uploadPropertyMedia(brokerId, folder, item.file);
+        if (path) fotos.push(path);
       }
     }
-    let video = videoUrl;
+    let video = videoPath;
     if (videoFile) {
       video = await uploadPropertyMedia(brokerId, folder, videoFile);
     }
@@ -515,10 +539,11 @@ function PropertyFormModal({
               items={mediaItems}
               onItemsChange={setMediaItems}
               videoFile={videoFile}
-              videoUrl={videoUrl}
+              videoUrl={videoPreview}
               onVideoChange={(file, url) => {
                 setVideoFile(file);
-                setVideoUrl(url);
+                setVideoPath(url);
+                setVideoPreview(url);
               }}
             />
           </div>
@@ -540,6 +565,20 @@ function PropertyFormModal({
             />
             Disponibilizar no marketplace B2C
           </label>
+          <div className="col-span-2 -mt-2">
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.partnership_shared}
+                onChange={(e) => upd("partnership_shared", e.target.checked)}
+              />
+              Disponibilizar para parcerias entre corretores
+            </label>
+            <p className="mt-1 pl-6 text-[11px] text-muted-foreground">
+              Outros corretores veem fotos, bairro/cidade, descrição e valor — nunca o endereço
+              completo ou seus leads.
+            </p>
+          </div>
           <DialogFooter className="col-span-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
@@ -694,6 +733,7 @@ function ExclusaoModal({
 function MidiaModal({ state, onClose }: { state: ModalState; onClose: () => void }) {
   const isOpen = state.kind === "midia";
   const property = state.kind === "midia" ? state.property : null;
+  const urls = usePropertyMediaUrls([property?.foto]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -726,14 +766,14 @@ function MidiaModal({ state, onClose }: { state: ModalState; onClose: () => void
               <Video className="mr-1 h-4 w-4" /> Adicionar vídeo
             </Button>
 
-            {property.foto && (
+            {property.foto && urls[property.foto] && (
               <div>
                 <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">
                   Galeria atual
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   <img
-                    src={property.foto}
+                    src={urls[property.foto]}
                     alt=""
                     className="aspect-square rounded-md object-cover"
                   />

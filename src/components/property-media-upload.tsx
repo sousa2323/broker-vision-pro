@@ -10,7 +10,7 @@ const FOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 
 export type MediaItem =
-  | { id: string; kind: "existing"; url: string }
+  | { id: string; kind: "existing"; path: string; url: string }
   | { id: string; kind: "new"; file: File };
 
 /**

@@ -26,6 +26,7 @@ export type Property = {
   descricao: string | null;
   destaque: boolean;
   marketplace: boolean;
+  partnership_shared: boolean;
   foto: string | null;
   fotos: string[];
   video: string | null;
@@ -49,6 +50,7 @@ export const EMPTY_PROPERTY: PropertyInput = {
   descricao: "",
   destaque: false,
   marketplace: false,
+  partnership_shared: false,
   foto: "",
   fotos: [],
   video: null,
@@ -58,7 +60,7 @@ export const EMPTY_PROPERTY: PropertyInput = {
 /**
  * Sobe uma foto ou vídeo do imóvel para o bucket `property-media`, na pasta
  * do próprio usuário (`{userId}/{folder}/{uuid}.{ext}`). Requer sessão ativa.
- * Nome de arquivo único ⇒ sem cache-buster. Retorna a URL pública ou null.
+ * O bucket é privado: retorna o PATH do objeto (exibição via signPropertyMedia).
  */
 export async function uploadPropertyMedia(
   userId: string,
@@ -75,8 +77,7 @@ export async function uploadPropertyMedia(
     console.error("Falha ao enviar mídia do imóvel:", error.message);
     return null;
   }
-  const { data } = supabase.storage.from("property-media").getPublicUrl(path);
-  return data.publicUrl;
+  return path;
 }
 
 export async function listProperties(): Promise<Property[]> {
@@ -140,6 +141,60 @@ export async function deleteProperty(id: string): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+/**
+ * Imóvel de outro corretor visível para parcerias — apenas campos limitados
+ * (sem endereço completo), conforme o RPC list_shared_inventory.
+ */
+export type SharedProperty = {
+  id: string;
+  broker_id: string;
+  nome: string;
+  bairro: string | null;
+  cidade: string | null;
+  descricao: string | null;
+  valor: number;
+  foto: string | null;
+  fotos: string[];
+};
+
+export async function listSharedInventory(brokerId?: string): Promise<SharedProperty[]> {
+  const { data, error } = await supabase.rpc("list_shared_inventory", {
+    p_broker_id: brokerId ?? null,
+  });
+  if (error) {
+    console.error("Falha ao listar inventário compartilhado:", error.message);
+    return [];
+  }
+  return ((data ?? []) as SharedProperty[]).map((row) => ({
+    ...row,
+    valor: Number(row.valor),
+  }));
+}
+
+/** Inventário compartilhado (de um corretor ou do catálogo inteiro). */
+export function useSharedInventory(brokerId?: string) {
+  const { session } = useSession();
+  const [shared, setShared] = useState<SharedProperty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const userId = session?.user.id;
+
+  const refetch = useCallback(async () => {
+    if (!userId) {
+      setShared([]);
+      setLoading(false);
+      return;
+    }
+    setShared(await listSharedInventory(brokerId));
+    setLoading(false);
+  }, [userId, brokerId]);
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  return { shared, loading, refetch };
 }
 
 /** Lista reativa dos imóveis do corretor logado. */

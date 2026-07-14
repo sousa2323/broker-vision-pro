@@ -3,12 +3,13 @@ import { useSession } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import type { Property } from "@/lib/properties";
 
-export type PartnershipStatus = "pending" | "accepted" | "declined";
+export type PartnershipStatus = "pending" | "accepted" | "declined" | "ended";
 
 export type PartnershipRequest = {
   id: string;
   sender_id: string;
   receiver_id: string;
+  property_id: string;
   message: string;
   partnership_type: string;
   notes: string | null;
@@ -28,6 +29,7 @@ export type PartnershipMessage = {
 
 export async function createPartnershipRequest(input: {
   receiverId: string;
+  propertyId: string;
   message: string;
   partnershipType: string;
   notes?: string;
@@ -41,6 +43,7 @@ export async function createPartnershipRequest(input: {
     .insert({
       sender_id: senderId,
       receiver_id: input.receiverId,
+      property_id: input.propertyId,
       message: input.message.trim(),
       partnership_type: input.partnershipType,
       notes: input.notes?.trim() || null,
@@ -49,13 +52,13 @@ export async function createPartnershipRequest(input: {
     .single();
 
   if (error) {
-    const duplicate = error.code === "23505";
-    return {
-      request: null,
-      error: duplicate
-        ? "Já existe uma solicitação pendente para este corretor."
-        : "Não foi possível enviar a solicitação. Tente novamente.",
-    };
+    if (error.code === "23505") {
+      return { request: null, error: "Já existe uma solicitação pendente para este imóvel." };
+    }
+    if (error.code === "42501" || /row-level security/i.test(error.message)) {
+      return { request: null, error: "Este imóvel não está disponível para parceria." };
+    }
+    return { request: null, error: "Não foi possível enviar a solicitação. Tente novamente." };
   }
   return { request: data as PartnershipRequest, error: null };
 }
@@ -113,15 +116,23 @@ export function usePartnershipRequests() {
   return { requests, loading, refresh, currentUserId: userId };
 }
 
-export async function listPartnershipProperties(requestId: string): Promise<Property[]> {
-  const { data, error } = await supabase.rpc("list_partnership_properties", {
+/** Imóvel vinculado a uma parceria aceita (apenas para participantes). */
+export async function getPartnershipProperty(requestId: string): Promise<Property | null> {
+  const { data, error } = await supabase.rpc("get_partnership_property", {
     request_id: requestId,
   });
   if (error) {
-    console.error("Falha ao carregar imóveis da parceria:", error.message);
-    return [];
+    console.error("Falha ao carregar o imóvel da parceria:", error.message);
+    return null;
   }
-  return (data ?? []) as Property[];
+  const rows = (data ?? []) as Property[];
+  return rows[0] ?? null;
+}
+
+/** Encerra uma parceria aceita (qualquer participante). Revoga workspace e chat. */
+export async function endPartnership(requestId: string): Promise<string | null> {
+  const { error } = await supabase.rpc("end_partnership", { request_id: requestId });
+  return error ? "Não foi possível encerrar a parceria. Tente novamente." : null;
 }
 
 export async function sendPartnershipMessage(
@@ -141,6 +152,8 @@ export async function sendPartnershipMessage(
 export type PartnershipConversation = {
   partnership_id: string;
   partner_id: string;
+  property_id: string;
+  property_nome: string;
   last_message_body: string | null;
   last_message_at: string | null;
   last_message_sender_id: string | null;

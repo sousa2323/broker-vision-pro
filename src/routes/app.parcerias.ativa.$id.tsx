@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trophy,
+  X,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -53,12 +54,14 @@ import { useDirectory, type DirectoryBroker } from "@/lib/directory";
 import { formatBRL, timeAgo } from "@/lib/format";
 import type { Property } from "@/lib/properties";
 import {
-  listPartnershipProperties,
+  endPartnership,
+  getPartnershipProperty,
   markPartnershipRead,
   sendPartnershipMessage,
   usePartnershipMessages,
   usePartnershipRequests,
 } from "@/lib/partnerships";
+import { usePropertyMediaUrls } from "@/lib/media";
 import { PartnershipChat } from "@/components/partnership-chat";
 
 export const Route = createFileRoute("/app/parcerias/ativa/$id")({
@@ -120,8 +123,10 @@ function PartnershipWorkspace() {
     loading: messagesLoading,
     refresh: refreshMessages,
   } = usePartnershipMessages(id);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [propertiesLoading, setPropertiesLoading] = useState(true);
+  const navigate = useNavigate();
+  const [property, setProperty] = useState<Property | null>(null);
+  const [propertyLoading, setPropertyLoading] = useState(true);
+  const mediaUrls = usePropertyMediaUrls([property?.foto]);
 
   const request = requests.find((item) => item.id === id);
   const partnerId = request
@@ -150,15 +155,17 @@ function PartnershipWorkspace() {
   }>({ titulo: "Alinhar oportunidade com o parceiro", responsavel: "A", prazo: "Hoje" });
   const [registrarOpen, setRegistrarOpen] = useState(false);
   const [vendidoOpen, setVendidoOpen] = useState(false);
+  const [encerrarOpen, setEncerrarOpen] = useState(false);
+  const [encerrando, setEncerrando] = useState(false);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setPropertiesLoading(true);
-    listPartnershipProperties(id).then((rows) => {
+    setPropertyLoading(true);
+    getPartnershipProperty(id).then((row) => {
       if (!cancelled) {
-        setProperties(rows);
-        setPropertiesLoading(false);
+        setProperty(row);
+        setPropertyLoading(false);
       }
     });
     return () => {
@@ -172,10 +179,20 @@ function PartnershipWorkspace() {
     if (!messagesLoading && request?.status === "accepted") void markPartnershipRead(id);
   }, [id, messagesLoading, lastMessageId, request?.status]);
 
-  const valorTotal = useMemo(
-    () => properties.reduce((total, property) => total + Number(property.valor), 0),
-    [properties],
-  );
+  const valorImovel = Number(property?.valor ?? 0);
+
+  async function handleEncerrar() {
+    setEncerrando(true);
+    const error = await endPartnership(id);
+    setEncerrando(false);
+    setEncerrarOpen(false);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    toast.success("Parceria encerrada");
+    void navigate({ to: "/app/parcerias" });
+  }
 
   function pushAtividade(a: Omit<Atividade, "id" | "quando">) {
     setAtividades((prev) => [{ id: crypto.randomUUID(), quando: "Agora", ...a }, ...prev]);
@@ -242,10 +259,10 @@ function PartnershipWorkspace() {
         onStatusChange={setStatus}
         corretorA={corretorA}
         corretorB={corretorB}
-        titulo={properties[0]?.nome ?? `${corretorA.nome} + ${corretorB.nome}`}
+        titulo={property?.nome ?? `${corretorA.nome} + ${corretorB.nome}`}
         subtitulo={
-          properties[0]
-            ? [properties[0].bairro, properties[0].cidade].filter(Boolean).join(" · ") ||
+          property
+            ? [property.bairro, property.cidade].filter(Boolean).join(" · ") ||
               "Localização não informada"
             : `${partnershipTypeLabels[request.partnership_type] ?? "Parceria profissional"} · criada ${timeAgo(request.created_at)}`
         }
@@ -262,13 +279,14 @@ function PartnershipWorkspace() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <FinanceCard corretorA={corretorA} corretorB={corretorB} valorImovel={valorTotal} />
+          <FinanceCard corretorA={corretorA} corretorB={corretorB} valorImovel={valorImovel} />
         </div>
         <AcoesCard
           etapaAtual={etapaAtual}
           onChangeEtapa={handleEtapa}
           onRegistrar={() => setRegistrarOpen(true)}
           onVendido={() => setVendidoOpen(true)}
+          onEncerrar={() => setEncerrarOpen(true)}
         />
       </div>
 
@@ -308,8 +326,9 @@ function PartnershipWorkspace() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <PropertyBlock
-            properties={properties}
-            loading={propertiesLoading}
+            property={property}
+            fotoUrl={property?.foto ? mediaUrls[property.foto] : undefined}
+            loading={propertyLoading}
             currentUserId={currentUserId}
             corretorA={corretorA}
             corretorB={corretorB}
@@ -337,10 +356,35 @@ function PartnershipWorkspace() {
           toast.success("Atividade registrada");
         }}
       />
+      <Dialog open={encerrarOpen} onOpenChange={setEncerrarOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Encerrar parceria</DialogTitle>
+            <DialogDescription>
+              O workspace e o chat desta parceria deixam de ficar acessíveis para os dois
+              corretores. Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEncerrarOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleEncerrar()}
+              disabled={encerrando}
+            >
+              {encerrando && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+              Encerrar parceria
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <FinalizarVendaModal
         open={vendidoOpen}
         onOpenChange={setVendidoOpen}
-        valorReferencia={valorTotal}
+        valorReferencia={valorImovel}
         onConfirm={(valor, quem) => {
           setStatus("Fechada");
           setEtapaAtual("Fechado");
@@ -603,11 +647,13 @@ function AcoesCard({
   onChangeEtapa,
   onRegistrar,
   onVendido,
+  onEncerrar,
 }: {
   etapaAtual: Etapa;
   onChangeEtapa: (e: Etapa) => void;
   onRegistrar: () => void;
   onVendido: () => void;
+  onEncerrar: () => void;
 }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-6">
@@ -647,6 +693,14 @@ function AcoesCard({
           onClick={onVendido}
         >
           <Trophy className="h-4 w-4" /> Marcar como vendido
+        </Button>
+
+        <Button
+          variant="outline"
+          className="w-full justify-start text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+          onClick={onEncerrar}
+        >
+          <X className="h-4 w-4" /> Encerrar parceria
         </Button>
       </div>
       <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
@@ -828,13 +882,15 @@ function ActivityTimeline({
 }
 
 function PropertyBlock({
-  properties,
+  property,
+  fotoUrl,
   loading,
   currentUserId,
   corretorA,
   corretorB,
 }: {
-  properties: Property[];
+  property: Property | null;
+  fotoUrl?: string;
   loading: boolean;
   currentUserId?: string;
   corretorA: Corretor;
@@ -848,109 +904,79 @@ function PropertyBlock({
     );
   }
 
-  if (!properties.length) {
+  if (!property) {
     return (
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="text-xs uppercase tracking-widest text-muted-foreground">
-          Imóveis da parceria
+          Imóvel da parceria
         </div>
         <div className="mt-4 grid place-items-center gap-2 rounded-xl border border-dashed border-border p-10 text-center">
           <Building2 className="h-7 w-7 text-muted-foreground" />
           <div className="text-sm text-muted-foreground">
-            Nenhum imóvel ativo foi cadastrado pelos participantes ainda.
+            Não foi possível carregar o imóvel desta parceria.
           </div>
         </div>
       </div>
     );
   }
 
-  const [destaque, ...outros] = properties;
+  const isOwner = property.broker_id === currentUserId;
 
   return (
-    <div className="space-y-4">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        {destaque.foto ? (
-          <img
-            src={destaque.foto}
-            alt={destaque.nome}
-            className="aspect-[16/8] w-full object-cover"
-          />
-        ) : (
-          <div className="grid aspect-[16/8] w-full place-items-center bg-surface">
-            <Building2 className="h-10 w-10 text-muted-foreground" />
-          </div>
-        )}
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Imóvel de {destaque.broker_id === currentUserId ? corretorA.nome : corretorB.nome}
-              </div>
-              <div className="mt-0.5 font-display text-lg">{destaque.nome}</div>
-              <div className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <MapPin className="h-3.5 w-3.5" />{" "}
-                {[destaque.bairro, destaque.cidade].filter(Boolean).join(" · ") ||
-                  "Localização não informada"}
-              </div>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      {fotoUrl ? (
+        <img src={fotoUrl} alt={property.nome} className="aspect-[16/8] w-full object-cover" />
+      ) : (
+        <div className="grid aspect-[16/8] w-full place-items-center bg-surface">
+          <Building2 className="h-10 w-10 text-muted-foreground" />
+        </div>
+      )}
+      <div className="p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xs text-muted-foreground">
+              Imóvel de {isOwner ? corretorA.nome : corretorB.nome}
             </div>
-            <div className="num font-display text-lg">{formatBRL(Number(destaque.valor))}</div>
+            <div className="mt-0.5 font-display text-lg">{property.nome}</div>
+            <div className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5" />{" "}
+              {[property.bairro, property.cidade].filter(Boolean).join(" · ") ||
+                "Localização não informada"}
+            </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1">
-              <Bed className="h-3.5 w-3.5" />
-              {destaque.quartos} quartos
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Bath className="h-3.5 w-3.5" />
-              {destaque.suites} suítes
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Car className="h-3.5 w-3.5" />
-              {destaque.vagas} vagas
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Maximize2 className="h-3.5 w-3.5" />
-              {destaque.area} m²
-            </span>
-          </div>
+          <div className="num font-display text-lg">{formatBRL(Number(property.valor))}</div>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Bed className="h-3.5 w-3.5" />
+            {property.quartos} quartos
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Bath className="h-3.5 w-3.5" />
+            {property.suites} suítes
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Car className="h-3.5 w-3.5" />
+            {property.vagas} vagas
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Maximize2 className="h-3.5 w-3.5" />
+            {property.area} m²
+          </span>
+        </div>
+        {property.descricao && (
+          <p className="mt-4 border-t border-border pt-4 text-sm text-muted-foreground">
+            {property.descricao}
+          </p>
+        )}
+        {isOwner && (
           <Button asChild variant="outline" className="mt-5">
-            <Link to="/app/imoveis/$id" params={{ id: destaque.id }}>
+            <Link to="/app/imoveis/$id" params={{ id: property.id }}>
               Ver imóvel completo
             </Link>
           </Button>
-        </div>
+        )}
       </div>
-
-      {outros.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {outros.map((property) => (
-            <Link
-              key={property.id}
-              to="/app/imoveis/$id"
-              params={{ id: property.id }}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition hover:border-brand/40"
-            >
-              <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface">
-                {property.foto ? (
-                  <img
-                    src={property.foto}
-                    alt={property.nome}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <Building2 className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{property.nome}</div>
-                <div className="num text-xs text-muted-foreground">
-                  {formatBRL(Number(property.valor))}
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -54,6 +54,7 @@ import { useLeads } from "@/lib/leads";
 import { useProperties } from "@/lib/properties";
 import { cn } from "@/lib/utils";
 import { usePartnershipRequests } from "@/lib/partnerships";
+import { useConnections } from "@/lib/connections";
 
 /** Iniciais (até 2) a partir do nome completo, para o fallback do avatar. */
 function initials(name: string) {
@@ -376,6 +377,7 @@ function AppLayout() {
   const { brokers } = useDirectory();
   const { activities } = useActivities();
   const { requests: partnershipRequests, currentUserId } = usePartnershipRequests();
+  const { connections } = useConnections();
   const current = groups
     .flatMap((g) => g.items)
     .find((i) => (i.exact ? loc.pathname === i.to : loc.pathname.startsWith(i.to)));
@@ -459,14 +461,29 @@ function AppLayout() {
     const incomingPartnerships = partnershipRequests.filter(
       (request) => request.receiver_id === currentUserId && request.status === "pending",
     );
+    const incomingConnections = connections.filter(
+      (connection) =>
+        connection.target_id === currentUserId && connection.status === "pending",
+    );
 
     return [
       ...incomingPartnerships.map((request) => {
         const sender = brokers.find((broker) => broker.id === request.sender_id);
+        const propertyName = properties.find((p) => p.id === request.property_id)?.nome;
         return {
           id: `partnership-${request.id}`,
           title: "Nova solicitação de parceria",
-          subtitle: `${sender?.full_name ?? "Um corretor"} quer conectar com você.`,
+          subtitle: `${sender?.full_name ?? "Um corretor"} quer parceria no imóvel ${propertyName ?? "seu"}.`,
+          route: "/app/parcerias",
+          tone: "info" as const,
+        };
+      }),
+      ...incomingConnections.map((connection) => {
+        const requester = brokers.find((broker) => broker.id === connection.requester_id);
+        return {
+          id: `connection-${connection.id}`,
+          title: "Nova solicitação de conexão",
+          subtitle: `${requester?.full_name ?? "Um corretor"} quer se conectar com você.`,
           route: "/app/parcerias",
           tone: "info" as const,
         };
@@ -508,7 +525,7 @@ function AppLayout() {
           ]
         : []),
     ].slice(0, 8);
-  }, [activities, brokers, currentUserId, leads, partnershipRequests, properties]);
+  }, [activities, brokers, connections, currentUserId, leads, partnershipRequests, properties]);
 
   return (
     <div className="flex min-h-screen bg-surface text-ink">

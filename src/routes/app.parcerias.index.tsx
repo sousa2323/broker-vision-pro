@@ -10,6 +10,7 @@ import {
   Loader2,
   Check,
   X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -30,16 +31,24 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { formatBRL } from "@/lib/format";
 import { useDirectory, type DirectoryBroker } from "@/lib/directory";
 import {
-  createPartnershipRequest,
   respondToPartnershipRequest,
+  usePartnershipConversations,
   usePartnershipRequests,
   type PartnershipRequest,
 } from "@/lib/partnerships";
+import {
+  createConnectionRequest,
+  respondToConnectionRequest,
+  useConnections,
+  type BrokerConnection,
+} from "@/lib/connections";
+import { useProperties, useSharedInventory, type SharedProperty } from "@/lib/properties";
+import { usePropertyMediaUrls } from "@/lib/media";
 
 export const Route = createFileRoute("/app/parcerias/")({
   component: PartnersPage,
@@ -52,22 +61,37 @@ const planColors: Record<string, string> = {
 
 function PartnersPage() {
   const { brokers, loading } = useDirectory();
-  const { requests, loading: requestsLoading, refresh, currentUserId } = usePartnershipRequests();
+  const {
+    connections,
+    loading: connectionsLoading,
+    refresh: refreshConnections,
+    currentUserId,
+  } = useConnections();
+  const { requests, refresh: refreshRequests } = usePartnershipRequests();
+  const { conversations } = usePartnershipConversations();
+  const { shared, loading: sharedLoading } = useSharedInventory();
+  const { properties: ownProperties } = useProperties();
   const [q, setQ] = useState("");
   const [regiao, setRegiao] = useState("todas");
   const [connectFor, setConnectFor] = useState<DirectoryBroker | null>(null);
-  const incoming = requests.filter(
+
+  const incomingConnections = connections.filter(
+    (c) => c.target_id === currentUserId && c.status === "pending",
+  );
+  const acceptedConnections = connections.filter((c) => c.status === "accepted");
+  const incomingPartnerships = requests.filter(
     (r) => r.receiver_id === currentUserId && r.status === "pending",
   );
-  const accepted = requests.filter((r) => r.status === "accepted");
   const brokersById = useMemo(() => new Map(brokers.map((b) => [b.id, b])), [brokers]);
+  const ownPropertyName = (propertyId: string) =>
+    ownProperties.find((p) => p.id === propertyId)?.nome ?? "um imóvel seu";
 
   const regioes = useMemo(
     () => Array.from(new Set(brokers.flatMap((b) => b.regions ?? []))).sort(),
     [brokers],
   );
 
-  const filtered = useMemo(() => {
+  const filteredBrokers = useMemo(() => {
     const term = q.trim().toLowerCase();
     return brokers.filter((b) => {
       if (term) {
@@ -80,18 +104,34 @@ function PartnersPage() {
     });
   }, [q, regiao, brokers]);
 
+  // Busca de imóveis: nome, bairro/cidade e valor (dígitos do termo).
+  const filteredProperties = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return shared;
+    const digits = term.replace(/\D/g, "");
+    return shared.filter((p) => {
+      const hay = `${p.nome} ${p.bairro ?? ""} ${p.cidade ?? ""}`.toLowerCase();
+      if (hay.includes(term)) return true;
+      if (digits.length >= 3 && String(Math.trunc(p.valor)).includes(digits)) return true;
+      return false;
+    });
+  }, [q, shared]);
+
+  const covers = usePropertyMediaUrls(filteredProperties.map((p) => p.foto));
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl">Parcerias</h1>
         <p className="text-sm text-muted-foreground">
-          Conecte-se com corretores, explore oportunidades e feche negócios em conjunto.
+          Encontre imóveis abertos a parceria, conecte-se com corretores e feche negócios em
+          conjunto.
         </p>
       </div>
 
       <Tabs defaultValue="explorar">
         <TabsList>
-          <TabsTrigger value="explorar">Explorar corretores</TabsTrigger>
+          <TabsTrigger value="explorar">Explorar</TabsTrigger>
           <TabsTrigger value="rede">Minha rede</TabsTrigger>
         </TabsList>
 
@@ -103,7 +143,7 @@ function PartnersPage() {
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar por nome, região ou especialidade…"
+                placeholder="Buscar corretor (nome, região, especialidade) ou imóvel (nome, bairro, cidade, valor)…"
                 className="pl-9"
               />
             </div>
@@ -124,133 +164,199 @@ function PartnersPage() {
             </div>
           </div>
 
-          {loading ? (
-            <div className="grid place-items-center py-16 text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin" />
+          {/* Imóveis disponíveis para parceria */}
+          <section className="space-y-3">
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-display text-lg">Imóveis disponíveis para parceria</h2>
+              <span className="text-xs text-muted-foreground">
+                {filteredProperties.length}{" "}
+                {filteredProperties.length === 1 ? "imóvel" : "imóveis"}
+              </span>
             </div>
-          ) : (
-            <>
-              <div className="text-xs text-muted-foreground">
-                {filtered.length}{" "}
-                {filtered.length === 1 ? "corretor encontrado" : "corretores encontrados"}
+            {sharedLoading ? (
+              <div className="grid place-items-center py-10 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
               </div>
+            ) : filteredProperties.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+                Nenhum imóvel disponível para parceria{q.trim() ? " com esse filtro" : " ainda"}.
+              </div>
+            ) : (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filtered.map((b) => {
-                  const relationship = requests.find(
-                    (request) =>
-                      (request.sender_id === b.id || request.receiver_id === b.id) &&
-                      request.status !== "declined",
+                {filteredProperties.map((p) => (
+                  <SharedPropertyCard
+                    key={p.id}
+                    property={p}
+                    owner={brokersById.get(p.broker_id)}
+                    coverUrl={p.foto ? covers[p.foto] : undefined}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Corretores */}
+          <section className="space-y-3">
+            <div className="flex items-baseline justify-between">
+              <h2 className="font-display text-lg">Corretores</h2>
+              <span className="text-xs text-muted-foreground">
+                {filteredBrokers.length}{" "}
+                {filteredBrokers.length === 1 ? "corretor" : "corretores"}
+              </span>
+            </div>
+            {loading ? (
+              <div className="grid place-items-center py-10 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredBrokers.map((b) => {
+                  const connection = connections.find(
+                    (c) =>
+                      (c.requester_id === b.id || c.target_id === b.id) &&
+                      c.status !== "declined",
                   );
                   return (
                     <BrokerCard
                       key={b.id}
                       broker={b}
-                      relationship={relationship}
-                      relationshipLoading={requestsLoading}
+                      connection={connection}
+                      connectionLoading={connectionsLoading}
                       currentUserId={currentUserId}
                       onConnect={() => setConnectFor(b)}
-                      workspaceId={
-                        relationship?.status === "accepted" ? relationship.id : undefined
-                      }
                     />
                   );
                 })}
-                {filtered.length === 0 && (
+                {filteredBrokers.length === 0 && (
                   <div className="col-span-full rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
                     Nenhum corretor no diretório ainda. Conforme mais corretores entram na Ubroker,
                     eles aparecerão aqui para você formar parcerias.
                   </div>
                 )}
               </div>
-            </>
-          )}
+            )}
+          </section>
         </TabsContent>
 
         {/* MINHA REDE */}
         <TabsContent value="rede" className="space-y-5">
-          {requestsLoading ? (
+          {connectionsLoading ? (
             <div className="grid place-items-center py-16 text-muted-foreground">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
-          ) : incoming.length || accepted.length ? (
+          ) : incomingConnections.length ||
+            incomingPartnerships.length ||
+            acceptedConnections.length ||
+            conversations.length ? (
             <div className="space-y-5">
               <div className="rounded-2xl border border-border bg-card p-4 text-sm">
                 <span className="font-medium">
-                  {accepted.length} {accepted.length === 1 ? "parceiro" : "parceiros"} na sua rede
+                  {acceptedConnections.length}{" "}
+                  {acceptedConnections.length === 1 ? "conexão" : "conexões"} ·{" "}
+                  {conversations.length}{" "}
+                  {conversations.length === 1 ? "parceria ativa" : "parcerias ativas"}
                 </span>
-                {incoming.length > 0 && (
+                {incomingConnections.length + incomingPartnerships.length > 0 && (
                   <>
                     <span className="text-muted-foreground"> · </span>
-                    <span className="num font-medium">{incoming.length}</span>
+                    <span className="num font-medium">
+                      {incomingConnections.length + incomingPartnerships.length}
+                    </span>
                     <span className="text-muted-foreground">
                       {" "}
-                      {incoming.length === 1 ? "solicitação pendente" : "solicitações pendentes"}
+                      {incomingConnections.length + incomingPartnerships.length === 1
+                        ? "solicitação pendente"
+                        : "solicitações pendentes"}
                     </span>
                   </>
                 )}
               </div>
 
-              {incoming.length > 0 && (
+              {incomingPartnerships.length > 0 && (
                 <section className="space-y-3">
-                  <h2 className="font-display text-lg">Solicitações recebidas</h2>
+                  <h2 className="font-display text-lg">Solicitações de parceria</h2>
                   <div className="grid gap-3 md:grid-cols-2">
-                    {incoming.map((request) => (
-                      <RequestCard
+                    {incomingPartnerships.map((request) => (
+                      <PartnershipRequestCard
                         key={request.id}
                         request={request}
                         broker={brokersById.get(request.sender_id)}
-                        onRespond={refresh}
+                        propertyName={ownPropertyName(request.property_id)}
+                        onRespond={refreshRequests}
                       />
                     ))}
                   </div>
                 </section>
               )}
 
-              {accepted.map((request) => {
-                const partnerId =
-                  request.sender_id === currentUserId ? request.receiver_id : request.sender_id;
-                const partner = brokersById.get(partnerId);
-                return (
-                  <Link
-                    key={request.id}
-                    to="/app/parcerias/ativa/$id"
-                    params={{ id: request.id }}
-                    className="flex items-center justify-between rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm transition hover:bg-orange-100"
-                  >
-                    <div>
-                      <div className="font-medium text-orange-900">
-                        Parceria ativa com {partner?.full_name ?? "corretor parceiro"}
-                      </div>
-                      <div className="text-xs text-orange-800/80">
-                        Aceita {request.responded_at ? "· acompanhe a operação no workspace" : ""} ·
-                        abrir workspace da parceria
-                      </div>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-orange-700" />
-                  </Link>
-                );
-              })}
-
-              {accepted.length > 0 && (
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {accepted.map((request) => {
-                    const partnerId =
-                      request.sender_id === currentUserId ? request.receiver_id : request.sender_id;
-                    const partner = brokersById.get(partnerId);
-                    if (!partner) return null;
-                    return (
-                      <BrokerCard
-                        key={request.id}
-                        broker={partner}
-                        relationship={request}
-                        relationshipLoading={false}
-                        currentUserId={currentUserId}
-                        onConnect={() => {}}
-                        workspaceId={request.id}
+              {incomingConnections.length > 0 && (
+                <section className="space-y-3">
+                  <h2 className="font-display text-lg">Solicitações de conexão</h2>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {incomingConnections.map((connection) => (
+                      <ConnectionRequestCard
+                        key={connection.id}
+                        connection={connection}
+                        broker={brokersById.get(connection.requester_id)}
+                        onRespond={refreshConnections}
                       />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {conversations.length > 0 && (
+                <section className="space-y-3">
+                  <h2 className="font-display text-lg">Parcerias de imóvel</h2>
+                  {conversations.map((conversation) => {
+                    const partner = brokersById.get(conversation.partner_id);
+                    return (
+                      <Link
+                        key={conversation.partnership_id}
+                        to="/app/parcerias/ativa/$id"
+                        params={{ id: conversation.partnership_id }}
+                        className="flex items-center justify-between rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm transition hover:bg-orange-100"
+                      >
+                        <div>
+                          <div className="font-medium text-orange-900">
+                            Parceria com {partner?.full_name ?? "corretor parceiro"} ·{" "}
+                            {conversation.property_nome}
+                          </div>
+                          <div className="text-xs text-orange-800/80">
+                            Abrir workspace da parceria
+                          </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-orange-700" />
+                      </Link>
                     );
                   })}
-                </div>
+                </section>
+              )}
+
+              {acceptedConnections.length > 0 && (
+                <section className="space-y-3">
+                  <h2 className="font-display text-lg">Conexões</h2>
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {acceptedConnections.map((connection) => {
+                      const partnerId =
+                        connection.requester_id === currentUserId
+                          ? connection.target_id
+                          : connection.requester_id;
+                      const partner = brokersById.get(partnerId);
+                      if (!partner) return null;
+                      return (
+                        <BrokerCard
+                          key={connection.id}
+                          broker={partner}
+                          connection={connection}
+                          connectionLoading={false}
+                          currentUserId={currentUserId}
+                          onConnect={() => {}}
+                        />
+                      );
+                    })}
+                  </div>
+                </section>
               )}
             </div>
           ) : (
@@ -258,35 +364,79 @@ function PartnersPage() {
               <div className="grid h-14 w-14 place-items-center rounded-2xl bg-surface text-muted-foreground">
                 <Users className="h-7 w-7" />
               </div>
-              <div className="font-display text-lg">Você ainda não tem parceiros conectados</div>
+              <div className="font-display text-lg">Você ainda não tem rede de parcerias</div>
               <p className="max-w-sm text-sm text-muted-foreground">
-                Envie solicitações de conexão na aba “Explorar corretores” para montar sua rede de
-                parcerias.
+                Conecte-se com corretores e solicite parcerias nos imóveis disponíveis na aba
+                “Explorar”.
               </p>
             </div>
           )}
         </TabsContent>
       </Tabs>
 
-      <ConnectModal broker={connectFor} onOpenChange={(o) => !o && setConnectFor(null)} />
+      <ConnectModal
+        broker={connectFor}
+        onOpenChange={(o) => !o && setConnectFor(null)}
+        onSent={() => void refreshConnections()}
+      />
     </div>
+  );
+}
+
+function SharedPropertyCard({
+  property,
+  owner,
+  coverUrl,
+}: {
+  property: SharedProperty;
+  owner?: DirectoryBroker;
+  coverUrl?: string;
+}) {
+  return (
+    <Link
+      to="/app/parcerias/$id"
+      params={{ id: property.broker_id }}
+      className="overflow-hidden rounded-2xl border border-border bg-card transition hover:border-brand/40"
+    >
+      <div className="relative aspect-[4/3] overflow-hidden bg-surface">
+        {coverUrl ? (
+          <img src={coverUrl} alt={property.nome} className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full w-full place-items-center text-muted-foreground">
+            <ImageIcon className="h-8 w-8" />
+          </div>
+        )}
+        <span className="absolute left-3 top-3 rounded-full bg-navy/90 px-2.5 py-1 text-[10px] font-medium uppercase tracking-widest text-navy-foreground">
+          Parceria
+        </span>
+      </div>
+      <div className="p-4">
+        <div className="num font-display text-lg">{formatBRL(property.valor)}</div>
+        <h3 className="mt-0.5 line-clamp-1 text-sm font-medium">{property.nome}</h3>
+        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+          <MapPin className="h-3 w-3" />
+          {[property.bairro, property.cidade].filter(Boolean).join(", ") || "—"}
+        </div>
+        <div className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
+          {owner?.full_name ?? "Corretor parceiro"}
+        </div>
+      </div>
+    </Link>
   );
 }
 
 function BrokerCard({
   broker: b,
-  relationship,
-  relationshipLoading,
+  connection,
+  connectionLoading,
   currentUserId,
   onConnect,
-  workspaceId,
 }: {
   broker: DirectoryBroker;
-  relationship?: PartnershipRequest;
-  relationshipLoading: boolean;
+  connection?: BrokerConnection;
+  connectionLoading: boolean;
   currentUserId?: string;
   onConnect: () => void;
-  workspaceId?: string;
 }) {
   const initials = b.full_name
     .split(" ")
@@ -342,11 +492,11 @@ function BrokerCard({
             Ver perfil <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </Button>
-        {relationshipLoading ? (
+        {connectionLoading ? (
           <Button size="sm" variant="outline" className="flex-1" disabled>
             Carregando…
           </Button>
-        ) : !relationship ? (
+        ) : !connection ? (
           <Button
             size="sm"
             className="flex-1 bg-navy text-navy-foreground hover:bg-navy/90"
@@ -354,23 +504,17 @@ function BrokerCard({
           >
             <Handshake className="h-3.5 w-3.5" /> Conectar
           </Button>
-        ) : relationship.status === "pending" ? (
+        ) : connection.status === "pending" ? (
           <Button size="sm" variant="outline" className="flex-1" disabled>
-            {relationship.sender_id === currentUserId
+            {connection.requester_id === currentUserId
               ? "Solicitação enviada"
               : "Solicitação recebida"}
           </Button>
-        ) : relationship.status === "accepted" && workspaceId ? (
-          <Button
-            asChild
-            size="sm"
-            className="flex-1 bg-navy text-navy-foreground hover:bg-navy/90"
-          >
-            <Link to="/app/parcerias/ativa/$id" params={{ id: workspaceId }}>
-              <Handshake className="h-3.5 w-3.5" /> Workspace
-            </Link>
+        ) : (
+          <Button size="sm" variant="outline" className="flex-1" disabled>
+            <Check className="h-3.5 w-3.5" /> Conectado
           </Button>
-        ) : null}
+        )}
       </div>
     </article>
   );
@@ -379,21 +523,21 @@ function BrokerCard({
 function ConnectModal({
   broker,
   onOpenChange,
+  onSent,
 }: {
   broker: DirectoryBroker | null;
   onOpenChange: (open: boolean) => void;
+  onSent: () => void;
 }) {
   const [mensagem, setMensagem] = useState("");
-  const [objetivo, setObjetivo] = useState("parcerias");
   const [sending, setSending] = useState(false);
 
   async function submit() {
     if (!broker) return;
     setSending(true);
-    const { error } = await createPartnershipRequest({
-      receiverId: broker.id,
+    const { error } = await createConnectionRequest({
+      targetId: broker.id,
       message: mensagem,
-      partnershipType: objetivo === "parcerias" ? "comissao" : objetivo,
     });
     setSending(false);
     if (error) {
@@ -402,8 +546,8 @@ function ConnectModal({
     }
     toast.success(`Solicitação de conexão enviada para ${broker.full_name}`);
     setMensagem("");
-    setObjetivo("parcerias");
     onOpenChange(false);
+    onSent();
   }
 
   return (
@@ -412,33 +556,19 @@ function ConnectModal({
         <DialogHeader>
           <DialogTitle>Conectar com corretor</DialogTitle>
           <DialogDescription>
-            {broker ? `Inicie uma colaboração com ${broker.full_name}.` : ""}
+            {broker
+              ? `Adicione ${broker.full_name} à sua rede. A conexão não compartilha imóveis nem leads.`
+              : ""}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Mensagem inicial</Label>
-            <Textarea
-              value={mensagem}
-              onChange={(e) => setMensagem(e.target.value)}
-              placeholder="Olá, vi seu perfil e gostaria de explorar oportunidades de parceria…"
-              rows={4}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Objetivo da conexão</Label>
-            <RadioGroup value={objetivo} onValueChange={setObjetivo}>
-              <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-2.5 text-sm">
-                <RadioGroupItem value="parcerias" /> Parcerias em imóveis
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-2.5 text-sm">
-                <RadioGroupItem value="oportunidades" /> Troca de oportunidades
-              </label>
-              <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-2.5 text-sm">
-                <RadioGroupItem value="networking" /> Networking profissional
-              </label>
-            </RadioGroup>
-          </div>
+        <div className="space-y-2">
+          <Label>Mensagem inicial</Label>
+          <Textarea
+            value={mensagem}
+            onChange={(e) => setMensagem(e.target.value)}
+            placeholder="Olá, vi seu perfil e gostaria de me conectar…"
+            rows={4}
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -453,13 +583,59 @@ function ConnectModal({
   );
 }
 
-function RequestCard({
+function ConnectionRequestCard({
+  connection,
+  broker,
+  onRespond,
+}: {
+  connection: BrokerConnection;
+  broker?: DirectoryBroker;
+  onRespond: () => Promise<void>;
+}) {
+  const [responding, setResponding] = useState(false);
+
+  async function respond(response: "accepted" | "declined") {
+    setResponding(true);
+    const error = await respondToConnectionRequest(connection.id, response);
+    if (error) toast.error(error);
+    else {
+      toast.success(response === "accepted" ? "Conexão aceita" : "Solicitação recusada");
+      await onRespond();
+    }
+    setResponding(false);
+  }
+
+  return (
+    <article className="rounded-2xl border border-border bg-card p-5">
+      <div className="font-medium">{broker?.full_name ?? "Corretor"}</div>
+      <div className="text-xs text-muted-foreground">quer se conectar com você</div>
+      <p className="mt-2 text-sm text-muted-foreground">{connection.message}</p>
+      <div className="mt-4 flex gap-2">
+        <Button size="sm" onClick={() => void respond("accepted")} disabled={responding}>
+          <Check className="h-4 w-4" /> Aceitar
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void respond("declined")}
+          disabled={responding}
+        >
+          <X className="h-4 w-4" /> Recusar
+        </Button>
+      </div>
+    </article>
+  );
+}
+
+function PartnershipRequestCard({
   request,
   broker,
+  propertyName,
   onRespond,
 }: {
   request: PartnershipRequest;
   broker?: DirectoryBroker;
+  propertyName: string;
   onRespond: () => Promise<void>;
 }) {
   const [responding, setResponding] = useState(false);
@@ -478,6 +654,9 @@ function RequestCard({
   return (
     <article className="rounded-2xl border border-border bg-card p-5">
       <div className="font-medium">{broker?.full_name ?? "Corretor"}</div>
+      <div className="text-xs text-muted-foreground">
+        quer parceria no imóvel <span className="font-medium">{propertyName}</span>
+      </div>
       <p className="mt-2 text-sm text-muted-foreground">{request.message}</p>
       <div className="mt-4 flex gap-2">
         <Button size="sm" onClick={() => void respond("accepted")} disabled={responding}>

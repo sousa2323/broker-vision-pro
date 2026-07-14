@@ -18,6 +18,7 @@ import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/format";
 import { getProperty, type Property } from "@/lib/properties";
+import { usePropertyMediaUrls } from "@/lib/media";
 import { useActivities } from "@/lib/activities";
 import { STATUS_STYLES, getComissao, isAltaDemanda } from "@/lib/imoveis";
 
@@ -31,6 +32,11 @@ function PropertyDetail() {
   const [loading, setLoading] = useState(true);
   const [activeIdx, setActiveIdx] = useState(0);
   const { activities } = useActivities();
+  const mediaUrls = usePropertyMediaUrls([
+    ...(property?.fotos ?? []),
+    property?.foto,
+    property?.video,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,7 +79,9 @@ function PropertyDetail() {
   const altaDemanda = isAltaDemanda(property);
 
   const fotos = property.fotos?.length ? property.fotos : property.foto ? [property.foto] : [];
-  const fotoAtual = fotos[activeIdx] ?? fotos[0] ?? null;
+  const fotoAtualPath = fotos[activeIdx] ?? fotos[0] ?? null;
+  const fotoAtual = fotoAtualPath ? (mediaUrls[fotoAtualPath] ?? null) : null;
+  const videoUrl = property.video ? (mediaUrls[property.video] ?? null) : null;
 
   return (
     <div className="space-y-8">
@@ -128,16 +136,18 @@ function PropertyDetail() {
                         : "border-border opacity-80 hover:opacity-100"
                     }`}
                   >
-                    <img src={f} alt="" className="h-full w-full object-cover" />
+                    {mediaUrls[f] && (
+                      <img src={mediaUrls[f]} alt="" className="h-full w-full object-cover" />
+                    )}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {property.video && (
+          {videoUrl && (
             <div className="overflow-hidden rounded-2xl border border-border bg-black">
-              <video src={property.video} controls className="max-h-[420px] w-full" />
+              <video src={videoUrl} controls className="max-h-[420px] w-full" />
             </div>
           )}
 

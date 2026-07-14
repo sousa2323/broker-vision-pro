@@ -1,17 +1,31 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  Plus,
-  Sparkles,
+  Mail,
+  Menu,
   MessageSquare,
-  Users,
-  Zap,
   Shield,
   TrendingUp,
+  Users,
+  X,
+  Zap,
 } from "lucide-react";
 import { UbrokerLogo } from "@/components/ubroker-logo";
+
+const salesContact = "mailto:contato@ubroker.com.br?subject=Quero%20conhecer%20a%20Ubroker";
+
+const navItems = [
+  { href: "#plataforma", label: "A plataforma" },
+  { href: "#solucoes", label: "Soluções" },
+  { href: "#parcerias", label: "Parcerias" },
+  { href: "#confianca", label: "Confiança" },
+];
+
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warm focus-visible:ring-offset-2 focus-visible:ring-offset-navy";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,104 +43,140 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-navy text-navy-foreground">
+    <div className="min-h-screen overflow-x-clip bg-navy text-navy-foreground">
       <Header />
-      <Hero />
-      <StatsBand />
-      <ValueCards />
-      <ProductShowcase />
-      <Differentials />
-      <Testimonials />
-      <PressBand />
-      <FinalCTA />
+      <main>
+        <Hero />
+        <StatsBand />
+        <ValueProposition />
+        <ProductShowcase />
+        <Differentials />
+        <Testimonials />
+        <TrustBand />
+        <FinalCTA />
+      </main>
       <Footer />
     </div>
   );
 }
 
 function Header() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
-    <header className="sticky top-0 z-50 border-b border-white/5 bg-navy/85 backdrop-blur-md">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
-        <Link to="/" className="text-navy-foreground">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-navy">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6">
+        <Link to="/" aria-label="Ubroker — página inicial" className={focusRing}>
           <UbrokerLogo />
         </Link>
-        <nav className="hidden items-center gap-10 text-sm text-white/70 md:flex">
-          <a href="#plataforma" className="hover:text-white">
-            A plataforma
-          </a>
-          <a href="#solucoes" className="hover:text-white">
-            Soluções
-          </a>
-          <a href="#parcerias" className="hover:text-white">
-            Parcerias
-          </a>
-          <a href="#imprensa" className="hover:text-white">
-            Imprensa
-          </a>
+
+        <nav aria-label="Navegação principal" className="hidden items-center gap-8 text-sm md:flex">
+          {navItems.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={`rounded-sm px-1 py-2 text-white/70 transition-colors duration-150 hover:text-white ${focusRing}`}
+            >
+              {item.label}
+            </a>
+          ))}
         </nav>
-        <div className="flex items-center">
+
+        <div className="flex items-center gap-2">
           <Link
             to="/login"
-            className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 hover:shadow-lg hover:shadow-black/10"
+            className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 px-4 text-sm font-semibold text-white transition-colors duration-150 hover:border-white/40 hover:bg-white/5 sm:px-5 ${focusRing}`}
           >
             Entrar
-            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+            <ArrowRight className="hidden h-4 w-4 sm:block" aria-hidden="true" />
           </Link>
+          <button
+            type="button"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-navigation"
+            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+            onClick={() => setMobileOpen((open) => !open)}
+            className={`grid h-11 w-11 place-items-center rounded-md text-white transition-colors hover:bg-white/10 md:hidden ${focusRing}`}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
+
+      {mobileOpen ? (
+        <nav
+          id="mobile-navigation"
+          aria-label="Navegação mobile"
+          className="border-t border-white/10 bg-navy px-4 pb-5 pt-3 md:hidden"
+        >
+          <div className="mx-auto flex max-w-7xl flex-col">
+            {navItems.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={`flex min-h-11 items-center border-b border-white/10 text-sm font-medium text-white/80 transition-colors hover:text-white ${focusRing}`}
+              >
+                {item.label}
+              </a>
+            ))}
+            <a
+              href={salesContact}
+              onClick={() => setMobileOpen(false)}
+              className={`mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-warm px-5 text-sm font-semibold text-warm-foreground transition-[filter] hover:brightness-110 ${focusRing}`}
+            >
+              Falar com um especialista
+              <Mail className="h-4 w-4" aria-hidden="true" />
+            </a>
+          </div>
+        </nav>
+      ) : null}
     </header>
   );
 }
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 px-6 pb-24 pt-20 md:grid-cols-2 md:pt-28">
-        <div className="flex flex-col justify-center">
-          <span className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-white/15 px-3 py-1 text-xs uppercase tracking-widest text-white/70">
-            <Sparkles className="h-3.5 w-3.5 text-warm" /> Plataforma 2026
-          </span>
-          <h1 className="font-display text-[clamp(3rem,7vw,6.5rem)] leading-[0.95] tracking-tight">
-            Corretores
-            <br />
-            no controle.
-          </h1>
-          <p className="mt-8 max-w-lg text-lg leading-relaxed text-white/70">
-            A Ubroker dá ao corretor de alto padrão tudo que ele precisa em um único lugar: leads,
-            pipeline, IA, omnichannel, parcerias e monetização SaaS — sem depender da imobiliária.
+    <section className="relative isolate min-h-[calc(100svh-72px)] overflow-hidden px-4 sm:px-6">
+      <video
+        src="/video-hero.mp4"
+        aria-hidden="true"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 -z-10 h-full w-full object-cover"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 bg-linear-to-r from-navy via-navy/85 to-navy/30"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 bg-linear-to-t from-navy/60 to-transparent"
+      />
+
+      <div className="mx-auto flex min-h-[calc(100svh-72px)] max-w-7xl items-center py-14 md:py-16">
+        <div className="relative z-10 max-w-2xl">
+          <p className="mb-6 max-w-md text-sm font-semibold text-warm">
+            Seu negócio, sua marca, sua carteira.
           </p>
-          <div className="mt-10 flex flex-wrap items-center gap-4">
-            <a
-              href="#plataforma"
-              className="group inline-flex items-center gap-3 rounded-full bg-warm px-6 py-3.5 text-sm font-semibold text-warm-foreground shadow-lg shadow-warm/20 transition duration-300 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-xl hover:shadow-warm/30"
+          <h1 className="max-w-[10ch] text-balance font-display text-[clamp(3.25rem,6.2vw,5.75rem)] leading-[0.96] tracking-[-0.02em]">
+            Corretores no controle.
+          </h1>
+          <p className="mt-7 max-w-[38rem] text-pretty text-base leading-7 text-white/80 sm:text-lg sm:leading-8">
+            A Ubroker reúne operação, rede e tecnologia para o corretor de alto padrão construir uma
+            marca própria, trabalhar oportunidades e crescer sem depender de várias ferramentas.
+          </p>
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link
+              to="/login"
+              className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/5 hover:text-white ${focusRing}`}
             >
-              Falar com vendas
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20 transition-transform duration-300 group-hover:rotate-45">
-                <ArrowUpRight className="h-4 w-4" />
-              </span>
-            </a>
-          </div>
-        </div>
-        <div className="relative">
-          <div
-            className="aspect-[4/5] w-full overflow-hidden bg-cover bg-center"
-            style={{
-              backgroundImage:
-                "url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&q=80')",
-              clipPath: "polygon(15% 0, 100% 0, 100% 100%, 0 100%, 0 18%)",
-            }}
-          />
-          <div className="absolute -bottom-6 -left-6 hidden rounded-2xl border border-white/10 bg-navy/90 p-5 backdrop-blur md:block">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-warm text-warm-foreground">
-                <TrendingUp className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="num text-2xl font-semibold">+R$ 3,5 bi</div>
-                <div className="text-xs text-white/60">VGV transacionado pela rede</div>
-              </div>
-            </div>
+              Já sou cliente
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
           </div>
         </div>
       </div>
@@ -136,18 +186,28 @@ function Hero() {
 
 function StatsBand() {
   const stats = [
-    { v: "+R$ 3,5 bi", l: "VGV transacionado" },
-    { v: "+39 mil", l: "Imóveis centralizados" },
-    { v: "+750", l: "Corretores na rede" },
-    { v: "4 cidades", l: "SP · RJ · CWB · POA" },
+    { value: "+R$ 3,5 bi", label: "em VGV transacionado" },
+    { value: "+39 mil", label: "imóveis centralizados" },
+    { value: "+750", label: "corretores na rede" },
+    { value: "4 cidades", label: "com operação conectada" },
   ];
+
   return (
-    <section id="plataforma" className="border-y border-white/10 bg-navy/60">
-      <div className="mx-auto grid max-w-7xl grid-cols-2 divide-y divide-white/10 md:grid-cols-4 md:divide-x md:divide-y-0">
-        {stats.map((s, i) => (
-          <div key={i} className="px-6 py-12 text-center md:py-16">
-            <div className="font-display text-[clamp(2rem,4vw,3.5rem)] leading-none">{s.v}</div>
-            <div className="mt-3 text-xs uppercase tracking-widest text-white/50">{s.l}</div>
+    <section id="plataforma" className="scroll-mt-[72px] border-y border-white/10 bg-white/[0.025]">
+      <div className="mx-auto grid max-w-7xl grid-cols-2 md:grid-cols-4">
+        {stats.map((stat, index) => (
+          <div
+            key={stat.label}
+            className={`px-4 py-9 sm:px-6 md:py-12 ${
+              index % 2 === 0 ? "border-r border-white/10" : ""
+            } ${index < 2 ? "border-b border-white/10 md:border-b-0" : ""} ${
+              index > 0 ? "md:border-l md:border-white/10" : "md:border-l-0"
+            } md:border-r-0`}
+          >
+            <div className="num font-display text-[clamp(2rem,3.5vw,3.25rem)] leading-none tracking-[-0.02em]">
+              {stat.value}
+            </div>
+            <p className="mt-3 max-w-[16ch] text-sm leading-5 text-white/60">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -155,73 +215,69 @@ function StatsBand() {
   );
 }
 
-function ValueCards() {
-  const cards = [
+function ValueProposition() {
+  const outcomes = [
     {
-      title: "Construímos sua marca",
-      body: "Site profissional, presença omnichannel e identidade visual de alto padrão para o corretor.",
+      icon: Users,
+      title: "Uma marca que pertence a você",
+      body: "Presença profissional e relacionamento omnichannel para transformar reputação em ativo comercial.",
+      result: "Mais autoridade no mercado",
     },
     {
-      title: "Potencializamos seus ganhos",
-      body: "Comissões compartilhadas em rede, recorrência SaaS por indicação e isenção de mensalidade.",
+      icon: TrendingUp,
+      title: "Mais receita por oportunidade",
+      body: "Comissões compartilhadas, indicações recorrentes e uma rede pronta para ampliar seu alcance.",
+      result: "Mais caminhos para monetizar",
     },
     {
-      title: "Aumentamos sua produtividade",
-      body: "Leads, pipeline, agenda, IA e omnichannel em um único painel.",
-      highlight: true,
+      icon: Zap,
+      title: "Operação em um só lugar",
+      body: "Leads, pipeline, agenda, IA e canais de atendimento conectados ao mesmo fluxo de trabalho.",
+      result: "Menos troca de ferramentas",
     },
     {
-      title: "Reduzimos seu risco",
-      body: "Carteira diversificada via parcerias, contratos jurídicos prontos, suporte completo.",
+      icon: Shield,
+      title: "Estrutura para decidir melhor",
+      body: "Parcerias, contratos e suporte para diversificar a carteira sem perder controle ou rastreabilidade.",
+      result: "Menos risco operacional",
     },
   ];
+
   return (
-    <section id="solucoes" className="px-6 py-24 md:py-32">
+    <section id="solucoes" className="scroll-mt-[72px] px-4 py-24 sm:px-6 md:py-32">
       <div className="mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 gap-16 md:grid-cols-2">
-          <div>
-            <h2 className="font-display text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.95]">
-              Trabalhe para
-              <br />
-              você sem precisar
-              <br />
-              trabalhar sozinho.
-            </h2>
-          </div>
-          <div className="flex items-end">
-            <p className="max-w-md text-white/70">
-              Cresça seu negócio com produtos e serviços especialmente pensados para corretores de
-              alta produtividade.
-              <br />
-              <br />
-              <a
-                href="#"
-                className="inline-flex items-center gap-2 rounded-full bg-warm px-6 py-3 text-sm text-warm-foreground hover:brightness-110"
-              >
-                Saiba mais
-              </a>
+        <div className="grid gap-8 md:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)] md:items-end md:gap-16">
+          <h2 className="max-w-[13ch] text-balance font-display text-[clamp(2.75rem,5vw,4.75rem)] leading-[0.98] tracking-[-0.02em]">
+            Independência não precisa ser isolamento.
+          </h2>
+          <div className="max-w-lg md:justify-self-end">
+            <p className="text-pretty text-base leading-7 text-white/75">
+              A Ubroker combina autonomia, tecnologia e colaboração para o corretor conduzir um
+              negócio de alto valor com mais previsibilidade.
             </p>
+            <a
+              href="#produto"
+              className={`mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-warm transition-colors hover:text-white ${focusRing}`}
+            >
+              Ver a operação por dentro
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </a>
           </div>
         </div>
 
-        <div className="mt-16 grid grid-cols-1 gap-px overflow-hidden rounded-2xl bg-white/10 sm:grid-cols-2 lg:grid-cols-4">
-          {cards.map((c, i) => (
-            <div
-              key={i}
-              className={`group relative flex h-72 flex-col justify-between p-7 transition ${
-                c.highlight
-                  ? "bg-white text-ink"
-                  : "bg-navy text-white hover:bg-white hover:text-ink"
-              }`}
-            >
-              <div className="font-display text-2xl leading-tight">{c.title}</div>
-              <div className="space-y-4">
-                <p className="text-sm leading-relaxed opacity-80">{c.body}</p>
-                <div className="grid h-9 w-9 place-items-center rounded-full bg-warm text-warm-foreground">
-                  <Plus className="h-4 w-4" />
-                </div>
-              </div>
-            </div>
+        <div className="mt-16 grid gap-x-12 md:grid-cols-2">
+          {outcomes.map((outcome) => (
+            <article key={outcome.title} className="border-t border-white/15 py-8 sm:py-10">
+              <outcome.icon className="h-6 w-6 text-warm" strokeWidth={1.6} aria-hidden="true" />
+              <h3 className="mt-7 max-w-[22ch] text-balance font-display text-2xl leading-tight">
+                {outcome.title}
+              </h3>
+              <p className="mt-4 max-w-[52ch] text-sm leading-6 text-white/70">{outcome.body}</p>
+              <p className="mt-6 flex items-center gap-2 text-sm font-medium text-white/90">
+                <Check className="h-4 w-4 text-warm" aria-hidden="true" />
+                {outcome.result}
+              </p>
+            </article>
           ))}
         </div>
       </div>
@@ -231,47 +287,60 @@ function ValueCards() {
 
 function ProductShowcase() {
   return (
-    <section className="bg-surface px-6 py-24 text-ink md:py-32">
+    <section
+      id="produto"
+      className="scroll-mt-[72px] bg-surface px-4 py-24 text-ink sm:px-6 md:py-32"
+    >
       <div className="mx-auto max-w-7xl">
-        <div className="mb-12 max-w-2xl">
-          <span className="text-xs uppercase tracking-widest text-muted-foreground">O painel</span>
-          <h2 className="mt-4 font-display text-[clamp(2.25rem,4.5vw,4rem)] leading-[1] tracking-tight">
-            Painel do corretor.
-            <br />
-            Dados em tempo real.
-          </h2>
-          <p className="mt-6 max-w-lg text-muted-foreground">
-            Tudo que você precisa para fechar mais negócios, sem alternar entre 7 ferramentas
-            diferentes.
+        <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.7fr)] md:items-end md:gap-16">
+          <div>
+            <p className="text-sm font-semibold text-brand">Produto em ação</p>
+            <h2 className="mt-4 max-w-[14ch] text-balance font-display text-[clamp(2.75rem,4.5vw,4.25rem)] leading-none tracking-[-0.02em]">
+              Um painel para enxergar o negócio inteiro.
+            </h2>
+          </div>
+          <p className="max-w-lg text-pretty text-base leading-7 text-muted-foreground md:justify-self-end">
+            Prioridades, oportunidades e receita no mesmo contexto para você agir sem alternar entre
+            planilhas, agendas e sete ferramentas diferentes.
           </p>
         </div>
-        <div className="relative overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
-          <div className="flex items-center gap-2 border-b border-border bg-surface px-5 py-3">
-            <div className="h-3 w-3 rounded-full bg-red-400" />
-            <div className="h-3 w-3 rounded-full bg-amber-400" />
-            <div className="h-3 w-3 rounded-full bg-emerald-400" />
-            <div className="ml-4 text-xs text-muted-foreground">app.ubroker.com.br/dashboard</div>
+
+        <div className="mt-12 overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex min-h-12 items-center justify-between gap-4 border-b border-border bg-surface px-4 sm:px-5">
+            <div className="flex items-center gap-3">
+              <span className="grid h-7 w-7 place-items-center rounded-md bg-brand text-xs font-semibold text-brand-foreground">
+                U
+              </span>
+              <span className="text-sm font-semibold">Visão geral</span>
+            </div>
+            <span className="text-xs text-muted-foreground">Atualizado agora</span>
           </div>
-          <div className="grid grid-cols-12 gap-6 p-8">
-            <div className="col-span-12 grid grid-cols-2 gap-4 md:col-span-8 md:grid-cols-4">
+
+          <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(240px,0.65fr)] lg:gap-6 lg:p-8">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {[
-                { l: "VGV", v: "R$ 3,2 mi" },
-                { l: "Faturamento", v: "R$ 96 k" },
-                { l: "Ticket médio", v: "R$ 800 k" },
-                { l: "Vendidos", v: "2 / mês" },
-              ].map((k, i) => (
-                <div key={i} className="rounded-xl border border-border p-5">
-                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
-                    {k.l}
-                  </div>
-                  <div className="mt-2 num font-display text-2xl">{k.v}</div>
+                { label: "VGV", value: "R$ 3,2 mi" },
+                { label: "Faturamento", value: "R$ 96 mil" },
+                { label: "Ticket médio", value: "R$ 800 mil" },
+                { label: "Vendidos", value: "2 por mês" },
+              ].map((metric) => (
+                <div key={metric.label} className="rounded-xl border border-border p-4 sm:p-5">
+                  <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
+                  <p className="num mt-2 font-display text-xl sm:text-2xl">{metric.value}</p>
                 </div>
               ))}
-              <div className="col-span-2 rounded-xl border border-border p-6 md:col-span-4">
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Evolução de vendas
+
+              <div className="col-span-2 rounded-xl border border-border p-4 sm:p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-xs font-medium text-muted-foreground">Evolução de vendas</p>
+                  <p className="num text-xs font-semibold text-success">+18% no período</p>
                 </div>
-                <svg viewBox="0 0 400 100" className="mt-4 h-32 w-full">
+                <svg
+                  viewBox="0 0 400 100"
+                  className="mt-5 h-28 w-full sm:h-32"
+                  role="img"
+                  aria-label="Gráfico de evolução de vendas em alta"
+                >
                   <polyline
                     fill="none"
                     stroke="oklch(0.55 0.22 262)"
@@ -286,38 +355,45 @@ function ProductShowcase() {
                 </svg>
               </div>
             </div>
-            <div className="col-span-12 space-y-4 md:col-span-4">
-              <div className="rounded-xl bg-navy p-6 text-navy-foreground">
-                <div className="text-xs uppercase tracking-widest text-white/50">
-                  Monetização SaaS
-                </div>
-                <div className="mt-3 num font-display text-3xl">R$ 480</div>
-                <div className="mt-2 text-sm text-white/70">
-                  Faltam R$ 120 para isentar sua mensalidade
-                </div>
-                <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
-                  <div className="h-full w-[80%] bg-warm" />
+
+            <div className="flex flex-col gap-4">
+              <div className="rounded-xl bg-navy p-5 text-navy-foreground sm:p-6">
+                <p className="text-xs font-medium text-white/65">Monetização por indicação</p>
+                <p className="num mt-3 font-display text-3xl">R$ 480</p>
+                <p className="mt-2 text-sm leading-6 text-white/75">
+                  Faltam R$ 120 para isentar sua mensalidade.
+                </p>
+                <div
+                  className="mt-5 h-1.5 w-full overflow-hidden rounded-full bg-white/15"
+                  aria-hidden="true"
+                >
+                  <div className="h-full w-4/5 bg-warm" />
                 </div>
               </div>
+
               <div className="rounded-xl border border-border p-5">
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Operação
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <p className="text-xs font-medium text-muted-foreground">Operação de hoje</p>
+                <dl className="mt-5 grid grid-cols-3 gap-2 text-center">
                   {[
-                    { n: 18, l: "Novos" },
-                    { n: 12, l: "Atend." },
-                    { n: 5, l: "Propostas" },
-                  ].map((o, i) => (
-                    <div key={i}>
-                      <div className="num font-display text-xl">{o.n}</div>
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                        {o.l}
-                      </div>
+                    { value: 18, label: "Novos" },
+                    { value: 12, label: "Em contato" },
+                    { value: 5, label: "Propostas" },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <dt className="num font-display text-xl">{item.value}</dt>
+                      <dd className="mt-1 text-xs text-muted-foreground">{item.label}</dd>
                     </div>
                   ))}
-                </div>
+                </dl>
               </div>
+
+              <Link
+                to="/login"
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 ${focusRing}`}
+              >
+                Acessar minha conta
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
             </div>
           </div>
         </div>
@@ -331,90 +407,52 @@ function Differentials() {
     {
       icon: Zap,
       title: "Pipeline e leads centralizados",
-      body: "Toda a jornada do cliente — do primeiro toque ao fechamento — em um único lugar, com automações inteligentes.",
+      body: "Toda a jornada do cliente, do primeiro contato ao fechamento, em um fluxo com prioridades visíveis.",
     },
     {
       icon: MessageSquare,
-      title: "IA + omnichannel nativos",
-      body: "Assistente de IA atende WhatsApp, Instagram e portais, qualifica leads e devolve qualificados prontos para você fechar.",
+      title: "IA e canais trabalhando juntos",
+      body: "Atendimento, qualificação e contexto reunidos para o corretor entrar quando a conversa pede decisão humana.",
     },
     {
       icon: Users,
-      title: "Rede de parcerias com comissão compartilhada",
-      body: "Acesse o inventário de +750 corretores. Solicite parceria com 1 clique. Sem feed, sem ruído — só negócio.",
+      title: "Parcerias que viram negócio",
+      body: "Inventário conectado, solicitação de parceria e comissão compartilhada sem feed, ruído ou negociação dispersa.",
     },
   ];
-  return (
-    <section id="parcerias" className="px-6 py-24 md:py-32">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-16 max-w-3xl">
-          <span className="text-xs uppercase tracking-widest text-white/50">Por que Ubroker</span>
-          <h2 className="mt-4 font-display text-[clamp(2.25rem,4.5vw,4rem)] leading-[1]">
-            Três frentes que mudam
-            <br />a vida do corretor.
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl bg-white/10 md:grid-cols-3">
-          {items.map((it, i) => (
-            <div key={i} className="bg-navy p-10">
-              <it.icon className="h-8 w-8 text-warm" strokeWidth={1.5} />
-              <h3 className="mt-8 font-display text-2xl leading-tight">{it.title}</h3>
-              <p className="mt-4 text-sm text-white/70">{it.body}</p>
-              <div className="mt-8 flex items-center gap-2 text-sm text-white/60">
-                <Check className="h-4 w-4 text-warm" /> Disponível no plano Free
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
-function Testimonials() {
-  const t = [
-    {
-      name: "Alessandra Freixo",
-      role: "Olhar de Corretora · Niterói",
-      photo: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=200&q=80",
-      quote:
-        "Em 4 meses dobrei meu pipeline qualificado. A IA da Ubroker virou minha sócia silenciosa.",
-    },
-    {
-      name: "Aldemar e Thiago",
-      role: "Homesphere · Maricá",
-      photo: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&q=80",
-      quote:
-        "Fechamos 3 vendas em parceria via Ubroker no primeiro mês. A rede funciona de verdade.",
-    },
-    {
-      name: "Denise Molinaro",
-      role: "Denise no Jardins · São Paulo",
-      photo: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=200&q=80",
-      quote:
-        "Indicar clientes que estão saindo de SP virou receita recorrente. A monetização SaaS é genial.",
-    },
-  ];
   return (
-    <section className="bg-surface px-6 py-24 text-ink md:py-32">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-12 flex items-end justify-between">
-          <h2 className="font-display text-[clamp(2.25rem,4.5vw,4rem)] leading-[1] tracking-tight">
-            O que nossos
-            <br />
-            parceiros têm a dizer
+    <section id="parcerias" className="scroll-mt-[72px] px-4 py-24 sm:px-6 md:py-32">
+      <div className="mx-auto grid max-w-7xl gap-14 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:gap-24">
+        <div>
+          <h2 className="max-w-[12ch] text-balance font-display text-[clamp(2.75rem,4.6vw,4.5rem)] leading-[0.98] tracking-[-0.02em]">
+            Tecnologia onde ela muda o resultado.
           </h2>
+          <p className="mt-6 max-w-md text-pretty text-base leading-7 text-white/70">
+            A Ubroker não adiciona recursos por espetáculo. Cada frente reduz trabalho manual,
+            amplia alcance ou protege uma decisão comercial.
+          </p>
         </div>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {t.map((p, i) => (
-            <article key={i} className="group flex flex-col bg-card">
-              <img src={p.photo} alt={p.name} className="aspect-[4/5] w-full object-cover" />
-              <div className="bg-navy p-6 text-navy-foreground">
-                <p className="text-sm leading-relaxed text-white/85">"{p.quote}"</p>
-                <div className="mt-6 border-t border-white/10 pt-4">
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-xs text-white/60">{p.role}</div>
-                </div>
+
+        <div className="border-b border-white/15">
+          {items.map((item, index) => (
+            <article
+              key={item.title}
+              className="grid gap-5 border-t border-white/15 py-8 sm:grid-cols-[48px_minmax(0,1fr)] sm:gap-7 sm:py-9"
+            >
+              <div className="flex items-start gap-4 sm:block">
+                <span className="num text-sm text-white/45">0{index + 1}</span>
+                <item.icon
+                  className="mt-0.5 h-6 w-6 text-warm sm:mt-5"
+                  strokeWidth={1.6}
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(260px,1.2fr)] md:gap-8">
+                <h3 className="max-w-[22ch] text-balance font-display text-2xl leading-tight">
+                  {item.title}
+                </h3>
+                <p className="max-w-[58ch] text-sm leading-6 text-white/70">{item.body}</p>
               </div>
             </article>
           ))}
@@ -424,22 +462,128 @@ function Testimonials() {
   );
 }
 
-function PressBand() {
-  const press = ["Valor", "Exame", "InfoMoney", "NeoFeed"];
+function Testimonials() {
+  const testimonials = [
+    {
+      name: "Alessandra Freixo",
+      role: "Olhar de Corretora · Niterói",
+      initials: "AF",
+      quote:
+        "Em quatro meses dobrei meu pipeline qualificado. A IA da Ubroker virou minha sócia silenciosa.",
+    },
+    {
+      name: "Aldemar e Thiago",
+      role: "Homesphere · Maricá",
+      initials: "AT",
+      quote:
+        "Fechamos três vendas em parceria via Ubroker no primeiro mês. A rede funciona de verdade.",
+    },
+    {
+      name: "Denise Molinaro",
+      role: "Denise no Jardins · São Paulo",
+      initials: "DM",
+      quote:
+        "Indicar clientes que estão saindo de São Paulo virou receita recorrente para o meu negócio.",
+    },
+  ];
+
   return (
-    <section id="imprensa" className="border-y border-white/10 px-6 py-20">
+    <section className="bg-surface px-4 py-24 text-ink sm:px-6 md:py-32">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-10 text-xs uppercase tracking-widest text-white/50">Na imprensa</div>
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-          {press.map((p, i) => (
-            <div key={i} className="border-l border-white/10 pl-6">
-              <div className="font-display text-3xl text-white/90">{p}</div>
-              <p className="mt-3 text-xs text-white/55">
-                "Ubroker reorganiza o mercado de corretagem de alto padrão com tecnologia e rede
-                colaborativa."
-              </p>
-            </div>
-          ))}
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(280px,0.6fr)] md:items-end md:gap-16">
+          <h2 className="max-w-[13ch] text-balance font-display text-[clamp(2.75rem,4.5vw,4.25rem)] leading-none tracking-[-0.02em]">
+            Resultados contados por quem opera em rede.
+          </h2>
+          <p className="max-w-md text-pretty text-base leading-7 text-muted-foreground md:justify-self-end">
+            Mais do que funcionalidades, o que importa é transformar relacionamento, carteira e
+            tempo em negócio fechado.
+          </p>
+        </div>
+
+        <div className="mt-14 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <blockquote className="flex min-h-[360px] flex-col justify-between rounded-2xl bg-navy p-7 text-navy-foreground sm:p-10">
+            <p className="max-w-[28ch] text-pretty font-display text-[clamp(2rem,3.3vw,3.25rem)] leading-[1.08] tracking-[-0.02em]">
+              “{testimonials[0].quote}”
+            </p>
+            <footer className="mt-12 flex items-center gap-4 border-t border-white/15 pt-6">
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-warm text-sm font-semibold text-warm-foreground">
+                {testimonials[0].initials}
+              </span>
+              <div>
+                <cite className="not-italic font-semibold">{testimonials[0].name}</cite>
+                <p className="mt-1 text-sm text-white/60">{testimonials[0].role}</p>
+              </div>
+            </footer>
+          </blockquote>
+
+          <div className="flex flex-col border-b border-border">
+            {testimonials.slice(1).map((testimonial) => (
+              <blockquote
+                key={testimonial.name}
+                className="flex flex-1 flex-col justify-between border-t border-border py-7 sm:p-7 sm:first:pt-7"
+              >
+                <p className="max-w-[48ch] text-pretty text-lg leading-7 text-foreground">
+                  “{testimonial.quote}”
+                </p>
+                <footer className="mt-8 flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-full bg-brand text-xs font-semibold text-brand-foreground">
+                    {testimonial.initials}
+                  </span>
+                  <div>
+                    <cite className="not-italic text-sm font-semibold">{testimonial.name}</cite>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{testimonial.role}</p>
+                  </div>
+                </footer>
+              </blockquote>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TrustBand() {
+  const items = [
+    {
+      icon: Shield,
+      title: "Operação com rastreabilidade",
+      body: "Dados, atividades e responsabilidades visíveis no mesmo fluxo.",
+    },
+    {
+      icon: Check,
+      title: "Parcerias com contexto",
+      body: "Termos, imóvel e comissão reunidos antes da decisão.",
+    },
+    {
+      icon: TrendingUp,
+      title: "Receita com leitura clara",
+      body: "VGV, comissão e recorrência apresentados com período e unidade.",
+    },
+  ];
+
+  return (
+    <section
+      id="confianca"
+      className="scroll-mt-[72px] border-y border-white/10 px-4 py-20 sm:px-6"
+    >
+      <div className="mx-auto max-w-7xl">
+        <div className="grid gap-8 lg:grid-cols-[minmax(220px,0.55fr)_minmax(0,1.45fr)] lg:gap-16">
+          <div>
+            <p className="text-sm font-semibold text-warm">Confiança para operar</p>
+            <h2 className="mt-4 max-w-[11ch] text-balance font-display text-4xl leading-none">
+              Estrutura que sustenta decisões de alto valor.
+            </h2>
+          </div>
+          <div className="grid gap-8 sm:grid-cols-3">
+            {items.map((item) => (
+              <article key={item.title} className="border-t border-white/15 pt-6">
+                <item.icon className="h-5 w-5 text-warm" strokeWidth={1.7} aria-hidden="true" />
+                <h3 className="mt-5 text-sm font-semibold text-white">{item.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-white/65">{item.body}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -448,17 +592,31 @@ function PressBand() {
 
 function FinalCTA() {
   return (
-    <section className="px-6 py-32">
+    <section id="contato" className="scroll-mt-[72px] px-4 py-24 sm:px-6 md:py-32">
       <div className="mx-auto max-w-5xl text-center">
-        <h2 className="font-display text-[clamp(3rem,7vw,7rem)] leading-[0.92]">
-          Pronto para subir
-          <br />
-          de nível?
+        <h2 className="mx-auto max-w-[13ch] text-balance font-display text-[clamp(3rem,6vw,5.75rem)] leading-[0.96] tracking-[-0.02em]">
+          Seu próximo negócio pode começar com mais controle.
         </h2>
-        <p className="mx-auto mt-8 max-w-xl text-white/70">
-          Veja a plataforma completa em ação. Sem cadastro, sem cartão — entre direto no painel
-          demo.
+        <p className="mx-auto mt-7 max-w-2xl text-pretty text-base leading-7 text-white/75 sm:text-lg">
+          Conheça a plataforma com alguém do time Ubroker ou acesse sua conta para continuar sua
+          operação.
         </p>
+        <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+          <a
+            href={salesContact}
+            className={`inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-warm px-6 text-sm font-semibold text-warm-foreground transition-[filter,transform] duration-200 hover:-translate-y-0.5 hover:brightness-110 motion-reduce:transform-none ${focusRing}`}
+          >
+            Falar com um especialista
+            <Mail className="h-4 w-4" aria-hidden="true" />
+          </a>
+          <Link
+            to="/login"
+            className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/20 px-6 text-sm font-semibold text-white transition-colors hover:border-white/40 hover:bg-white/5 ${focusRing}`}
+          >
+            Entrar na plataforma
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
       </div>
     </section>
   );
@@ -466,42 +624,67 @@ function FinalCTA() {
 
 function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-navy/80 px-6 py-16 text-sm text-white/60">
-      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-10 md:grid-cols-5">
-        <div className="col-span-2">
+    <footer className="border-t border-white/10 px-4 py-14 text-sm text-white/60 sm:px-6">
+      <div className="mx-auto grid max-w-7xl gap-12 md:grid-cols-[minmax(0,1.2fr)_repeat(2,minmax(160px,0.4fr))]">
+        <div>
           <UbrokerLogo />
-          <p className="mt-4 max-w-xs">A plataforma de corretagem para o alto padrão brasileiro.</p>
-          <div className="mt-6 text-xs text-white/40">contato@ubroker.com.br</div>
+          <p className="mt-5 max-w-sm text-pretty leading-6">
+            A plataforma de operação, rede e crescimento para o corretor de alto padrão brasileiro.
+          </p>
+          <a
+            href={salesContact}
+            className={`mt-5 inline-flex min-h-11 items-center gap-2 rounded-sm text-white/70 transition-colors hover:text-white ${focusRing}`}
+          >
+            contato@ubroker.com.br
+            <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+          </a>
         </div>
-        {[
-          { t: "Plataforma", l: ["Dashboard", "Leads", "Pipeline", "Imóveis"] },
-          { t: "Rede", l: ["Parcerias", "Indicações", "Marketplace"] },
-          { t: "Empresa", l: ["Sobre", "Imprensa", "Carreiras", "Contato"] },
-        ].map((c, i) => (
-          <div key={i}>
-            <div className="mb-4 text-xs uppercase tracking-widest text-white/40">{c.t}</div>
-            <ul className="space-y-2">
-              {c.l.map((x) => (
-                <li key={x}>
-                  <a href="#" className="hover:text-white">
-                    {x}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+
+        <div>
+          <h2 className="text-sm font-semibold text-white">Conheça</h2>
+          <ul className="mt-4 space-y-1">
+            {navItems.map((item) => (
+              <li key={item.href}>
+                <a
+                  href={item.href}
+                  className={`inline-flex min-h-9 items-center rounded-sm transition-colors hover:text-white ${focusRing}`}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h2 className="text-sm font-semibold text-white">Conta</h2>
+          <ul className="mt-4 space-y-1">
+            <li>
+              <Link
+                to="/login"
+                className={`inline-flex min-h-9 items-center rounded-sm transition-colors hover:text-white ${focusRing}`}
+              >
+                Entrar
+              </Link>
+            </li>
+            <li>
+              <a
+                href={salesContact}
+                className={`inline-flex min-h-9 items-center rounded-sm transition-colors hover:text-white ${focusRing}`}
+              >
+                Falar com o time
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
-      <div className="mx-auto mt-12 flex max-w-7xl items-center justify-between border-t border-white/10 pt-8 text-xs text-white/40">
-        <div>© 2026 Ubroker. Todos os direitos reservados.</div>
-        <div className="flex items-center gap-4">
-          <Link to="/admin" className="hover:text-white/70">
-            Admin (demo)
-          </Link>
-          <span className="flex items-center gap-2">
-            <Shield className="h-3.5 w-3.5" /> CRECI Conformidade
-          </span>
-        </div>
+
+      <div className="mx-auto mt-12 flex max-w-7xl flex-col gap-4 border-t border-white/10 pt-6 text-xs text-white/45 sm:flex-row sm:items-center sm:justify-between">
+        <p>© 2026 Ubroker. Todos os direitos reservados.</p>
+        <p className="flex items-center gap-2">
+          <Shield className="h-3.5 w-3.5" aria-hidden="true" />
+          Boas práticas e conformidade para corretores
+        </p>
       </div>
     </footer>
   );

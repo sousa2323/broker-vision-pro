@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Handshake, Loader2, ShieldCheck } from "lucide-react";
 import { useDirectory } from "@/lib/directory";
 import { timeAgo } from "@/lib/format";
-import { usePartnershipRequests } from "@/lib/partnerships";
+import { usePartnershipConversations, usePartnershipRequests } from "@/lib/partnerships";
 
 export const Route = createFileRoute("/app/parcerias/ativa/")({
   component: ActivePartnerships,
@@ -20,9 +20,14 @@ export const Route = createFileRoute("/app/parcerias/ativa/")({
 
 function ActivePartnerships() {
   const { requests, loading, currentUserId } = usePartnershipRequests();
+  const { conversations } = usePartnershipConversations();
   const { brokers } = useDirectory();
   const brokersById = useMemo(() => new Map(brokers.map((b) => [b.id, b])), [brokers]);
   const accepted = requests.filter((request) => request.status === "accepted");
+  const propertyNameByPartnership = useMemo(
+    () => new Map(conversations.map((c) => [c.partnership_id, c.property_nome])),
+    [conversations],
+  );
 
   return (
     <div className="space-y-8">
@@ -60,6 +65,9 @@ function ActivePartnerships() {
                   <div>
                     <div className="font-medium">
                       Parceria com {partner?.full_name ?? "corretor parceiro"}
+                      {propertyNameByPartnership.has(request.id)
+                        ? ` · ${propertyNameByPartnership.get(request.id)}`
+                        : ""}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       Aceita {timeAgo(request.responded_at ?? request.created_at)} · abrir workspace
