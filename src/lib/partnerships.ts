@@ -138,6 +138,80 @@ export async function sendPartnershipMessage(
   return error ? "Não foi possível enviar a mensagem." : null;
 }
 
+export type PartnershipConversation = {
+  partnership_id: string;
+  partner_id: string;
+  last_message_body: string | null;
+  last_message_at: string | null;
+  last_message_sender_id: string | null;
+  unread_count: number;
+};
+
+export async function markPartnershipRead(partnershipId: string): Promise<void> {
+  const { error } = await supabase.rpc("mark_partnership_read", {
+    p_partnership_id: partnershipId,
+  });
+  if (error) console.error("Falha ao marcar chat como lido:", error.message);
+}
+
+export function usePartnershipConversations() {
+  const { session } = useSession();
+  const instanceId = useId().replace(/:/g, "");
+  const userId = session?.user.id;
+  const [conversations, setConversations] = useState<PartnershipConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (!userId) {
+      setConversations([]);
+      setLoading(false);
+      return;
+    }
+    const { data, error } = await supabase.rpc("list_partnership_conversations");
+    if (error) console.error("Falha ao carregar conversas de parceria:", error.message);
+    setConversations(
+      ((data ?? []) as PartnershipConversation[]).map((row) => ({
+        ...row,
+        unread_count: Number(row.unread_count ?? 0),
+      })),
+    );
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    void refresh();
+    if (!userId) return;
+    const channel = supabase
+      .channel(`partnership-conversations-${userId}-${instanceId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "partnership_messages" },
+        () => void refresh(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "partnership_chat_reads",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => void refresh(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "partnership_requests" },
+        () => void refresh(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [instanceId, refresh, userId]);
+
+  return { conversations, loading, refresh, currentUserId: userId };
+}
+
 export function usePartnershipMessages(partnershipId: string) {
   const instanceId = useId().replace(/:/g, "");
   const [messages, setMessages] = useState<PartnershipMessage[]>([]);

@@ -27,6 +27,7 @@ import {
   Home,
 } from "lucide-react";
 import { UbrokerLogo } from "@/components/ubroker-logo";
+import { PartnershipChatWidget } from "@/components/partnership-chat-widget";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   CommandDialog,
@@ -592,6 +593,7 @@ function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <PartnershipChatWidget />
     </div>
   );
 }

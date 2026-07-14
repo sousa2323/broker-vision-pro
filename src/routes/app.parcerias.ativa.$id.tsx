@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -18,7 +18,6 @@ import {
   Maximize2,
   MessageSquare,
   Phone,
-  Send,
   ShieldCheck,
   Sparkles,
   Trophy,
@@ -55,11 +54,12 @@ import { formatBRL, timeAgo } from "@/lib/format";
 import type { Property } from "@/lib/properties";
 import {
   listPartnershipProperties,
+  markPartnershipRead,
   sendPartnershipMessage,
   usePartnershipMessages,
   usePartnershipRequests,
-  type PartnershipMessage,
 } from "@/lib/partnerships";
+import { PartnershipChat } from "@/components/partnership-chat";
 
 export const Route = createFileRoute("/app/parcerias/ativa/$id")({
   component: PartnershipWorkspace,
@@ -165,6 +165,12 @@ function PartnershipWorkspace() {
       cancelled = true;
     };
   }, [id]);
+
+  // Zera as não lidas do widget flutuante enquanto o chat desta página está visível.
+  const lastMessageId = messages[messages.length - 1]?.id;
+  useEffect(() => {
+    if (!messagesLoading && request?.status === "accepted") void markPartnershipRead(id);
+  }, [id, messagesLoading, lastMessageId, request?.status]);
 
   const valorTotal = useMemo(
     () => properties.reduce((total, property) => total + Number(property.valor), 0),
@@ -274,21 +280,29 @@ function PartnershipWorkspace() {
           corretorB={corretorB}
           onRegistrar={() => setRegistrarOpen(true)}
         />
-        <ChatBlock
-          mensagens={messages}
-          loading={messagesLoading}
-          currentUserId={currentUserId}
-          corretorB={corretorB}
-          onSend={async (texto) => {
-            const error = await sendPartnershipMessage(id, texto);
-            if (error) {
-              toast.error(error);
-              return false;
-            }
-            await refreshMessages();
-            return true;
-          }}
-        />
+        <div className="flex flex-col rounded-2xl border border-border bg-card p-6">
+          <div className="text-xs uppercase tracking-widest text-muted-foreground">
+            Comunicação entre corretores
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            Conversa vinculada a esta parceria.
+          </div>
+          <PartnershipChat
+            messages={messages}
+            loading={messagesLoading}
+            currentUserId={currentUserId}
+            partnerName={corretorB.nome}
+            onSend={async (texto) => {
+              const error = await sendPartnershipMessage(id, texto);
+              if (error) {
+                toast.error(error);
+                return false;
+              }
+              await refreshMessages();
+              return true;
+            }}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -809,119 +823,6 @@ function ActivityTimeline({
           rastro de execução da parceria.
         </div>
       )}
-    </div>
-  );
-}
-
-function ChatBlock({
-  mensagens,
-  loading,
-  currentUserId,
-  corretorB,
-  onSend,
-}: {
-  mensagens: PartnershipMessage[];
-  loading: boolean;
-  currentUserId?: string;
-  corretorB: Corretor;
-  onSend: (texto: string) => Promise<boolean>;
-}) {
-  const [valor, setValor] = useState("");
-  const [sending, setSending] = useState(false);
-  const sugestoes = ["Enviar proposta", "Confirmar visita", "Aguardando retorno"];
-  const messagesRef = useRef<HTMLDivElement | null>(null);
-  const lastMessageId = mensagens[mensagens.length - 1]?.id;
-
-  useEffect(() => {
-    if (loading) return;
-    const frame = window.requestAnimationFrame(() => {
-      const messagesEl = messagesRef.current;
-      if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [lastMessageId, loading]);
-
-  async function send() {
-    const t = valor.trim();
-    if (!t || sending) return;
-    setSending(true);
-    const ok = await onSend(t);
-    setSending(false);
-    if (ok) setValor("");
-  }
-
-  return (
-    <div className="flex flex-col rounded-2xl border border-border bg-card p-6">
-      <div className="text-xs uppercase tracking-widest text-muted-foreground">
-        Comunicação entre corretores
-      </div>
-      <div className="mt-1 text-[11px] text-muted-foreground">
-        Conversa vinculada a esta parceria.
-      </div>
-      <div
-        ref={messagesRef}
-        className="partnership-chat-scroll mt-4 flex-1 space-y-2 overflow-y-auto pr-2"
-        style={{ maxHeight: 240 }}
-      >
-        {loading ? (
-          <div className="grid h-full place-items-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : mensagens.length ? (
-          mensagens.map((m) => {
-            const mine = m.sender_id === currentUserId;
-            return (
-              <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-                    mine ? "bg-navy text-navy-foreground" : "border border-border bg-background",
-                  )}
-                >
-                  <div>{m.body}</div>
-                  <div
-                    className={cn(
-                      "mt-1 text-[10px]",
-                      mine ? "text-white/60" : "text-muted-foreground",
-                    )}
-                  >
-                    {mine ? "Você" : corretorB.nome.split(" ")[0]} · {timeAgo(m.created_at)}
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="grid place-items-center py-8 text-center text-xs text-muted-foreground">
-            Inicie a conversa com seu parceiro.
-          </div>
-        )}
-      </div>
-      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-3">
-        {sugestoes.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setValor(s)}
-            className="rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition hover:border-orange-300 hover:text-orange-600"
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-      <div className="mt-3 flex items-center gap-2">
-        <Input
-          value={valor}
-          onChange={(e) => setValor(e.target.value)}
-          placeholder="Escrever mensagem..."
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void send();
-          }}
-        />
-        <Button onClick={() => void send()} disabled={!valor.trim() || sending}>
-          <Send className="h-4 w-4" />
-        </Button>
-      </div>
     </div>
   );
 }
