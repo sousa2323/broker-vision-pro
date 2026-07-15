@@ -2,8 +2,10 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 
-// URL canônica do site — og:image precisa ser absoluta para os crawlers das redes sociais.
-const siteUrl = "https://ubroker.com.br";
+// URL canônica do site — og:image precisa ser absoluta para os crawlers das redes
+// sociais. Resolvida no build (ver vite.config.ts): aponta para o domínio de produção
+// real do Vercel, então funciona tanto no *.vercel.app quanto no domínio final.
+const siteUrl = import.meta.env.VITE_SITE_URL || "https://ubroker.com.br";
 
 function NotFoundComponent() {
   return (
