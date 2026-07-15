@@ -2,6 +2,9 @@ import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/r
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 
+// URL canônica do site — og:image precisa ser absoluta para os crawlers das redes sociais.
+const siteUrl = "https://ubroker.com.br";
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -42,9 +45,29 @@ export const Route = createRootRoute({
           "Pipeline, IA, omnichannel, parcerias e monetização SaaS em uma única plataforma para corretores de alto padrão.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: siteUrl },
+      { property: "og:site_name", content: "Ubroker" },
+      { property: "og:locale", content: "pt_BR" },
+      { property: "og:image", content: `${siteUrl}/og-image.jpg` },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      {
+        property: "og:image:alt",
+        content: "Landing page da Ubroker — Corretores no controle",
+      },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Ubroker — Corretores no controle" },
+      {
+        name: "twitter:description",
+        content:
+          "Pipeline, IA, omnichannel, parcerias e monetização SaaS em uma única plataforma para corretores de alto padrão.",
+      },
+      { name: "twitter:image", content: `${siteUrl}/og-image.jpg` },
     ],
     links: [
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
