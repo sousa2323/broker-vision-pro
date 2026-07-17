@@ -35,11 +35,13 @@ import {
   createLead,
   updateLeadStatus,
   addLeadEvent,
+  nextLeadStatus,
   LEAD_ORIGINS,
   type Lead,
   type LeadOrigin,
   type LeadStatus,
 } from "@/lib/leads";
+import { ESTADOS_BR } from "@/lib/estados";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -82,6 +84,8 @@ function isOrigemQualificada(origem: LeadOrigin) {
 }
 
 const TIPOS = ["cobertura", "casa", "apartamento", "studio", "loft", "sala", "terreno"];
+// Heurística de fallback: usada apenas para inferir a localização de leads antigos
+// que não têm os campos estruturados estado/cidade. Não alimenta mais o filtro.
 const REGIOES = [
   "Icaraí",
   "Santa Rosa",
@@ -102,8 +106,21 @@ function inferTipo(interesse: string) {
 
 function inferRegiao(interesse: string) {
   const hits = REGIOES.filter((r) => interesse.includes(r));
-  if (hits.length === 0) return "Niterói / RJ";
+  if (hits.length === 0) return "Não informado";
   return hits.slice(0, 2).join(" · ");
+}
+
+/** Localização do lead: prefere os campos reais (cidade/estado); cai na heurística para legados. */
+function localidade(l: Lead) {
+  if (l.cidade || l.estado) return [l.cidade, l.estado].filter(Boolean).join(" / ");
+  return inferRegiao(l.interesse);
+}
+
+/** Só a cidade/região (sem UF), para uso em textos/scripts. */
+function localidadeCurta(l: Lead) {
+  if (l.cidade) return l.cidade;
+  if (l.estado) return l.estado;
+  return inferRegiao(l.interesse).split(" ")[0];
 }
 
 const FILTROS_RAPIDOS = [
@@ -546,7 +563,7 @@ function getAlertasComportamentais(l: Lead): string[] {
 
 function getSugestaoPosInteracao(tipo: string, l: Lead): string {
   if (tipo.includes("Liga"))
-    return `Enviar imóveis compatíveis em ${inferRegiao(l.interesse).split(" ")[0]} até o fim do dia.`;
+    return `Enviar imóveis compatíveis em ${localidadeCurta(l)} até o fim do dia.`;
   if (tipo.includes("WhatsApp")) return "Aguardar resposta por 4h e fazer follow-up se necessário.";
   if (tipo.includes("Visita")) return "Registrar feedback pós-visita e avançar para proposta.";
   if (tipo.includes("IA")) return "Confirmar qualificação por ligação e marcar visita.";
@@ -633,14 +650,14 @@ const QUALIF_BLOCOS = (l: Lead) => [
       ["Nome", l.nome],
       ["Família", "Casal com 1 filho"],
       ["Profissão", "—"],
-      ["Cidade", "Niterói / RJ"],
+      ["Cidade", localidade(l)],
     ],
   },
   {
     titulo: "Busca",
     campos: [
       ["Tipo", inferTipo(l.interesse)],
-      ["Região", inferRegiao(l.interesse)],
+      ["Região", localidade(l)],
       ["Faixa de valor", formatBRL(l.orcamento)],
       ["Características", "Varanda, vista, 2+ vagas"],
     ],
@@ -668,9 +685,9 @@ const QUALIF_BLOCOS = (l: Lead) => [
 function getVisitaInfo(l: Lead) {
   if (l.status !== "Visita") return null;
   return {
-    imovel: `${inferTipo(l.interesse)} em ${inferRegiao(l.interesse).split(" ")[0]}`,
+    imovel: `${inferTipo(l.interesse)} em ${localidadeCurta(l)}`,
     quando: "Sábado, 10h",
-    endereco: `Rua Lopes Trovão, 200 — ${inferRegiao(l.interesse).split(" ")[0]}`,
+    endereco: `Rua Lopes Trovão, 200 — ${localidadeCurta(l)}`,
     status: "Agendada" as const,
   };
 }
@@ -678,14 +695,14 @@ function getVisitaInfo(l: Lead) {
 type FiltrosAv = {
   origem: string;
   etapa: string;
-  regiao: string;
+  estado: string;
   tipo: string;
   orcamentoMax: string;
 };
 const FILTROS_AV_VAZIO: FiltrosAv = {
   origem: "",
   etapa: "",
-  regiao: "",
+  estado: "",
   tipo: "",
   orcamentoMax: "",
 };
@@ -779,7 +796,7 @@ function LeadsView({
           return false;
         if (f.origem && l.origem !== f.origem) return false;
         if (f.etapa && l.status !== f.etapa) return false;
-        if (f.regiao && !l.interesse.includes(f.regiao)) return false;
+        if (f.estado && l.estado !== f.estado) return false;
         if (f.tipo && !l.interesse.toLowerCase().includes(f.tipo.toLowerCase())) return false;
         if (f.orcamentoMax && l.orcamento > Number(f.orcamentoMax)) return false;
         return true;
@@ -841,6 +858,29 @@ function LeadsView({
       : selectedUrg === "hoje"
         ? "Ação prevista para hoje"
         : "Sem prazo imediato";
+
+  const proximaEtapa = nextLeadStatus(selected.status);
+  const podeAgendarVisita = !["Visita", "Fechado", "Perdido"].includes(selected.status);
+
+  const waUrl = (tel: string) => {
+    const d = tel.replace(/\D/g, "");
+    return `https://wa.me/${d.startsWith("55") ? d : "55" + d}`;
+  };
+
+  async function registrarContato(tipo: string, texto: string) {
+    if (brokerId) await addLeadEvent(brokerId, selected.id, tipo, texto);
+    await refetch();
+  }
+
+  async function avancarPara(status: LeadStatus, msg: string) {
+    const ok = await updateLeadStatus(selected.id, status);
+    if (ok) {
+      await refetch();
+      toast.success(msg);
+    } else {
+      toast.error("Não foi possível atualizar o lead.");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -1134,29 +1174,62 @@ function LeadsView({
 
           {/* CTAs principais */}
           <div className="grid grid-cols-3 gap-2">
-            <button className="inline-flex items-center justify-center gap-1.5 rounded-md bg-navy px-2 py-2 text-xs font-medium text-navy-foreground">
+            <button
+              disabled={!selected.telefone}
+              onClick={async () => {
+                window.open(`tel:${selected.telefone}`);
+                await registrarContato("Ligação", "Ligação iniciada");
+                toast.success("Ligação registrada");
+              }}
+              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-navy px-2 py-2 text-xs font-medium text-navy-foreground disabled:opacity-50"
+            >
               <Phone className="h-3.5 w-3.5" /> Ligar
             </button>
-            <button className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-2 py-2 text-xs font-medium text-white">
+            <button
+              disabled={!selected.telefone}
+              onClick={async () => {
+                window.open(waUrl(selected.telefone), "_blank");
+                await registrarContato("WhatsApp", "Conversa aberta no WhatsApp");
+                toast.success("WhatsApp registrado");
+              }}
+              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-2 py-2 text-xs font-medium text-white disabled:opacity-50"
+            >
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
             </button>
-            <button className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-2 py-2 text-xs font-medium">
+            <button
+              onClick={() => setRegistroOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-2 py-2 text-xs font-medium"
+            >
               <ClipboardCheck className="h-3.5 w-3.5" /> Registrar
             </button>
           </div>
 
           {/* Ações secundárias */}
           <div className="grid grid-cols-2 gap-2">
-            <button className="rounded-md border border-border px-2 py-2 text-xs hover:bg-surface">
+            <button
+              onClick={() => setRegistroOpen(true)}
+              className="rounded-md border border-border px-2 py-2 text-xs hover:bg-surface"
+            >
               Registrar interação
             </button>
-            <button className="rounded-md border border-border px-2 py-2 text-xs hover:bg-surface">
+            <button
+              disabled={!podeAgendarVisita}
+              onClick={() => avancarPara("Visita", "Visita agendada")}
+              className="rounded-md border border-border px-2 py-2 text-xs hover:bg-surface disabled:opacity-50"
+            >
               Agendar visita
             </button>
-            <button className="rounded-md border border-border px-2 py-2 text-xs hover:bg-surface">
+            <button
+              disabled={!proximaEtapa}
+              onClick={() => proximaEtapa && avancarPara(proximaEtapa, `Etapa avançada para ${proximaEtapa}`)}
+              className="rounded-md border border-border px-2 py-2 text-xs hover:bg-surface disabled:opacity-50"
+            >
               Avançar etapa
             </button>
-            <button className="rounded-md border border-border px-2 py-2 text-xs hover:bg-surface text-red-700">
+            <button
+              onClick={() => setPerdaOpen(true)}
+              className="rounded-md border border-border px-2 py-2 text-xs hover:bg-surface text-red-700"
+            >
               Marcar como perdido
             </button>
           </div>
@@ -1180,7 +1253,7 @@ function LeadsView({
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Região</dt>
-                <dd className="font-medium text-right">{inferRegiao(selected.interesse)}</dd>
+                <dd className="font-medium text-right">{localidade(selected)}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">Valor do imóvel</dt>
@@ -1256,15 +1329,17 @@ function LeadsView({
               </select>
             </label>
             <label className="space-y-1">
-              <span className="text-xs text-muted-foreground">Região</span>
+              <span className="text-xs text-muted-foreground">Estado</span>
               <select
-                value={filtrosAv.regiao}
-                onChange={(e) => setFiltrosAv({ ...filtrosAv, regiao: e.target.value })}
+                value={filtrosAv.estado}
+                onChange={(e) => setFiltrosAv({ ...filtrosAv, estado: e.target.value })}
                 className="w-full rounded-md border border-border bg-background px-2 py-1.5"
               >
-                <option value="">Todas</option>
-                {REGIOES.map((r) => (
-                  <option key={r}>{r}</option>
+                <option value="">Todos</option>
+                {ESTADOS_BR.map((e) => (
+                  <option key={e.uf} value={e.uf}>
+                    {e.nome} ({e.uf})
+                  </option>
                 ))}
               </select>
             </label>
@@ -2048,7 +2123,7 @@ function LeadsView({
                           +12% conversão
                         </span>
                       </div>
-                      <div className="mt-3 rounded-md bg-background/60 p-3 text-sm text-foreground">{`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou sobre ${inferTipo(selected.interesse).toLowerCase()} em ${inferRegiao(selected.interesse).split(" ")[0]}.`}</div>
+                      <div className="mt-3 rounded-md bg-background/60 p-3 text-sm text-foreground">{`${primeiroNome}, separei 3 imóveis alinhados ao que você comentou sobre ${inferTipo(selected.interesse).toLowerCase()} em ${localidadeCurta(selected)}.`}</div>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button
                           onClick={() =>
@@ -2104,7 +2179,7 @@ function LeadsView({
                           const txt = t.texto
                             .replace("{nome}", primeiroNome)
                             .replace("{tipo}", inferTipo(selected.interesse).toLowerCase())
-                            .replace("{regiao}", inferRegiao(selected.interesse).split(" ")[0]);
+                            .replace("{regiao}", localidadeCurta(selected));
                           return (
                             <button
                               key={t.titulo}
@@ -2226,7 +2301,7 @@ function LeadsView({
                       const texto = s.texto
                         .replace("{nome}", primeiroNome)
                         .replace("{tipo}", inferTipo(selected.interesse))
-                        .replace("{regiao}", inferRegiao(selected.interesse));
+                        .replace("{regiao}", localidade(selected));
                       return (
                         <div
                           key={s.titulo}
@@ -2589,6 +2664,8 @@ function NovoLeadModal({
     telefone: "",
     email: "",
     origem: "WhatsApp" as LeadOrigin,
+    estado: "",
+    cidade: "",
     interesse: "",
     orcamento: "",
   });
@@ -2606,6 +2683,8 @@ function NovoLeadModal({
       telefone: form.telefone || undefined,
       email: form.email || undefined,
       origem: form.origem,
+      estado: form.estado || undefined,
+      cidade: form.cidade || undefined,
       interesse: form.interesse || undefined,
       orcamento: Number(form.orcamento) || 0,
     });
@@ -2617,6 +2696,8 @@ function NovoLeadModal({
         telefone: "",
         email: "",
         origem: "WhatsApp",
+        estado: "",
+        cidade: "",
         interesse: "",
         orcamento: "",
       });
@@ -2683,6 +2764,30 @@ function NovoLeadModal({
               onChange={(e) => setForm({ ...form, orcamento: e.target.value })}
               className="w-full rounded-md border border-border bg-background px-2 py-1.5"
               placeholder="1000000"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">Estado</span>
+            <select
+              value={form.estado}
+              onChange={(e) => setForm({ ...form, estado: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5"
+            >
+              <option value="">Selecione</option>
+              {ESTADOS_BR.map((e) => (
+                <option key={e.uf} value={e.uf}>
+                  {e.nome} ({e.uf})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-muted-foreground">Cidade / Região</span>
+            <input
+              value={form.cidade}
+              onChange={(e) => setForm({ ...form, cidade: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5"
+              placeholder="Ex.: Pinheiros"
             />
           </label>
           <label className="col-span-2 space-y-1">

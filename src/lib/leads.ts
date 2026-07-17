@@ -13,6 +13,15 @@ export const LEAD_STATUSES = [
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
+const AVANCAVEIS: LeadStatus[] = ["Novo", "Qualificado", "Visita", "Proposta", "Fechado"];
+
+/** Próxima etapa no funil ativo, ou null se já está em "Fechado"/"Perdido". */
+export function nextLeadStatus(current: LeadStatus): LeadStatus | null {
+  const i = AVANCAVEIS.indexOf(current);
+  if (i < 0 || i >= AVANCAVEIS.length - 1) return null;
+  return AVANCAVEIS[i + 1];
+}
+
 export const LEAD_ORIGINS = ["Instagram", "WhatsApp", "Marketplace", "Indicação", "Outro"] as const;
 export type LeadOrigin = (typeof LEAD_ORIGINS)[number];
 
@@ -29,6 +38,8 @@ export type Lead = {
   interesse: string;
   status: LeadStatus;
   orcamento: number;
+  estado?: string;
+  cidade?: string;
   motivoPerda?: string;
   lastInteractionAt: string;
   /** derivado de last_interaction_at, ex.: "há 2h" */
@@ -45,6 +56,8 @@ export type LeadInput = {
   interesse?: string;
   status?: LeadStatus;
   orcamento?: number;
+  estado?: string;
+  cidade?: string;
 };
 
 type LeadRow = {
@@ -58,6 +71,8 @@ type LeadRow = {
   interesse: string | null;
   status: LeadStatus;
   orcamento: number;
+  estado: string | null;
+  cidade: string | null;
   motivo_perda: string | null;
   last_interaction_at: string;
 };
@@ -82,6 +97,8 @@ function mapLead(row: LeadRow, events: EventRow[]): Lead {
     interesse: row.interesse ?? "",
     status: row.status,
     orcamento: Number(row.orcamento) || 0,
+    estado: row.estado ?? undefined,
+    cidade: row.cidade ?? undefined,
     motivoPerda: row.motivo_perda ?? undefined,
     lastInteractionAt: row.last_interaction_at,
     ultimaInteracao: timeAgo(row.last_interaction_at),
@@ -133,6 +150,8 @@ export async function createLead(brokerId: string, input: LeadInput): Promise<Le
       interesse: input.interesse || null,
       status: input.status ?? "Novo",
       orcamento: input.orcamento ?? 0,
+      estado: input.estado || null,
+      cidade: input.cidade || null,
     })
     .select()
     .single();
